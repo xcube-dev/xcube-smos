@@ -21,6 +21,7 @@
 
 from typing import Dict, Any
 
+import dask.array as da
 import numba
 import numpy as np
 import xarray as xr
@@ -80,32 +81,33 @@ class SmosL2Index(LazyMultiLevelDataset):
                             parameters: Dict[str, Any]) -> xr.Dataset:
 
         dgg_level_ds = self._dgg.get_dataset(level)
-        dgg_seqnum_var = dgg_level_ds.seqnum
+        seqnum_var = dgg_level_ds.seqnum
 
-        l2_index_var = dgg_seqnum_var.map_blocks(
-            _map_dgg_seqnum_to_l2_index,
-            args=[self.seqnum_to_index],
-            template=dgg_seqnum_var
+        assert isinstance(seqnum_var.data, da.Array)
+        assert isinstance(self.seqnum_to_index, np.ndarray)
+
+        l2_index_data = seqnum_var.data.map_blocks(
+            map_seqnum_to_l2_index,
+            dtype=seqnum_var.dtype,
+            chunks=seqnum_var.chunks,
+            seqnum_to_index=self.seqnum_to_index
         )
 
-        return xr.Dataset(dict(l2_index=l2_index_var))
+        l2_index_var = xr.DataArray(
+            l2_index_data,
+            dims=seqnum_var.dims,
+        )
 
-
-def _map_dgg_seqnum_to_l2_index(dgg_seqnum_block: xr.DataArray,
-                                seqnum_to_index: np.ndarray) -> xr.DataArray:
-    dgg_seqnum = dgg_seqnum_block.values.flatten()
-    l2_index = __map_dgg_seqnum_to_l2_index(dgg_seqnum,
-                                            seqnum_to_index)
-    return xr.DataArray(l2_index.reshape(dgg_seqnum_block.shape),
-                        dims=dgg_seqnum_block.dims,
-                        coords=dgg_seqnum_block.coords)
+        return xr.Dataset(data_vars=dict(l2_index=l2_index_var),
+                          coords=dgg_level_ds.coords)
 
 
 @numba.jit(nopython=True)
-def __map_dgg_seqnum_to_l2_index(smos_seqnum_values: np.ndarray,
-                                 seqnum_to_index: np.ndarray) -> np.ndarray:
-    smos_index_values = np.zeros(smos_seqnum_values.size, dtype=np.uint32)
-    for i in range(smos_index_values.size):
-        seqnum = smos_seqnum_values[i]
-        smos_index_values[i] = seqnum_to_index[seqnum]
-    return smos_index_values
+def map_seqnum_to_l2_index(seqnum_values_2d: np.ndarray,
+                           seqnum_to_index: np.ndarray) -> np.ndarray:
+    seqnum_values_1d = seqnum_values_2d.flatten()
+    index_values_1d = np.zeros(seqnum_values_1d.size, dtype=np.uint32)
+    for i in range(index_values_1d.size):
+        seqnum = seqnum_values_1d[i]
+        index_values_1d[i] = seqnum_to_index[seqnum]
+    return index_values_1d.reshape(seqnum_values_2d.shape)

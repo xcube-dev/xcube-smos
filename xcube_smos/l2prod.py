@@ -21,6 +21,8 @@
 
 from typing import Dict, Any
 
+import dask.array as da
+import numpy as np
 import xarray as xr
 
 from xcube.core.gridmapping import GridMapping
@@ -29,26 +31,44 @@ from .dgg import SmosDiscreteGlobalGrid
 from .l2index import SmosL2Index
 
 
-class SmosL2Product(LazyMultiLevelDataset):
+class SmosMappedL2Product(LazyMultiLevelDataset):
     WIDTH = SmosDiscreteGlobalGrid.WIDTH
     HEIGHT = SmosDiscreteGlobalGrid.HEIGHT
 
     TILE_WIDTH = SmosDiscreteGlobalGrid.TILE_WIDTH
     TILE_HEIGHT = SmosDiscreteGlobalGrid.TILE_HEIGHT
 
+    @classmethod
+    def open(cls, l2_product_path: str, dgg: SmosDiscreteGlobalGrid) \
+            -> "SmosMappedL2Product":
+        # Note, decode_cf=False is important!
+        l2_product = xr.open_dataset(l2_product_path, decode_cf=False)
+        l2_index = SmosL2Index(l2_product.Grid_Point_ID, dgg)
+        return SmosMappedL2Product(
+            l2_product,
+            l2_index
+        )
+
     def __init__(self,
-                 l2_ds: xr.Dataset,
-                 dgg: SmosDiscreteGlobalGrid):
+                 l2_product: xr.Dataset,
+                 l2_index: SmosL2Index):
         super().__init__()
-        self._l2_ds = l2_ds
-        self._dgg = dgg
-        self._l2_index = SmosL2Index(l2_ds.Grid_Point_ID, dgg)
+        self._l2_product = l2_product
+        self._l2_index = l2_index
+
+    @property
+    def l2_product(self) -> xr.Dataset:
+        return self._l2_product
+
+    @property
+    def l2_index(self) -> SmosL2Index:
+        return self._l2_index
 
     def _get_num_levels_lazily(self) -> int:
-        return self._dgg.num_levels
+        return self._l2_index.num_levels
 
     def _get_grid_mapping_lazily(self) -> GridMapping:
-        return self._dgg.grid_mapping
+        return self._l2_index.grid_mapping
 
     def _get_dataset_lazily(self,
                             level: int,
@@ -56,24 +76,36 @@ class SmosL2Product(LazyMultiLevelDataset):
         l2_index_ds = self._l2_index.get_dataset(level)
         l2_index = l2_index_ds.l2_index
 
-        l2_ds = self._l2_ds
+        l2_product = self._l2_product
 
         data_vars = {}
-        for l2_var_name, l2_var in l2_ds.data_vars.items():
-            reprojected_var = l2_index.map_blocks(_reproject_var,
-                                                  args=[l2_var])
-            reprojected_var.attrs.update(l2_var.attrs)
-            data_vars[l2_var_name] = reprojected_var
-            # print(f"Created {l2_var_name} of type {l2_var.dtype}")
+        for l2_var_name, l2_var in l2_product.data_vars.items():
+            assert isinstance(l2_index.data, da.Array)
+            assert isinstance(l2_var.data, np.ndarray)
 
-        return xr.Dataset(data_vars=data_vars)
+            mapped_l2_data = l2_index.data.map_blocks(
+                map_l2_values,
+                dtype=l2_var.dtype,
+                chunks=l2_index.chunks,
+                l2_values=l2_var.data
+            )
+
+            data_vars[l2_var_name] = xr.DataArray(
+                mapped_l2_data,
+                dims=l2_index.dims,
+                # coords=l2_index.coords,
+                attrs=l2_var.attrs,
+                name=l2_var_name,
+            )
+
+        return xr.Dataset(data_vars=data_vars,
+                          coords=l2_index_ds.coords,
+                          attrs=l2_product.attrs)
 
 
-def _reproject_var(l2_index_block: xr.DataArray,
-                   l2_var: xr.DataArray) -> xr.DataArray:
+def map_l2_values(l2_index: np.ndarray,
+                  l2_values: np.ndarray = None) -> np.ndarray:
     # print("Computing ", l2_index_block.shape)
-    if l2_index_block.size == 0:
-        return l2_index_block.astype(l2_var.dtype)
-    return xr.DataArray(l2_var.data[l2_index_block.data],
-                        dims=l2_index_block.dims,
-                        coords=l2_index_block.coords)
+    if l2_index.size == 0:
+        return l2_index.astype(l2_values.dtype)
+    return l2_values[l2_index]

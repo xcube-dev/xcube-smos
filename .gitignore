@@ -2,6 +2,9 @@
 /.idea/
 /.vscode/
 
+# JNBs
+.ipynb_checkpoints/
+
 # Dask
 dask-worker-space/
 
