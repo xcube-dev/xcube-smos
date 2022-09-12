@@ -62,13 +62,24 @@ class SmosL2Index(LazyMultiLevelDataset):
             raise ValueError()
 
         # TODO (forman): numba!
-        seqnum_to_index = np.zeros(SmosDiscreteGlobalGrid.MAX_SEQNUM + 1,
-                                   dtype=np.uint32)
+        missing_index = len(grid_point_id_var)
+        seqnum_to_index = np.full(SmosDiscreteGlobalGrid.MAX_SEQNUM + 1,
+                                  missing_index,
+                                  dtype=np.uint32)
         for i in range(len(seqnums)):
             j = seqnums[i]
             seqnum_to_index[j] = i
 
-        self.seqnum_to_index = seqnum_to_index
+        self._seqnum_to_index = seqnum_to_index
+        self._missing_index = missing_index
+
+    @property
+    def seqnum_to_index(self) -> np.ndarray:
+        return self._seqnum_to_index
+
+    @property
+    def missing_index(self) -> int:
+        return self._missing_index
 
     def _get_num_levels_lazily(self) -> int:
         return self._dgg.num_levels
@@ -84,18 +95,21 @@ class SmosL2Index(LazyMultiLevelDataset):
         seqnum_var = dgg_level_ds.seqnum
 
         assert isinstance(seqnum_var.data, da.Array)
-        assert isinstance(self.seqnum_to_index, np.ndarray)
+        assert isinstance(self._seqnum_to_index, np.ndarray)
 
+        # Note, da.map_blocks (dask 2022.6.0) is much faster
+        # than xr.map_blocks (xarray 2022.3.0)!
         l2_index_data = seqnum_var.data.map_blocks(
             map_seqnum_to_l2_index,
             dtype=seqnum_var.dtype,
             chunks=seqnum_var.chunks,
-            seqnum_to_index=self.seqnum_to_index
+            seqnum_to_index=self._seqnum_to_index,
         )
 
         l2_index_var = xr.DataArray(
             l2_index_data,
             dims=seqnum_var.dims,
+            attrs={"missing_index": self._missing_index}
         )
 
         return xr.Dataset(data_vars=dict(l2_index=l2_index_var),
@@ -106,7 +120,8 @@ class SmosL2Index(LazyMultiLevelDataset):
 def map_seqnum_to_l2_index(seqnum_values_2d: np.ndarray,
                            seqnum_to_index: np.ndarray) -> np.ndarray:
     seqnum_values_1d = seqnum_values_2d.flatten()
-    index_values_1d = np.zeros(seqnum_values_1d.size, dtype=np.uint32)
+    index_values_1d = np.zeros(seqnum_values_1d.size,
+                               dtype=np.uint32)
     for i in range(index_values_1d.size):
         seqnum = seqnum_values_1d[i]
         index_values_1d[i] = seqnum_to_index[seqnum]

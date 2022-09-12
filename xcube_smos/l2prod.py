@@ -18,8 +18,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
-from typing import Dict, Any
+import warnings
+from typing import Dict, Any, Union
 
 import dask.array as da
 import numpy as np
@@ -83,17 +83,30 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
             assert isinstance(l2_index.data, da.Array)
             assert isinstance(l2_var.data, np.ndarray)
 
+            fill_value = l2_var.attrs.get("_FillValue")
+            if fill_value is None:
+                if np.issubdtype(l2_var.dtype, np.floating):
+                    fill_value = float(np.nan)
+                else:
+                    fill_value = 0
+                warnings.warn(f"Variable {l2_var_name!r}"
+                              f" is missing a fill value,"
+                              f" using {fill_value} instead.")
+
+            # Note, da.map_blocks (dask 2022.6.0) is much faster
+            # than xr.map_blocks (xarray 2022.3.0)!
             mapped_l2_data = l2_index.data.map_blocks(
                 map_l2_values,
                 dtype=l2_var.dtype,
                 chunks=l2_index.chunks,
-                l2_values=l2_var.data
+                l2_values=l2_var.data,
+                missing_index=self._l2_index.missing_index,
+                fill_value=fill_value
             )
 
             data_vars[l2_var_name] = xr.DataArray(
                 mapped_l2_data,
                 dims=l2_index.dims,
-                # coords=l2_index.coords,
                 attrs=l2_var.attrs,
                 name=l2_var_name,
             )
@@ -104,8 +117,12 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
 
 
 def map_l2_values(l2_index: np.ndarray,
-                  l2_values: np.ndarray = None) -> np.ndarray:
+                  l2_values: np.ndarray,
+                  missing_index: int,
+                  fill_value: Union[int, float]) -> np.ndarray:
     # print("Computing ", l2_index_block.shape)
     if l2_index.size == 0:
         return l2_index.astype(l2_values.dtype)
-    return l2_values[l2_index]
+    l2_index_ok = np.where(l2_index != missing_index, l2_index, 0)
+    mapped_l2_value = l2_values[l2_index_ok]
+    return np.where(l2_index != missing_index, mapped_l2_value, fill_value)
