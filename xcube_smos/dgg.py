@@ -26,8 +26,8 @@ import numpy as np
 import xarray as xr
 
 from xcube.core.mldataset import LazyMultiLevelDataset
-from xcube.core.store.zarrstore import GenericArray
-from xcube.core.store.zarrstore import GenericZarrStore
+from xcube.core.zarrstore import GenericArray
+from xcube.core.zarrstore import GenericZarrStore
 
 
 class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):

@@ -44,7 +44,7 @@ setup(
     entry_points={
         'xcube_plugins': [
             # xcube_smos extensions
-            'xcube_smos = xcube_smos.plugin:init_plugin',
+            # 'xcube_smos = xcube_smos.plugin:init_plugin',
         ],
     },
     install_requires=requirements,
