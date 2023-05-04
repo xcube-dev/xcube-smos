@@ -54,12 +54,22 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
     TILE_WIDTH = SmosDiscreteGlobalGrid.TILE_WIDTH
     TILE_HEIGHT = SmosDiscreteGlobalGrid.TILE_HEIGHT
 
+    def __init__(self,
+                 l2_product: xr.Dataset,
+                 l2_index: SmosL2Index):
+        super().__init__()
+        self._l2_product = l2_product
+        self._l2_index = l2_index
+
     @classmethod
     def open(cls, l2_product_path: str, dgg: SmosDiscreteGlobalGrid) \
             -> "SmosMappedL2Product":
         """
         Open a multi-level dataset that represents the given
         SMOS Level 2 product using a geographic projection.
+
+        The newly created multi-level dataset has exactly the same
+        layout and CRS as the given *dgg*.
 
         :param l2_product_path: The SMOS Level 2 product path
         :param dgg: The SMOS DGG
@@ -72,13 +82,6 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
             l2_product,
             l2_index
         )
-
-    def __init__(self,
-                 l2_product: xr.Dataset,
-                 l2_index: SmosL2Index):
-        super().__init__()
-        self._l2_product = l2_product
-        self._l2_index = l2_index
 
     @property
     def l2_product(self) -> xr.Dataset:
@@ -142,7 +145,7 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
                           attrs=l2_product.attrs)
 
 
-@nb.jit(nopython=True)
+# @nb.jit(nopython=True)
 def map_l2_values(l2_index: np.ndarray,
                   l2_values: np.ndarray,
                   missing_index: int,

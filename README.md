@@ -29,6 +29,10 @@ Experimental support for ESA EE SMOS Level-2 multi-level dataset.
 
 - [] add doc strings 
 - [] add unit tests  
+- [] add parameter validation
+- [] add exception handling
+- [] add scaling/offset/fill value masking to variables 
+     (because they must be opened using `decode_cf=False`)
 - [] add new prototype class to form a data cube incl. time dim
 
 ### Develop the xcube data store "smos" 
