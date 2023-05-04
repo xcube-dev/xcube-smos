@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2022 by the xcube development team and contributors
+# Copyright (c) 2023 by the xcube development team and contributors
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -31,6 +31,15 @@ from xcube.core.zarrstore import GenericZarrStore
 
 
 class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
+    """
+    A multi-level dataset that represents the SMOS discrete global grid (DGG)
+    in geographic projection.
+
+    :param path: Path to the DGG as a SNAP image pyramid. It
+        is installed by the SNAP SMOS-Box plugin at
+        "~/.snap/auxdata/smos-dgg/grid-tiles".
+    """
+
     MIN_SEQNUM = 1
     MAX_SEQNUM = 2621442
 
@@ -99,6 +108,7 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
                 buffer = fp.read()
                 return np.frombuffer(buffer, dtype=self.DTYPE).reshape(shape)
 
+    # TODO (forman): check if numba.jit can significantly improve speed
     @staticmethod
     def grid_point_id_to_seqnum(grid_point_id: np.ndarray) -> np.ndarray:
         return np.where(

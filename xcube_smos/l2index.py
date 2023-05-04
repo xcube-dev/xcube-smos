@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2022 by the xcube development team and contributors
+# Copyright (c) 2023 by the xcube development team and contributors
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -22,7 +22,7 @@
 from typing import Dict, Any
 
 import dask.array as da
-import numba
+import numba as nb
 import numpy as np
 import xarray as xr
 
@@ -32,6 +32,19 @@ from .dgg import SmosDiscreteGlobalGrid
 
 
 class SmosL2Index(LazyMultiLevelDataset):
+    """
+    A multi-level dataset that provides variable "l2_index"
+    which is used to map a SMOS Level 2 product on a geographic grid
+    by the means of its "grid_point_id" variable.
+
+    The newly created multi-level dataset has exactly the same
+    layout and CRS as the given *dgg*.
+
+    :param grid_point_id_var: The variable "grid_point_id" from a
+        SMOS level 2 product
+    :param dgg: The SMOS DGG
+    """
+
     WIDTH = SmosDiscreteGlobalGrid.WIDTH
     HEIGHT = SmosDiscreteGlobalGrid.HEIGHT
 
@@ -116,7 +129,7 @@ class SmosL2Index(LazyMultiLevelDataset):
                           coords=dgg_level_ds.coords)
 
 
-@numba.jit(nopython=True)
+@nb.jit(nopython=True)
 def map_seqnum_to_l2_index(seqnum_values_2d: np.ndarray,
                            seqnum_to_index: np.ndarray) -> np.ndarray:
     seqnum_values_1d = seqnum_values_2d.flatten()

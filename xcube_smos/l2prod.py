@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2022 by the xcube development team and contributors
+# Copyright (c) 2023 by the xcube development team and contributors
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -23,6 +23,7 @@ import warnings
 from typing import Dict, Any, Union
 
 import dask.array as da
+import numba as nb
 import numpy as np
 import xarray as xr
 
@@ -33,6 +34,20 @@ from .l2index import SmosL2Index
 
 
 class SmosMappedL2Product(LazyMultiLevelDataset):
+    """
+    A multi-level dataset that represents a SMOS Level 2 product
+    using a geographic projection.
+
+    The newly created multi-level dataset has exactly the same
+    layout and CRS as the given *l2_index*.
+
+    Use :meth:open to create instances of this class.
+
+    :param l2_product: The SMOS level 2 product.
+    :param l2_index: The multi-level dataset is used to reproject
+        the given *l2_product* on a geographic grid.
+    """
+
     WIDTH = SmosDiscreteGlobalGrid.WIDTH
     HEIGHT = SmosDiscreteGlobalGrid.HEIGHT
 
@@ -42,6 +57,14 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
     @classmethod
     def open(cls, l2_product_path: str, dgg: SmosDiscreteGlobalGrid) \
             -> "SmosMappedL2Product":
+        """
+        Open a multi-level dataset that represents the given
+        SMOS Level 2 product using a geographic projection.
+
+        :param l2_product_path: The SMOS Level 2 product path
+        :param dgg: The SMOS DGG
+        :return: The mapped SMOS Level 2 product
+        """
         # Note, decode_cf=False is important!
         l2_product = xr.open_dataset(l2_product_path, decode_cf=False)
         l2_index = SmosL2Index(l2_product.Grid_Point_ID, dgg)
@@ -59,10 +82,12 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
 
     @property
     def l2_product(self) -> xr.Dataset:
+        """The SMOS level 2 product"""
         return self._l2_product
 
     @property
     def l2_index(self) -> SmosL2Index:
+        """The multi-level SMOS level 2 index"""
         return self._l2_index
 
     def _get_num_levels_lazily(self) -> int:
@@ -117,6 +142,7 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
                           attrs=l2_product.attrs)
 
 
+@nb.jit(nopython=True)
 def map_l2_values(l2_index: np.ndarray,
                   l2_values: np.ndarray,
                   missing_index: int,
