@@ -21,8 +21,9 @@
 
 from typing import Dict, Any, Sequence, Tuple, Optional
 
-import xarray as xr
 import numpy as np
+import xarray as xr
+
 from xcube.core.gridmapping import GridMapping
 from xcube.core.mldataset import LazyMultiLevelDataset
 from xcube.util.assertions import assert_given
@@ -50,24 +51,38 @@ class SmosMappedL2Cube(LazyMultiLevelDataset):
         super().__init__()
         assert_given(l2_products, "l2_products")
         self._l2_products = tuple(l2_products)
-        start_times = self.parse_times('FH:Validity_Period:Validity_Start')
-        stop_times = self.parse_times('FH:Validity_Period:Validity_Stop')
 
-    def parse_times(self, key: str) -> np.ndarray:
+        start_times = self._parse_times(l2_products,
+                                        'FH:Validity_Period:Validity_Start')
+        stop_times = self._parse_times(l2_products,
+                                       'FH:Validity_Period:Validity_Stop')
+
+        self.time = xr.DataArray(
+            start_times + (stop_times - start_times) / 2,
+            dims=('time',)
+        )
+        self.time_bnds = xr.DataArray(
+            np.stack([start_times, stop_times], axis=1),
+            dims=('time', 'bnds')
+        )
+
+    @classmethod
+    def _parse_times(cls,
+                     l2_products: Sequence[SmosMappedL2Product],
+                     key: str) -> np.ndarray:
         return np.array(
-            [self.normalize_time_text(p.get_dataset(0).attrs.get(key))
-             for p in self._l2_products],
+            [cls._normalize_time_text(p.get_dataset(0).attrs.get(key))
+             for p in l2_products],
             dtype=np.datetime64
         )
 
     @classmethod
-    def normalize_time_text(cls, time_str: Optional[str]):
+    def _normalize_time_text(cls, time_str: Optional[str]):
         if not time_str:
             return ""
         if time_str.startswith("UTC="):
             return time_str[4:]
         return time_str
-
 
     @classmethod
     def open(cls,
@@ -108,6 +123,8 @@ class SmosMappedL2Cube(LazyMultiLevelDataset):
     def _get_dataset_lazily(self,
                             level: int,
                             parameters: Dict[str, Any]) -> xr.Dataset:
-        [p.get_dataset(level) for p in self.l2_products]
-        return xr.concat([p.get_dataset(level) for p in self.l2_products],
-                         "time")
+        time_slices = [p.get_dataset(level) for p in self.l2_products]
+        dataset = xr.concat(time_slices, "time")
+        dataset.coords["time"] = self.time
+        dataset.coords["time_bnds"] = self.time_bnds
+        return dataset
