@@ -145,6 +145,10 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
                           attrs=l2_product.attrs)
 
 
+# TODO (forman): fix new numba error
+# No implementation of function Function(<built-in function getitem>)
+# found for signature:
+# >>> getitem(array(float32, 1d, C), array(int64, 2d, C))
 # @nb.jit(nopython=True)
 def map_l2_values(l2_index: np.ndarray,
                   l2_values: np.ndarray,
