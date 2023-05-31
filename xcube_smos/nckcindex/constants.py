@@ -1,0 +1,7 @@
+DEFAULT_INDEX_NAME = "nckc-index"
+DEFAULT_ENDPOINT_URL = "https://s3.cloudferro.com"
+DEFAULT_BUCKET_NAME = "EODATA"
+
+INDEX_CONFIG_VERSION = 1
+INDEX_CONFIG_FILENAME = "nckc-config.json"
+

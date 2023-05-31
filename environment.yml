@@ -1,0 +1,9 @@
+name: xcube-smos
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - click
+  - h5py
+  - kerchunk
+  - xcube
