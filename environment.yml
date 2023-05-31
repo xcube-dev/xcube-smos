@@ -4,6 +4,7 @@ channels:
   - defaults
 dependencies:
   - click
+  - h5netcdf
   - h5py
   - kerchunk
   - xcube
