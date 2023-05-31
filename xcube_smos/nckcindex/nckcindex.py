@@ -168,7 +168,6 @@ class NcKcIndex:
         nc_index_dir, _ = nc_index_path.rsplit("/", maxsplit=1)
         self.index_fs.mkdirs(nc_index_dir, exist_ok=True)
 
-        print(f"Writing {nc_index_path}")
         with self.index_fs.open(nc_index_path, "w") as f:
             json.dump(chunks_object, f)
 
