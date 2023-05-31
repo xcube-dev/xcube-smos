@@ -1,7 +1,9 @@
+import calendar
 import json
 from pathlib import Path
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, Optional
 
+import boto3
 import fsspec
 
 from .producttype import ProductType
@@ -37,31 +39,24 @@ class FileIndex:
     @classmethod
     def create(cls,
                index_path: Union[str, Path],
-               remote_path: str,
-               remote_protocol: str = "s3",
-               remote_options: Dict[str, Any] = None) -> "FileIndex":
+               s3_bucket: str,
+               s3_options: Dict[str, Any] = None) -> "FileIndex":
         index_path = str(index_path)
-        remote_options = remote_options or {}
+        s3_options = s3_options or {}
 
         index_fs: fsspec.AbstractFileSystem = fsspec.filesystem("file")
-        remote_fs: fsspec.AbstractFileSystem = fsspec.filesystem(
-            remote_protocol,
-            **(remote_options or {})
-        )
 
+        scanner = Scanner(**s3_options)
         for pt in ProductType.get_all():
-            sub_paths = remote_fs.listdir(f"{remote_path}/{pt.path}",
-                                          detail=False)
+            sub_paths = scanner.get_prefixes(s3_bucket, prefix=pt.path)
             for sub_path in sub_paths:
-                index_sub_path = sub_path[len(remote_path):]
-                index_fs.mkdirs(index_path + index_sub_path,
+                index_fs.mkdirs(f'{index_path}/{sub_path}',
                                 exist_ok=False)
 
         index_config = dict(
             version=INDEX_CONFIG_VERSION,
-            remote_path=remote_path,
-            remote_protocol=remote_protocol,
-            remote_options=remote_options,
+            s3_bucket=s3_bucket,
+            s3_options=s3_options,
             product_types={pt.id: pt.path for pt in ProductType.get_all()}
         )
         with index_fs.open(cls._index_config_path(index_path), "w") as f:
@@ -81,11 +76,118 @@ class FileIndex:
             index_config
         )
 
-    def sync(self):
-        # if self.lock_file.exists():
-        #     raise RuntimeError(f"Already synchronizing: {self.lock_file}")
-        # with open(self.lock_file, "w") as f:
-        #     json.dump(dict(
-        #         started=datetime.datetime.now().isoformat()
-        #     ), f)
-        pass
+    def sync(self, num_files_max: int = -1):
+        s3_bucket = self.index_config["s3_bucket"]
+        s3_options = self.index_config["s3_options"]
+        scanner = Scanner(**s3_options)
+
+        for pt in ProductType.get_all():
+            num_files = 0
+            sub_paths = scanner.get_prefixes(s3_bucket, prefix=pt.path)
+            for sub_path in sub_paths:
+                # print(f'Scanning {sub_path}')
+                splits = sub_path.rsplit("/")
+                year = None
+                if len(splits) > 3 and splits[-1] == "":
+                    try:
+                        year = int(splits[-2])
+                    except (ValueError, TypeError):
+                        pass
+                if year is None:
+                    continue
+                for month in range(1, 13):
+                    if num_files > num_files_max:
+                        break
+                    start_day, end_day = calendar.monthrange(year, month)
+                    for day in range(start_day, end_day + 1):
+                        if num_files > num_files_max:
+                            break
+                        day_path = f"{sub_path}{_2c(month)}/{_2c(day)}/"
+                        # print(f'Scanning {day_path}')
+                        file_paths = scanner.get_keys(s3_bucket,
+                                                      prefix=day_path,
+                                                      suffix=".nc")
+                        for file_path in file_paths:
+                            if num_files > num_files_max:
+                                break
+                            num_files += 1
+                            index_path = f'{self.index_path}/{file_path}'
+                            print(f'Syncing with {index_path}')
+                        # index_fs.mkdirs(f'{index_path}/{sub_path}',
+                        #                 exist_ok=False)
+
+        # Much slower? No!
+
+        # for pt in ProductType.get_all():
+        #     file_paths = scanner.get_keys(s3_bucket,
+        #                                  prefix=pt.path,
+        #                                  suffix=".nc")
+        #     for index, file_path in enumerate(file_paths):
+        #         if index >= num_files_max:
+        #             break
+        #         index_path = f'{self.index_path}/{file_path}'
+        #         print(f'Syncing with {index_path}')
+
+
+def _2c(value: int) -> str:
+    return str(value) if value >= 10 else '0' + str(value)
+
+
+class Scanner:
+    def __init__(self,
+                 key: Optional[str] = None,
+                 secret: Optional[str] = None,
+                 endpoint_url: Optional[str] = None):
+        self._client = boto3.client(
+            's3',
+            aws_access_key_id=key,
+            aws_secret_access_key=secret,
+            endpoint_url=endpoint_url,
+        )
+        self._paginator = self._client.get_paginator('list_objects_v2')
+
+    def get_keys(self, bucket_name: str, prefix: str = "", suffix: str = ""):
+        for page in self.get_pages(bucket_name, prefix=prefix):
+            for common_prefix in page.get('CommonPrefixes', ()):
+                yield from self.get_keys(bucket_name,
+                                         prefix=common_prefix["Prefix"],
+                                         suffix=suffix)
+            for content in page.get('Contents', ()):
+                key = content["Key"]
+                if (suffix and key.endswith(suffix)) \
+                        or not key.endswith('/'):
+                    yield key
+
+    def get_prefixes(self, bucket_name: str, prefix: str = ""):
+        for page in self.get_pages(bucket_name, prefix=prefix):
+            for common_prefix in page.get('CommonPrefixes', ()):
+                yield common_prefix["Prefix"]
+
+    def get_pages(self, bucket_name: str, prefix: str = ""):
+        if prefix and not prefix.endswith("/"):
+            prefix += "/"
+        return self._paginator.paginate(
+            Bucket=bucket_name,
+            Prefix=prefix,
+            Delimiter="/"
+        )
+
+# class Sync:
+#     def __init__(self,
+#                  remote_fs: fsspec.AbstractFileSystem,
+#                  remote_path: str,
+#                  index_fs: fsspec.AbstractFileSystem,
+#                  index_path: str,
+#                  num_workers: int = 8):
+#         self._remote_fs = remote_fs
+#         self._remote_path = remote_path
+#         self._index_fs = index_fs
+#         self._index_path = index_path
+#         self._num_workers = num_workers
+#         # self._thread_pool = concurrent.futures.ThreadPoolExecutor(
+#         #     max_workers=num_workers
+#         # )
+#
+#     def start(self, remote_path: str, index_path: str):
+#         for entry in self._remote_fs.listdir(remote_path):
+#             if (entry)
