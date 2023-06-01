@@ -69,10 +69,12 @@ class NcKcIndex:
         Create a new NetCDF Kerchunk index.
 
         :param index_urlpath: Local path or URL for the
-        :param index_options: Optional options for accessing the
+        :param index_options: Optional storage options for accessing the
             filesystem of *index_urlpath*.
+            See fsspec for protocol given by *index_urlpath*.
         :param s3_bucket: The source S3 bucket.
         :param s3_options: Storage options for the S3 filesystem.
+            See fsspec/s3fs.
         :param replace_existing: Whether to replace an existing
             NetCDF Kerchunk index.
         :return:
@@ -109,6 +111,7 @@ class NcKcIndex:
         :param index_urlpath: Local file path or URL.
         :param index_options: Optional storage options for the
             filesystem of *index_urlpath*.
+            See fsspec for protocol given by *index_urlpath*.
         :return: A NetCDF file index.
         """
         index_fs, index_path, _ = cls._get_fs_path_protocol(
@@ -129,7 +132,7 @@ class NcKcIndex:
              num_workers: int = 1,
              block_size: int = 100,
              force: bool = False,
-             dry_run: bool = False) -> int:
+             dry_run: bool = False) -> Tuple[int, List[str]]:
         """Synchronize this index with the files.
         If *prefix* is given, only files that match the given prefix
         are processed. Otherwise, all SMOS L2 files are processed.
@@ -142,15 +145,20 @@ class NcKcIndex:
             Not used yet.
         :param force: Do not skip existing indexes.
         :param dry_run: Do not write any indexes. Useful for testing.
-        :return: Number of NetCDF files successfully indexed.
+        :return: A tuple comprising the number of NetCDF files
+            successfully indexed and a list of encountered problems.
         """
+        problems = []
         num_files = 0
         if num_workers < 2:
             for nc_file in self.get_nc_files(prefix=prefix):
-                success = self.index_nc_file(
+                problem = self.index_nc_file(
                     nc_file, force=force, dry_run=dry_run
                 )
-                num_files += int(success)
+                if problem is None:
+                    num_files += 1
+                else:
+                    problems.append(problem)
         else:
             # TODO: setup mult-threaded/-process executor with num_workers
             #   and submit workload in blocks.
@@ -159,48 +167,63 @@ class NcKcIndex:
             for nc_file_block in self.get_nc_file_blocks(prefix=prefix,
                                                          block_size=block_size):
                 for nc_file in nc_file_block:
-                    success = self.index_nc_file(
+                    problem = self.index_nc_file(
                         nc_file, force=force, dry_run=dry_run
                     )
-                    num_files += int(success)
-        return num_files
+                    if problem is None:
+                        num_files += 1
+                    else:
+                        problems.append(problem)
+        return num_files, problems
 
     def index_nc_file(self,
                       nc_path: str,
                       force: bool = False,
-                      dry_run: bool = False) -> bool:
+                      dry_run: bool = False) -> Optional[str]:
         """
         Index a NetCDF file given by *nc_path* in S3.
 
         :param nc_path: NetCDF file S3 path relative to bucket.
         :param force: Do not skip existing indexes.
         :param dry_run: Do not write any indexes. Useful for testing.
-        :return: True, if the NetCDF file has been successfully indexed.
+        :return: None, if the NetCDF file has been successfully indexed.
+            Otherwise, a message indicating the problem.
         """
         nc_index_path = f"{self.index_path}/{nc_path}.json"
 
         if not force and self.index_fs.exists(nc_index_path):
             print(f"Skipping {nc_path}, index exists")
-            return False
+            return None
 
         s3_url = f"s3://{self.s3_bucket}/{nc_path}"
 
         print(f"Indexing {s3_url}")
-        if dry_run:
-            return True
 
-        with self.s3_fs.open(s3_url) as f:
-            chunks = kerchunk.hdf.SingleHdf5ToZarr(
-                f, s3_url, inline_threshold=100
-            )
-            chunks_object = chunks.translate()
+        try:
+            with self.s3_fs.open(s3_url) as f:
+                chunks = kerchunk.hdf.SingleHdf5ToZarr(
+                    f, s3_url, inline_threshold=100
+                )
+                chunks_object = chunks.translate()
+        except OSError as e:
+            problem = f"Error creating index {s3_url}: {e}"
+            print(problem)
+            return problem
+
+        if dry_run:
+            return None
 
         nc_index_dir, _ = nc_index_path.rsplit("/", maxsplit=1)
-        self.index_fs.mkdirs(nc_index_dir, exist_ok=True)
-        with self.index_fs.open(nc_index_path, "w") as f:
-            json.dump(chunks_object, f)
+        try:
+            self.index_fs.mkdirs(nc_index_dir, exist_ok=True)
+            with self.index_fs.open(nc_index_path, "w") as f:
+                json.dump(chunks_object, f)
+        except OSError as e:
+            problem = f"Error writing index {s3_url}: {e}"
+            print(problem)
+            return problem
 
-        return True
+        return None
 
     @classmethod
     def _index_config_path(cls, index_path: str) -> str:

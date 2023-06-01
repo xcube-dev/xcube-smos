@@ -29,32 +29,40 @@ def cli(ctx, debug, traceback):
                    f' Defaults to "{DEFAULT_INDEX_NAME}".')
 @click.option('--endpoint', nargs=1, metavar='<url>',
               default=DEFAULT_ENDPOINT_URL,
-              help=f'S3 endpoint URL. Defaults to "{DEFAULT_ENDPOINT_URL}".')
+              help=f'S3 endpoint URL.'
+                   f' Defaults to "{DEFAULT_ENDPOINT_URL}".')
 @click.option('--bucket', nargs=1, metavar='<name>',
               default=DEFAULT_BUCKET_NAME,
-              help=f'S3 bucket name. Defaults to "{DEFAULT_BUCKET_NAME}".')
+              help=f'S3 bucket name.'
+                   f' Defaults to "{DEFAULT_BUCKET_NAME}".')
 @click.option('--key', nargs=1, metavar='<key>',
               help='S3 access key identifier')
 @click.option('--secret', nargs=1, metavar='<secret>',
               help='S3 secret access key')
+@click.option('--anon', is_flag=True, default=None,
+              help='Force anonymous S3 access.')
 def create(ctx,
            index,
            endpoint,
            bucket,
            key,
-           secret):
+           secret,
+           anon):
     """Create a NetCDF Kerchunk index."""
     from xcube_smos.nckcindex.nckcindex import NcKcIndex
     # click.echo(f"Debug is {'on' if ctx.obj['DEBUG'] else 'off'}")
+    s3_options = {
+        "anon": anon,
+        "key": key,
+        "secret": secret,
+        "endpoint_url": endpoint,
+    }
     nc_kc_index = NcKcIndex.create(
         index_urlpath=index,
         s3_bucket=bucket,
-        s3_options={
-            "endpoint_url": endpoint,
-            "key": key or os.environ.get("AWS_ACCESS_KEY_IDENTIFIER"),
-            "secret": secret or os.environ.get("AWS_SECRET_ACCESS_KEY"),
-        })
-    print(f"Created {nc_kc_index.index_path}")
+        s3_options={k: v for k, v in s3_options.items() if v is not None}
+    )
+    print(f"Created empty index {os.path.abspath(nc_kc_index.index_path)}")
 
 
 @cli.command()
@@ -78,8 +86,15 @@ def sync(ctx,
     from xcube_smos.nckcindex.nckcindex import NcKcIndex
     # click.echo(f"Debug is {'on' if ctx.obj['DEBUG'] else 'off'}")
     nc_kc_index = NcKcIndex.open(index_urlpath=index)
-    num_files = nc_kc_index.sync(prefix=prefix, force=force, dry_run=dry_run)
-    print(f"{num_files} file(s) synchronized in {nc_kc_index.index_path}")
+    num_files, problems = nc_kc_index.sync(prefix=prefix,
+                                           force=force,
+                                           dry_run=dry_run)
+    print(f"{num_files} file(s) synchronized"
+          f" in {os.path.abspath(nc_kc_index.index_path)}")
+    if problems:
+        print(f"{len(problems)} problem(s) encountered:")
+        for problem in problems:
+            print("  " + problem)
 
 
 @cli.command()
