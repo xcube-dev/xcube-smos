@@ -1,6 +1,9 @@
 from typing import Union
 
-COMMON_PATH_PATTERN = "{year}/{month}/{day}"
+from xcube.util.assertions import assert_given
+from xcube.util.assertions import assert_true
+
+COMMON_SUB_PATH_PATTERN = "{year}/{month}/{day}"
 
 COMMON_NAME_PATTERN = r"(?P<sd>\d{8})T(?P<st>\d{6})_" \
                       r"(?P<ed>\d{8})T(?P<et>\d{6})_" \
@@ -10,14 +13,19 @@ ProductTypeLike = Union[str, "ProductType"]
 
 
 class ProductType:
+    """SMOS product type."""
+
     def __init__(self,
                  id: str,
-                 path: str,
-                 name_pattern: str):
+                 path_prefix: str,
+                 name_prefix: str):
+        assert_given(path_prefix, "path_prefix")
+        assert_true(path_prefix.endswith("/"),
+                    message="path_prefix must end with '/'")
         self.id = id
-        self.path = path
-        self.path_pattern = self.path + "/" + COMMON_PATH_PATTERN
-        self.name_pattern = name_pattern
+        self.path_prefix = path_prefix
+        self.path_pattern = path_prefix + COMMON_SUB_PATH_PATTERN
+        self.name_pattern = name_prefix + COMMON_NAME_PATTERN
 
     @classmethod
     def normalize(cls, product_type: ProductTypeLike) -> "ProductType":
@@ -38,12 +46,12 @@ class ProductType:
 
 SM_PRODUCT_TYPE = ProductType(
     "SM",
-    "SMOS/L2SM/MIR_SMUDP2",
-    "SM_OPER_MIR_SMUDP2_" + COMMON_NAME_PATTERN
+    "SMOS/L2SM/MIR_SMUDP2/",
+    "SM_OPER_MIR_SMUDP2_"
 )
 
 OS_PRODUCT_TYPE = ProductType(
     "OS",
-    "SMOS/L2OS/MIR_OSUDP2",
-    "SM_OPER_MIR_OSUDP2_" + COMMON_NAME_PATTERN
+    "SMOS/L2OS/MIR_OSUDP2/",
+    "SM_OPER_MIR_OSUDP2_"
 )

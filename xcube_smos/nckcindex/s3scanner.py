@@ -7,7 +7,7 @@ import botocore.paginate
 class S3Scanner:
     """
     A low-level S3 scanner.
-    Way more performant than listing keys with s3fs.S3FileSystem.
+    Implements a much faster listing of keys than using s3fs.S3FileSystem.
     """
 
     def __init__(self,
@@ -23,13 +23,13 @@ class S3Scanner:
         self._paginator = self._client.get_paginator('list_objects_v2')
 
     def get_keys(self,
-                 bucket_name: str,
+                 bucket: str,
                  prefix: str = "",
                  suffix: str = "") -> Iterator[str]:
         """Get bucket object keys only. Will never return prefixes."""
-        for page in self.get_pages(bucket_name, prefix=prefix):
+        for page in self.get_pages(bucket, prefix=prefix):
             for common_prefix in page.get('CommonPrefixes', ()):
-                yield from self.get_keys(bucket_name,
+                yield from self.get_keys(bucket,
                                          prefix=common_prefix["Prefix"],
                                          suffix=suffix)
             for content in page.get('Contents', ()):
@@ -39,21 +39,21 @@ class S3Scanner:
                     yield key
 
     def get_prefixes(self,
-                     bucket_name: str,
+                     bucket: str,
                      prefix: str = "") -> Iterator[str]:
         """Get bucket prefixes only. Will never return object keys."""
-        for page in self.get_pages(bucket_name, prefix=prefix):
+        for page in self.get_pages(bucket, prefix=prefix):
             for common_prefix in page.get('CommonPrefixes', ()):
                 yield common_prefix["Prefix"]
 
     def get_pages(self,
-                  bucket_name: str,
+                  bucket: str,
                   prefix: str = "") -> botocore.paginate.PageIterator:
         """Get bucket contents as pages."""
         if prefix and not prefix.endswith("/"):
             prefix += "/"
         return self._paginator.paginate(
-            Bucket=bucket_name,
+            Bucket=bucket,
             Prefix=prefix,
             Delimiter="/"
         )
