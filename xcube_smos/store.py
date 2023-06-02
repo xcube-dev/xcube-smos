@@ -116,6 +116,7 @@ class SmosStore(DataStore):
                   data_id: str,
                   opener_id: str = None,
                   **open_params) -> Any:
+        OPEN_PARAMS_SCHEMA.validate_instance(open_params)
         self._assert_valid_data_id(data_id)
         self._assert_valid_opener_id(opener_id)
         # TODO (forman): implement me!

@@ -36,6 +36,10 @@ class SmosSchemaTest(unittest.TestCase):
             OPEN_PARAMS_SCHEMA.properties
         )
         self.assertIn(
+            'spatial_res',
+            OPEN_PARAMS_SCHEMA.properties
+        )
+        self.assertIn(
             'time_range',
             OPEN_PARAMS_SCHEMA.properties
         )

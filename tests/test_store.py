@@ -1,13 +1,14 @@
 import unittest
 
+import jsonschema
 import pytest
 
 from xcube.core.store import DatasetDescriptor
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
-from xcube_smos.store import SmosStore
-from xcube_smos.schema import STORE_PARAMS_SCHEMA
 from xcube_smos.schema import OPEN_PARAMS_SCHEMA
+from xcube_smos.schema import STORE_PARAMS_SCHEMA
+from xcube_smos.store import SmosStore
 
 
 class SmosStoreTest(unittest.TestCase):
@@ -135,6 +136,7 @@ class SmosStoreTest(unittest.TestCase):
 
     def test_get_data_opener_ids(self):
         store = SmosStore()
+
         self.assertEqual(
             ('dataset:zarr:smos', 'mldataset:zarr:smos'),
             store.get_data_opener_ids()
@@ -151,32 +153,61 @@ class SmosStoreTest(unittest.TestCase):
             ('mldataset:zarr:smos',),
             store.get_data_opener_ids(data_type='mldataset')
         )
+
         with pytest.raises(ValueError,
                            match="Unknown dataset identifier 'SMOS-L3-OS'"):
             store.get_data_types_for_data('SMOS-L3-OS')
+
         with pytest.raises(ValueError,
                            match="Invalid dataset type 'geodataframe'"):
             store.get_data_opener_ids(data_type='geodataframe')
 
     def test_get_open_data_params_schema(self):
         store = SmosStore()
+
         self.assertIs(
             OPEN_PARAMS_SCHEMA,
             store.get_open_data_params_schema()
         )
+
         with pytest.raises(ValueError,
                            match="Unknown dataset identifier 'SMOS-L3-OS'"):
             store.get_open_data_params_schema(data_id='SMOS-L3-OS')
+
         with pytest.raises(ValueError,
                            match="Invalid opener identifier 'dataset:zarr:s3'"):
             store.get_open_data_params_schema(opener_id='dataset:zarr:s3')
 
-
     def test_open_data(self):
         store = SmosStore()
 
-        # TODO (forman): implement me!
+        dataset = store.open_data('SMOS-L2-OS')
+        self.assertIsNone(dataset)
+        # TODO (forman):
+        # self.assertIsInstance(dataset, xr.Dataset)
+
+        # TODO (forman): more tests
+
+    # noinspection PyMethodMayBeStatic
+    def test_open_data_param_validation(self):
+        store = SmosStore()
 
         with pytest.raises(ValueError,
                            match="Unknown dataset identifier 'SMOS-L3-OS'"):
             store.open_data('SMOS-L3-OS')
+
+        with pytest.raises(ValueError,
+                           match="Invalid opener identifier 'dataset:zarr:s3'"):
+            store.open_data('SMOS-L2-SM', opener_id='dataset:zarr:s3')
+
+        with pytest.raises(jsonschema.exceptions.ValidationError):
+            # wrong type
+            store.open_data('SMOS-L2-SM', bbox="10, 20, 30, 40")
+
+        with pytest.raises(jsonschema.exceptions.ValidationError):
+            # wrong type
+            store.open_data('SMOS-L2-SM', time_range=[10, 20])
+
+        with pytest.raises(jsonschema.exceptions.ValidationError):
+            # not defined
+            store.open_data('SMOS-L2-SM', time_period="2D")

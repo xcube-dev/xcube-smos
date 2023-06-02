@@ -37,6 +37,12 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
                    JsonNumberSchema()),
             title='Bounding box [x1,y1, x2,y2] in geographical coordinates'
         ),
+        spatial_res=JsonNumberSchema(
+            # TODO (forman): use an enum here that references the 6 (?)
+            #   spatial resolution levels of our SMOS pyramid
+            exclusive_minimum=0.0,
+            title='Spatial resolution in decimal degrees.',
+        ),
         time_range=JsonArraySchema(
             items=[
                 JsonDateSchema(nullable=True),
