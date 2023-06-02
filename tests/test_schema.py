@@ -13,19 +13,22 @@ class SmosSchemaTest(unittest.TestCase):
             JsonObjectSchema
         )
         self.assertIn(
-            'key',
+            'index_urlpath',
             STORE_PARAMS_SCHEMA.properties
         )
         self.assertIn(
-            'secret',
+            'index_options',
             STORE_PARAMS_SCHEMA.properties
         )
-
 
     def test_open_params_schema(self):
         self.assertIsInstance(
             OPEN_PARAMS_SCHEMA,
             JsonObjectSchema
+        )
+        self.assertEqual(
+            ['time_range'],
+            OPEN_PARAMS_SCHEMA.required
         )
         self.assertIn(
             'variable_names',

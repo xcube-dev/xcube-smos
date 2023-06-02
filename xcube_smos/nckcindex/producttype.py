@@ -9,6 +9,8 @@ COMMON_NAME_PATTERN = r"(?P<sd>\d{8})T(?P<st>\d{6})_" \
                       r"(?P<ed>\d{8})T(?P<et>\d{6})_" \
                       r"\d{3}_\d{3}_\d{1}"
 
+COMMON_FILENAME_DATETIME_FORMAT = "%Y%m%d%H%M%S"
+
 ProductTypeLike = Union[str, "ProductType"]
 
 
@@ -34,10 +36,10 @@ class ProductType:
         if isinstance(product_type, str):
             if product_type.upper() == 'SM':
                 return SM_PRODUCT_TYPE
-            if product_type.lower() == 'OS':
+            if product_type.upper() == 'OS':
                 return OS_PRODUCT_TYPE
-            raise ValueError('invalid product_type')
-        raise TypeError('invalid product_type type')
+            raise ValueError(f'invalid product_type {product_type!r}')
+        raise TypeError(f'invalid product_type type {type(product_type)}')
 
     @classmethod
     def get_all(cls):
@@ -47,11 +49,11 @@ class ProductType:
 SM_PRODUCT_TYPE = ProductType(
     "SM",
     "SMOS/L2SM/MIR_SMUDP2/",
-    "SM_OPER_MIR_SMUDP2_"
+    r"SM_(OPER|REPR)_MIR_SMUDP2_"
 )
 
 OS_PRODUCT_TYPE = ProductType(
     "OS",
     "SMOS/L2OS/MIR_OSUDP2/",
-    "SM_OPER_MIR_OSUDP2_"
+    r"SM_(OPER|REPR)_MIR_OSUDP2_"
 )

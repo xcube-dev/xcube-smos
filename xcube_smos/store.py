@@ -1,5 +1,5 @@
 from typing import Iterator, Any, Tuple, Container, Union, Dict, Optional
-
+import xarray as xr
 from xcube.core.store import DATASET_TYPE
 from xcube.core.store import DataDescriptor
 from xcube.core.store import DataStore
@@ -11,6 +11,7 @@ from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .schema import OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
+from .catalog import SmosCatalog
 
 _DATASETS = {
     'SMOS-L2-SM': {
@@ -24,13 +25,10 @@ _DATASETS = {
 
 class SmosStore(DataStore):
     def __init__(self,
-                 key: Optional[str] = None,
-                 secret: Optional[str] = None):
-        self._storage_options = {
-            k: v
-            for k, v in dict(key=key, secret=secret).items()
-            if v is not None
-        }
+                 index_urlpath: Optional[str] = None,
+                 index_options: Optional[Dict[str, Any]] = None):
+        self._index_urlpath = index_urlpath
+        self._index_options = index_options
 
     @classmethod
     def get_data_store_params_schema(cls) -> JsonObjectSchema:
@@ -119,7 +117,28 @@ class SmosStore(DataStore):
         OPEN_PARAMS_SCHEMA.validate_instance(open_params)
         self._assert_valid_data_id(data_id)
         self._assert_valid_opener_id(opener_id)
-        # TODO (forman): implement me!
+        catalog = SmosCatalog(index_urlpath=self._index_urlpath,
+                              index_options=self._index_options)
+        product_type = data_id.rsplit('-', maxsplit=1)[-1]
+        time_range = open_params["time_range"]
+        index_paths = catalog.find_files(product_type, time_range)
+        for index_path in index_paths:
+            index_filename = index_path.rsplit("/", maxsplit=1)[-1]
+            index_json_path = f"{index_path}/{index_filename}.nc.json"
+            ds = xr.open_dataset(
+                "reference://",
+                engine="zarr",
+                backend_kwargs={
+                    "storage_options": {
+                        "fo": index_json_path,
+                        "remote_protocol": "s3",
+                        "remote_options": catalog.s3_options
+                    },
+                    "consolidated": False
+                }
+            )
+            # TODO (forman): continue here
+            print(ds)
 
     @classmethod
     def _assert_valid_data_id(cls, data_id: str):

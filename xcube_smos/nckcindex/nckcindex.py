@@ -30,7 +30,9 @@ class NcKcIndex:
 
         :param index_fs: Index filesystem.
         :param index_path: Path to the index directory.
-        :param index_config: Index configuration.
+        :param index_config: Optional storage options for accessing the
+            filesystem of *index_urlpath*.
+            See fsspec for protocol given by *index_urlpath*.
         """
         self.index_fs = index_fs
         self.index_path = index_path

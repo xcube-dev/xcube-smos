@@ -1,5 +1,5 @@
 import unittest
-
+import os
 import jsonschema
 import pytest
 
@@ -9,7 +9,14 @@ from xcube.util.jsonschema import JsonObjectSchema
 from xcube_smos.schema import OPEN_PARAMS_SCHEMA
 from xcube_smos.schema import STORE_PARAMS_SCHEMA
 from xcube_smos.store import SmosStore
+from xcube_smos.catalog import INDEX_ENV_VAR_NAME
 
+INDEX_PATH = os.environ.get(INDEX_ENV_VAR_NAME)
+
+if not INDEX_PATH:
+    reason = f"env var {INDEX_ENV_VAR_NAME!r} not set {INDEX_PATH}"
+else:
+    reason = f"index {INDEX_PATH} not found"
 
 class SmosStoreTest(unittest.TestCase):
 
@@ -178,10 +185,12 @@ class SmosStoreTest(unittest.TestCase):
                            match="Invalid opener identifier 'dataset:zarr:s3'"):
             store.get_open_data_params_schema(opener_id='dataset:zarr:s3')
 
+    @unittest.skipUnless(INDEX_PATH and os.path.exists(INDEX_PATH), reason)
     def test_open_data(self):
-        store = SmosStore()
+        store = SmosStore(index_urlpath=INDEX_PATH)
 
-        dataset = store.open_data('SMOS-L2-OS')
+        dataset = store.open_data('SMOS-L2-OS',
+                                  time_range=("2022-05-05", "2022-05-07"))
         self.assertIsNone(dataset)
         # TODO (forman):
         # self.assertIsInstance(dataset, xr.Dataset)
@@ -192,22 +201,37 @@ class SmosStoreTest(unittest.TestCase):
     def test_open_data_param_validation(self):
         store = SmosStore()
 
+        time_range = ("2022-05-10", "2022-05-12")
+
         with pytest.raises(ValueError,
                            match="Unknown dataset identifier 'SMOS-L3-OS'"):
-            store.open_data('SMOS-L3-OS')
+            store.open_data('SMOS-L3-OS',
+                            time_range=time_range)
 
         with pytest.raises(ValueError,
                            match="Invalid opener identifier 'dataset:zarr:s3'"):
-            store.open_data('SMOS-L2-SM', opener_id='dataset:zarr:s3')
+            store.open_data('SMOS-L2-SM',
+                            time_range=time_range,
+                            opener_id='dataset:zarr:s3')
 
-        with pytest.raises(jsonschema.exceptions.ValidationError):
-            # wrong type
-            store.open_data('SMOS-L2-SM', bbox="10, 20, 30, 40")
+        with pytest.raises(jsonschema.exceptions.ValidationError,
+                           match="'time_range' is a required property"):
+            store.open_data('SMOS-L2-SM',
+                            bbox="10, 20, 30, 40")
 
-        with pytest.raises(jsonschema.exceptions.ValidationError):
-            # wrong type
+        with pytest.raises(jsonschema.exceptions.ValidationError,
+                           match="10 is not of type 'string', 'null'"):
             store.open_data('SMOS-L2-SM', time_range=[10, 20])
 
-        with pytest.raises(jsonschema.exceptions.ValidationError):
-            # not defined
-            store.open_data('SMOS-L2-SM', time_period="2D")
+        with pytest.raises(jsonschema.exceptions.ValidationError,
+                           match="'10, 20, 30, 40' is not of type 'array'"):
+            store.open_data('SMOS-L2-SM',
+                            time_range=time_range,
+                            bbox="10, 20, 30, 40")
+
+        with pytest.raises(jsonschema.exceptions.ValidationError,
+                           match="Additional properties are not allowed"
+                                 " \\('time_period' was unexpected\\)"):
+            store.open_data('SMOS-L2-SM',
+                            time_range=time_range,
+                            time_period="2D")

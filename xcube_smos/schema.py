@@ -7,25 +7,21 @@ from xcube_smos.dgg import SmosDiscreteGlobalGrid
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
-        key=JsonStringSchema(
+        index_urlpath=JsonStringSchema(
             min_length=1,
-            title='AWS access key identifier.',
-            description='Can also be set in profile section'
-                        ' of ~/.aws/config, or by environment'
-                        ' variable AWS_ACCESS_KEY_ID.'
+            title='Path or URL to a local SMOS NetCDF Kerchunk index.',
         ),
-        secret=JsonStringSchema(
-            min_length=1,
-            title='AWS secret access key.',
-            description='Can also be set in profile section'
-                        ' of ~/.aws/config, or by environment'
-                        ' variable AWS_SECRET_ACCESS_KEY.'
+        index_options=JsonObjectSchema(
+            additional_properties=True,
+            title='Storage options for the SMOS NetCDF Kerchunk index.',
+            description='See fsspec documentation for specific filesystems.'
         ),
     ),
     additional_properties=False
 )
 
 OPEN_PARAMS_SCHEMA = JsonObjectSchema(
+    required=['time_range'],
     properties=dict(
         variable_names=JsonArraySchema(
             items=JsonStringSchema(),
