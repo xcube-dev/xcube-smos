@@ -43,7 +43,7 @@ setup(
     packages=packages,
     entry_points={
         'console_scripts': [
-            'nckcindex = xcube_smos.nckcindex.cli:cli',
+            'nckcidx = xcube_smos.nckcindex.cli:cli',
         ],
         'xcube_plugins': [
             # xcube_smos extensions

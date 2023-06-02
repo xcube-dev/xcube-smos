@@ -16,6 +16,17 @@ from xcube_smos.nckcindex.constants import DEFAULT_INDEX_NAME
                    ' NOT IMPLEMENTED YET.')
 @click.pass_context
 def cli(ctx, debug, traceback):
+    """Manage NetCDF Kerchunk indexes.
+
+    NetCDF Kerchunk index is a directory that contains references to
+    NetCDF files stored in S3. It stores a Kerchunk JSON file for
+    a given NetCDF file using a directory tree that corresponds
+    to the NetCDF file's S3 key prefix (relative to bucket name).
+
+    This form of the NetCDF Kerchunk index is useful for NetCDF files
+    that represent datasets that cannot easily be concatenated along
+    a given or new dimension, e.g., SMOS Level-2 products.
+    """
     ctx.ensure_object(dict)
     ctx.obj['DEBUG'] = debug
     ctx.obj['TRACEBACK'] = traceback
