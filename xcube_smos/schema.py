@@ -3,6 +3,7 @@ from xcube.util.jsonschema import JsonStringSchema
 from xcube.util.jsonschema import JsonArraySchema
 from xcube.util.jsonschema import JsonNumberSchema
 from xcube.util.jsonschema import JsonDateSchema
+from xcube_smos.dgg import SmosDiscreteGlobalGrid
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
@@ -38,9 +39,8 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
             title='Bounding box [x1,y1, x2,y2] in geographical coordinates'
         ),
         spatial_res=JsonNumberSchema(
-            # TODO (forman): use an enum here that references the 6 (?)
-            #   spatial resolution levels of our SMOS pyramid
-            exclusive_minimum=0.0,
+            enum=[(1 << level) * SmosDiscreteGlobalGrid.SPATIAL_RES
+                  for level in range(SmosDiscreteGlobalGrid.NUM_LEVELS)],
             title='Spatial resolution in decimal degrees.',
         ),
         time_range=JsonArraySchema(

@@ -49,6 +49,10 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
     TILE_WIDTH = 512
     TILE_HEIGHT = 504
 
+    NUM_LEVELS = 5
+
+    SPATIAL_RES = 360. / WIDTH
+
     DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder('>')
 
     def __init__(self, path: str):
@@ -56,12 +60,12 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
         self._path = path
 
     def _get_num_levels_lazily(self) -> int:
-        return 5
+        return self.NUM_LEVELS
 
     def _get_dataset_lazily(self,
                             level: int,
                             parameters: Dict[str, Any]) -> xr.Dataset:
-        spatial_res = (1 << level) * 360. / self.WIDTH
+        spatial_res = (1 << level) * self.SPATIAL_RES
 
         width = self.WIDTH >> level
         height = self.HEIGHT >> level
@@ -111,6 +115,8 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
     # TODO (forman): check if numba.jit can significantly improve speed
     @staticmethod
     def grid_point_id_to_seqnum(grid_point_id: np.ndarray) -> np.ndarray:
+        # TODO (forman): add link to SMOS DGG docs here to
+        #   explain magic numbers
         return np.where(
             grid_point_id < 1000000,
             grid_point_id,
