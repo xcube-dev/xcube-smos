@@ -1,16 +1,37 @@
+# The MIT License (MIT)
+# Copyright (c) 2023 by the xcube development team and contributors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+import os
 import re
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, Tuple, List
-import os
+
 import pandas as pd
 
 from xcube.util.assertions import assert_given
+from xcube_smos.constants import INDEX_ENV_VAR_NAME
 from xcube_smos.nckcindex.nckcindex import NcKcIndex
 from xcube_smos.nckcindex.producttype import COMMON_FILENAME_DATETIME_FORMAT
 from xcube_smos.nckcindex.producttype import ProductType
 from xcube_smos.nckcindex.producttype import ProductTypeLike
-
-INDEX_ENV_VAR_NAME = "XCUBE_SMOS_INDEX"
 
 _ONE_DAY = pd.Timedelta(1, unit="days")
 
@@ -21,6 +42,7 @@ class SmosCatalog:
                  index_options: Optional[Dict[str, Any]] = None):
         index_urlpath = index_urlpath or os.environ.get(INDEX_ENV_VAR_NAME)
         assert_given(index_urlpath, name='index_urlpath')
+        index_urlpath = os.path.expanduser(str(index_urlpath))
         self._nc_kc_index = NcKcIndex.open(index_urlpath,
                                            index_options=index_options)
 
@@ -31,7 +53,7 @@ class SmosCatalog:
     def find_files(self,
                    product_type: ProductTypeLike,
                    time_range: Tuple[Optional[str], Optional[str]]) \
-            -> List[str]:
+            -> List[Tuple[str, str, str]]:
         product_type = ProductType.normalize(product_type)
         start, end = self._normalize_time_range(time_range)
 
@@ -61,8 +83,7 @@ class SmosCatalog:
 
         start_names = []
         if start_index >= 0:
-            start_names.extend(
-                map(lambda item: item[0], start_times[start_index:]))
+            start_names.extend(start_times[start_index:])
 
         # Add everything between start + start.day and end - end.day
 
@@ -78,19 +99,16 @@ class SmosCatalog:
             time = start_p1d
             while time <= end_m1d:
                 in_between_names.extend(
-                    map(lambda item: item[0],
-                        self.find_files_for_date(product_type,
-                                                 time.year,
-                                                 time.month,
-                                                 time.day))
+                    self.find_files_for_date(product_type,
+                                             time.year,
+                                             time.month,
+                                             time.day)
                 )
                 time += _ONE_DAY
 
         end_names = []
         if end_index >= 0:
-            end_names.extend(
-                map(lambda item: item[0], end_times[:end_index])
-            )
+            end_names.extend(end_times[:end_index])
 
         return start_names + in_between_names + end_names
 

@@ -26,9 +26,10 @@ import xarray as xr
 
 from xcube.core.gridmapping import GridMapping
 from xcube.core.mldataset import LazyMultiLevelDataset
-from xcube.util.assertions import assert_given
+from xcube.util.assertions import assert_given, assert_true
 from .dgg import SmosDiscreteGlobalGrid
 from .l2prod import SmosMappedL2Product
+from .timeinfo import parse_smos_time_ranges
 
 
 class SmosMappedL2Cube(LazyMultiLevelDataset):
@@ -39,6 +40,7 @@ class SmosMappedL2Cube(LazyMultiLevelDataset):
     Use :meth:open to create instances of this class.
 
     :param l2_products: The mapped SMOS level 2 products.
+    :param time_bounds: Optional time bounds with dimensions (time, 2).
     """
 
     WIDTH = SmosDiscreteGlobalGrid.WIDTH
@@ -47,23 +49,29 @@ class SmosMappedL2Cube(LazyMultiLevelDataset):
     TILE_WIDTH = SmosDiscreteGlobalGrid.TILE_WIDTH
     TILE_HEIGHT = SmosDiscreteGlobalGrid.TILE_HEIGHT
 
-    def __init__(self, l2_products: Sequence[SmosMappedL2Product]):
+    def __init__(self,
+                 l2_products: Sequence[SmosMappedL2Product],
+                 time_bounds: Optional[np.array] = None):
         super().__init__()
         assert_given(l2_products, "l2_products")
         self._l2_products = tuple(l2_products)
 
-        start_times = self._parse_times(l2_products,
-                                        'FH:Validity_Period:Validity_Start')
-        stop_times = self._parse_times(l2_products,
-                                       'FH:Validity_Period:Validity_Stop')
+        if time_bounds is not None:
+            assert_true(time_bounds.shape == (len(l2_products), 2),
+                        message='time_bounds has an invalid shape')
+        else:
+            time_bounds = parse_smos_time_ranges(
+                [p.get_dataset(0) for p in l2_products]
+            )
 
-        self.time = xr.DataArray(
-            start_times + (stop_times - start_times) / 2,
-            dims=('time',)
-        )
         self.time_bnds = xr.DataArray(
-            np.stack([start_times, stop_times], axis=1),
+            time_bounds,
             dims=('time', 'bnds')
+        )
+        self.time = xr.DataArray(
+            time_bounds[:, 0] + (time_bounds[:, 1] - time_bounds[:, 0]) / 2,
+            dims=('time',),
+            attrs={"bounds": "time_bnds"}
         )
 
     @classmethod

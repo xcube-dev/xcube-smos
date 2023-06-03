@@ -1,3 +1,30 @@
+### Aux-data
+
+We need way(s) to provide required aux-data
+
+1. SMOS discrete global grid data. We currently rely on a version installed 
+   by SNAP plugin *SMOS-Box* in `~/.snap/auxdata/smos-dgg/grid-tiles`.
+2. SMOS NetCDF Kerchunk index. We currently set its path via an 
+   environment variable `SMOS_INDEX_PATH`. 
+
+Here are a number of options. They could also be provided in combination. 
+
+* Put aux-data in publicly available S3 bucket (slower).
+* Provide installable aux-data package in conda/pip (faster).
+* Bundle aux-data with container image.
+* Put aux-data in publicly available FTP for download and configure store
+  via env var.
+
+### Issues with the SMOS NetCDF Kerchunk index
+
+* The index requires daily updating, need a nightly service that calls `nckcidx` tool
+* The index is a directory with 250,000+ files, several GB in size. 
+  However, it compresses well, therefore consider a single Zip archive 
+  or annual/monthly Zip archives. A monthly Zip archive can be updating more
+  efficiently. 
+* Currently, a SMOS NetCDF Kerchunk index contains a file `nckc-index.json`
+  that also contains the Creodias S3 credentials for EDC user.
+  **THIS IS INSECURE**. Switch to dedicated env vars instead.
 
 ### fsspec.exceptions.FSTimeoutError
 

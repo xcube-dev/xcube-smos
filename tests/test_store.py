@@ -1,15 +1,17 @@
-import unittest
 import os
+import unittest
+
 import jsonschema
 import pytest
+import xarray as xr
 
 from xcube.core.store import DatasetDescriptor
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
+from xcube_smos.catalog import INDEX_ENV_VAR_NAME
 from xcube_smos.schema import OPEN_PARAMS_SCHEMA
 from xcube_smos.schema import STORE_PARAMS_SCHEMA
-from xcube_smos.store import SmosStore
-from xcube_smos.catalog import INDEX_ENV_VAR_NAME
+from xcube_smos.store import SmosDataStore
 
 INDEX_PATH = os.environ.get(INDEX_ENV_VAR_NAME)
 
@@ -18,20 +20,21 @@ if not INDEX_PATH:
 else:
     reason = f"index {INDEX_PATH} not found"
 
-class SmosStoreTest(unittest.TestCase):
+
+class SmosDataStoreTest(unittest.TestCase):
 
     def test_get_data_store_params_schema(self):
         self.assertIs(
             STORE_PARAMS_SCHEMA,
-            SmosStore.get_data_store_params_schema()
+            SmosDataStore.get_data_store_params_schema()
         )
 
     def test_get_data_types(self):
         self.assertEqual(('dataset', 'mldataset'),
-                         SmosStore.get_data_types())
+                         SmosDataStore.get_data_types())
 
     def test_get_data_types_for_data(self):
-        store = SmosStore()
+        store = SmosDataStore()
         self.assertEqual(('dataset', 'mldataset'),
                          store.get_data_types_for_data('SMOS-L2-SM'))
         self.assertEqual(('dataset', 'mldataset'),
@@ -41,7 +44,7 @@ class SmosStoreTest(unittest.TestCase):
             store.get_data_types_for_data('SMOS-L3-OS')
 
     def test_get_data_ids(self):
-        store = SmosStore()
+        store = SmosDataStore()
         for data_type in ('dataset', 'mldataset'):
             self.assertEqual(
                 [
@@ -66,7 +69,7 @@ class SmosStoreTest(unittest.TestCase):
                                         include_attrs=['color'])))
 
     def test_has_data(self):
-        store = SmosStore()
+        store = SmosDataStore()
         self.assertEqual(True, store.has_data('SMOS-L2-SM'))
         self.assertEqual(True, store.has_data('SMOS-L2-OS'))
         self.assertEqual(False, store.has_data('SMOS-L3-OS'))
@@ -82,15 +85,15 @@ class SmosStoreTest(unittest.TestCase):
         empty_object_schema = JsonObjectSchema(properties={},
                                                additional_properties=False)
         for data_type in ('dataset', 'mldataset'):
-            schema = SmosStore.get_search_params_schema(data_type)
+            schema = SmosDataStore.get_search_params_schema(data_type)
             self.assertEqual(empty_object_schema.to_dict(), schema.to_dict())
 
         with pytest.raises(ValueError,
                            match="Invalid dataset type 'geodataframe'"):
-            SmosStore.get_search_params_schema('geodataframe')
+            SmosDataStore.get_search_params_schema('geodataframe')
 
     def test_search_data(self):
-        store = SmosStore()
+        store = SmosDataStore()
 
         expected_ml_ds_descriptors = [
             {
@@ -142,7 +145,7 @@ class SmosStoreTest(unittest.TestCase):
             next(store.search_data(data_type='geodataframe'))
 
     def test_get_data_opener_ids(self):
-        store = SmosStore()
+        store = SmosDataStore()
 
         self.assertEqual(
             ('dataset:zarr:smos', 'mldataset:zarr:smos'),
@@ -170,7 +173,7 @@ class SmosStoreTest(unittest.TestCase):
             store.get_data_opener_ids(data_type='geodataframe')
 
     def test_get_open_data_params_schema(self):
-        store = SmosStore()
+        store = SmosDataStore()
 
         self.assertIs(
             OPEN_PARAMS_SCHEMA,
@@ -185,21 +188,9 @@ class SmosStoreTest(unittest.TestCase):
                            match="Invalid opener identifier 'dataset:zarr:s3'"):
             store.get_open_data_params_schema(opener_id='dataset:zarr:s3')
 
-    @unittest.skipUnless(INDEX_PATH and os.path.exists(INDEX_PATH), reason)
-    def test_open_data(self):
-        store = SmosStore(index_urlpath=INDEX_PATH)
-
-        dataset = store.open_data('SMOS-L2-OS',
-                                  time_range=("2022-05-05", "2022-05-07"))
-        self.assertIsNone(dataset)
-        # TODO (forman):
-        # self.assertIsInstance(dataset, xr.Dataset)
-
-        # TODO (forman): more tests
-
     # noinspection PyMethodMayBeStatic
     def test_open_data_param_validation(self):
-        store = SmosStore()
+        store = SmosDataStore()
 
         time_range = ("2022-05-10", "2022-05-12")
 
@@ -235,3 +226,13 @@ class SmosStoreTest(unittest.TestCase):
             store.open_data('SMOS-L2-SM',
                             time_range=time_range,
                             time_period="2D")
+
+    @unittest.skipUnless(INDEX_PATH and os.path.exists(INDEX_PATH), reason)
+    def test_open_data(self):
+        store = SmosDataStore(index_urlpath=INDEX_PATH)
+
+        dataset = store.open_data('SMOS-L2-OS',
+                                  time_range=("2022-05-05", "2022-05-07"))
+        self.assertIsInstance(dataset, xr.Dataset)
+
+        # TODO (forman): more tests

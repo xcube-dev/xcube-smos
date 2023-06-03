@@ -58,7 +58,11 @@ class SmosL2Index(LazyMultiLevelDataset):
         self._dgg = dgg
 
         if not np.issubdtype(grid_point_id_var.dtype, np.uint):
-            raise ValueError()
+            raise ValueError(f'expected variable {grid_point_id_var.name!r}'
+                             f' to be a sub type of np.uint,'
+                             f' but was {grid_point_id_var.dtype}.'
+                             f' Note that SMOS L2 products should be'
+                             f' opened with decode_cf=False.')
 
         seqnums = SmosDiscreteGlobalGrid.grid_point_id_to_seqnum(
             grid_point_id_var.values

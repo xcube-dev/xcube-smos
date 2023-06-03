@@ -33,14 +33,14 @@ dgg_path = os.path.expanduser("~/.snap/auxdata/smos-dgg/grid-tiles")
                      f"cannot find {dgg_path}")
 class SmosMappedL2ProductTest(unittest.TestCase):
     def test_it(self):
-        dgg_path = os.path.expanduser("~/.snap/auxdata/smos-dgg/grid-tiles")
+        dgg = SmosDiscreteGlobalGrid()
+
         l2_product_path = os.path.join(
             os.path.dirname(__file__),
-            "../testdata/"
-            "SM_OPER_MIR_SMUDP2_20220405T182911_20220405T192224_700_001_1.nc"
+            "../testdata/SM/"
+            "SM_OPER_MIR_SMUDP2_20230401T150613_20230401T155931_700_001_1.nc"
         )
 
-        dgg = SmosDiscreteGlobalGrid(dgg_path)
         mapped_l2 = SmosMappedL2Product.open(l2_product_path, dgg)
         mapped_l2_level_0 = mapped_l2.get_dataset(0)
 

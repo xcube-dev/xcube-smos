@@ -19,8 +19,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import os
+import os.path
 import zipfile
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import numpy as np
 import xarray as xr
@@ -28,6 +30,8 @@ import xarray as xr
 from xcube.core.mldataset import LazyMultiLevelDataset
 from xcube.core.zarrstore import GenericArray
 from xcube.core.zarrstore import GenericZarrStore
+from xcube_smos.constants import DEFAULT_SMOS_DGG_PATH
+from xcube_smos.constants import DGG_ENV_VAR_NAME
 
 
 class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
@@ -35,9 +39,12 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
     A multi-level dataset that represents the SMOS discrete global grid (DGG)
     in geographic projection.
 
-    :param path: Path to the DGG as a SNAP image pyramid. It
-        is installed by the SNAP SMOS-Box plugin at
-        "~/.snap/auxdata/smos-dgg/grid-tiles".
+    :param path: Path to the DGG as a SNAP image pyramid.
+        If not given, the value of the environment variable named
+        "XCUBE_SMOS_DGG_PATH" is used.
+        If this isn't given as well, *path* defaults to
+        "~/.snap/auxdata/smos-dgg/grid-tiles", which is installed
+        by the SNAP SMOS-Box plugin.
     """
 
     MIN_SEQNUM = 1
@@ -55,9 +62,14 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
 
     DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder('>')
 
-    def __init__(self, path: str):
+    def __init__(self, path: Optional[str] = None):
         super().__init__()
-        self._path = path
+        path = os.path.expanduser(path
+                                  or os.environ.get(DGG_ENV_VAR_NAME)
+                                  or DEFAULT_SMOS_DGG_PATH)
+        if not os.path.exists(path):
+            raise ValueError(f'SMOS DDG not found: {path}')
+        self._path = os.path.expanduser(path)
 
     def _get_num_levels_lazily(self) -> int:
         return self.NUM_LEVELS
