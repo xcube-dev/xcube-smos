@@ -75,24 +75,6 @@ class SmosMappedL2Cube(LazyMultiLevelDataset):
         )
 
     @classmethod
-    def _parse_times(cls,
-                     l2_products: Sequence[SmosMappedL2Product],
-                     key: str) -> np.ndarray:
-        return np.array(
-            [cls._normalize_time_text(p.get_dataset(0).attrs.get(key))
-             for p in l2_products],
-            dtype=np.datetime64
-        )
-
-    @classmethod
-    def _normalize_time_text(cls, time_str: Optional[str]):
-        if not time_str:
-            return ""
-        if time_str.startswith("UTC="):
-            return time_str[4:]
-        return time_str
-
-    @classmethod
     def open(cls,
              l2_product_paths: Sequence[str],
              dgg: SmosDiscreteGlobalGrid) \
@@ -135,4 +117,7 @@ class SmosMappedL2Cube(LazyMultiLevelDataset):
         dataset = xr.concat(time_slices, "time")
         dataset.coords["time"] = self.time
         dataset.coords["time_bnds"] = self.time_bnds
+        for var_name, var in dataset.data_vars.items():
+            if var_name != "Grid_Point_ID" and "_FillValue" in var.attrs:
+                dataset[var_name] = var.where(var != var.attrs["_FillValue"])
         return dataset
