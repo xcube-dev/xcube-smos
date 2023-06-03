@@ -158,6 +158,7 @@ class SmosDataStore(DataStore):
     def open_data(self,
                   data_id: str,
                   opener_id: str = None,
+                  debug: bool = False,
                   **open_params) -> Union[xr.Dataset, MultiLevelDataset]:
         OPEN_PARAMS_SCHEMA.validate_instance(open_params)
         self._assert_valid_data_id(data_id)
@@ -173,7 +174,7 @@ class SmosDataStore(DataStore):
         for index_path, start, stop in files:
             index_filename = index_path.rsplit("/", maxsplit=1)[-1]
             index_json_path = f"{index_path}/{index_filename}.nc.json"
-            print("Opening L2 product")
+            self.debug_print(debug, f"Opening L2 product {index_json_path}")
             l2_product = xr.open_dataset(
                 "reference://",
                 engine="zarr",
@@ -187,14 +188,14 @@ class SmosDataStore(DataStore):
                 },
                 decode_cf=False  # IMPORTANT!
             )
-            print("Creating L2 index")
+            self.debug_print(debug, "Creating L2 index")
             l2_index = SmosL2Index(l2_product.Grid_Point_ID, self.dgg)
-            print("Mapping L2 product")
+            self.debug_print(debug, "Mapping L2 product")
             mapped_l2_product = SmosMappedL2Product(l2_product, l2_index)
             mapped_l2_products.append(mapped_l2_product)
             time_ranges.append((start, stop))
 
-        print("Creating L2 cube")
+        self.debug_print(debug, "Creating L2 cube")
         ml_dataset = SmosMappedL2Cube(
             mapped_l2_products,
             time_bounds=parse_time_ranges(time_ranges, is_compact=True)
@@ -203,6 +204,10 @@ class SmosDataStore(DataStore):
             return ml_dataset
         else:
             return ml_dataset.get_dataset(0)
+
+    def debug_print(self, debug: bool, msg: str):
+        if debug:
+            print(msg)
 
     @classmethod
     def _assert_valid_data_id(cls, data_id: str):
