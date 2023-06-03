@@ -13,6 +13,10 @@ class SmosSchemaTest(unittest.TestCase):
             JsonObjectSchema
         )
         self.assertIn(
+            'dgg_path',
+            STORE_PARAMS_SCHEMA.properties
+        )
+        self.assertIn(
             'index_urlpath',
             STORE_PARAMS_SCHEMA.properties
         )

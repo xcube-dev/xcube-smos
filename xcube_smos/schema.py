@@ -28,6 +28,10 @@ from xcube_smos.dgg import SmosDiscreteGlobalGrid
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
+        dgg_path=JsonStringSchema(
+            min_length=1,
+            title='Path to the local SMOS Discrete Global Grid.',
+        ),
         index_urlpath=JsonStringSchema(
             min_length=1,
             title='Path or URL to a local SMOS NetCDF Kerchunk index.',
