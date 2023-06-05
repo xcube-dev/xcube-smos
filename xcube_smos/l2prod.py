@@ -23,7 +23,6 @@ import warnings
 from typing import Dict, Any, Union
 
 import dask.array as da
-import numba as nb
 import numpy as np
 import xarray as xr
 
@@ -54,11 +53,42 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
     TILE_WIDTH = SmosDiscreteGlobalGrid.TILE_WIDTH
     TILE_HEIGHT = SmosDiscreteGlobalGrid.TILE_HEIGHT
 
+    SM_VARS = {
+        "Mean_acq_time",
+        "SSS_corr",
+        "Sigma_SSS_corr",
+        "SSS_anom",
+        "Sigma_SSS_anom",
+        "Dg_chi2_corr",
+        "Dg_quality_SSS_corr",
+        "Dg_quality_SSS_anom",
+        "Coast_distance",
+        "Dg_RFI_X",
+        "Dg_RFI_Y",
+        "X_swath",
+    }
+
+    OS_VARS = {
+        "Mean_acq_time",
+        "Soil_Moisture",
+        "Soil_Moisture_DQX",
+        "Chi_2",
+        "Chi_2_P",
+        "N_RFI_X",
+        "N_RFI_Y",
+        "RFI_Prob",
+        "X_swath",
+    }
+
     def __init__(self,
                  l2_product: xr.Dataset,
                  l2_index: SmosL2Index):
         super().__init__()
-        self._l2_product = l2_product
+        self._l2_product = l2_product.drop_vars(
+            v
+            for v in l2_product.data_vars
+            if v not in self.SM_VARS and v not in self.OS_VARS
+        )
         self._l2_index = l2_index
 
     @classmethod
@@ -104,13 +134,25 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
                             parameters: Dict[str, Any]) -> xr.Dataset:
         l2_index_ds = self._l2_index.get_dataset(level)
         l2_index = l2_index_ds.l2_index
+        assert isinstance(l2_index.data, da.Array)
 
+        # Note, the standard SMOS L2 NetCDF is not chunked.
+        # This means when passing l2_values=l2_var.data kwarg to
+        # da.array.map_blocks(), data is loaded eagerly. This is slow and
+        # consumes too much memory.
+        # To avoid this, we can wrap array data in dask arrays using
+        # the .chunk() method.
+        # This will make the following loop MUCH faster, but we will
+        # no longer be able to run code using dask distributed, because
+        # kwargs to da.array.map_blocks() cannot be dask arrays.
+        #
+        # l2_product = self._l2_product.chunk()
         l2_product = self._l2_product
 
         data_vars = {}
         for l2_var_name, l2_var in l2_product.data_vars.items():
-            assert isinstance(l2_index.data, da.Array)
-            assert isinstance(l2_var.data, np.ndarray)
+            # print(f'Processing {l2_var_name!r}:'
+            #       f' {l2_var.size} x {l2_var.dtype}')
 
             fill_value = l2_var.attrs.get("_FillValue")
             if fill_value is None:
@@ -121,6 +163,9 @@ class SmosMappedL2Product(LazyMultiLevelDataset):
                 warnings.warn(f"Variable {l2_var_name!r}"
                               f" is missing a fill value,"
                               f" using {fill_value} instead.")
+
+            # ensure that kwarg l2_values=l2_var.data is not a dask array:
+            assert isinstance(l2_var.data, np.ndarray)
 
             # Note, da.map_blocks (dask 2022.6.0) is much faster
             # than xr.map_blocks (xarray 2022.3.0)!
