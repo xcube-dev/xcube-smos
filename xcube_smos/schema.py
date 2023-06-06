@@ -19,11 +19,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+from xcube.util.jsonschema import JsonArraySchema
+from xcube.util.jsonschema import JsonBooleanSchema
+from xcube.util.jsonschema import JsonDateSchema
+from xcube.util.jsonschema import JsonNumberSchema
 from xcube.util.jsonschema import JsonObjectSchema
 from xcube.util.jsonschema import JsonStringSchema
-from xcube.util.jsonschema import JsonArraySchema
-from xcube.util.jsonschema import JsonNumberSchema
-from xcube.util.jsonschema import JsonDateSchema
 from xcube_smos.dgg import SmosDiscreteGlobalGrid
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
@@ -80,6 +81,15 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
             default='10m',  # 10 minutes
             format='^([1-9]*[0-9]*)[NULSTH]$',
             title='Time tolerance'
+        ),
+        # ----------------------------------------
+        debug=JsonBooleanSchema(
+            title='Output debugging information to stdout',
+            default=False,
+        ),
+        lazy_load=JsonBooleanSchema(
+            title='Force lazy loading of variable data from SMOS L2 products',
+            default=False,
         ),
     ),
     additional_properties=False

@@ -158,7 +158,6 @@ class SmosDataStore(DataStore):
     def open_data(self,
                   data_id: str,
                   opener_id: str = None,
-                  debug: bool = False,
                   **open_params) -> Union[xr.Dataset, MultiLevelDataset]:
         OPEN_PARAMS_SCHEMA.validate_instance(open_params)
         self._assert_valid_data_id(data_id)
@@ -166,7 +165,12 @@ class SmosDataStore(DataStore):
         opener_id = self._assert_valid_opener_id(opener_id)
         data_type = DataType.normalize(opener_id.split(":")[0])
 
+        # Required parameter time_range:
         time_range = open_params["time_range"]
+        # Output debugging info to stdout
+        debug = open_params.get("debug", False)
+        # Force lazy loading of variable data from SMOS L2 products
+        lazy_load = open_params.get("lazy_load", False)
 
         files = self.catalog.find_files(product_type, time_range)
         mapped_l2_products = []
@@ -174,7 +178,7 @@ class SmosDataStore(DataStore):
         for index_path, start, stop in files:
             index_filename = index_path.rsplit("/", maxsplit=1)[-1]
             index_json_path = f"{index_path}/{index_filename}.nc.json"
-            self.debug_print(debug, f"Opening L2 product {index_json_path}")
+            self._debug_print(debug, f"Opening L2 product {index_json_path}")
             l2_product = xr.open_dataset(
                 "reference://",
                 engine="zarr",
@@ -188,14 +192,16 @@ class SmosDataStore(DataStore):
                 },
                 decode_cf=False  # IMPORTANT!
             )
-            self.debug_print(debug, "Creating L2 index")
+            self._debug_print(debug, "Creating L2 index")
             l2_index = SmosL2Index(l2_product.Grid_Point_ID, self.dgg)
-            self.debug_print(debug, "Mapping L2 product")
-            mapped_l2_product = SmosMappedL2Product(l2_product, l2_index)
+            self._debug_print(debug, "Mapping L2 product")
+            mapped_l2_product = SmosMappedL2Product(l2_product,
+                                                    l2_index,
+                                                    lazy_load=lazy_load)
             mapped_l2_products.append(mapped_l2_product)
             time_ranges.append((start, stop))
 
-        self.debug_print(debug, "Creating L2 cube")
+        self._debug_print(debug, "Creating L2 cube")
         ml_dataset = SmosMappedL2Cube(
             mapped_l2_products,
             time_bounds=parse_time_ranges(time_ranges, is_compact=True)
@@ -205,7 +211,8 @@ class SmosDataStore(DataStore):
         else:
             return ml_dataset.get_dataset(0)
 
-    def debug_print(self, debug: bool, msg: str):
+    @staticmethod
+    def _debug_print(debug: bool, msg: str):
         if debug:
             print(msg)
 
