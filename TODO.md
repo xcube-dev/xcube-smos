@@ -1,11 +1,23 @@
+### Updating SMOS NetCDF Kerchunk index
+
+The current index comprises 2020 to 2023-05.
+
+Consider indexing on a Creodias VM.
+
+1. Generate indexes for the years 2010 to 2019
+2. Update 2023-05+. 
+
+
 ### Aux-data
 
 We need way(s) to provide required aux-data
 
 1. SMOS discrete global grid data. We currently rely on a version installed 
    by SNAP plugin *SMOS-Box* in `~/.snap/auxdata/smos-dgg/grid-tiles`.
+   We currently set its path via an 
+   environment variable `XCUBE_SMOS_DGG_PATH`. 
 2. SMOS NetCDF Kerchunk index. We currently set its path via an 
-   environment variable `SMOS_INDEX_PATH`. 
+   environment variable `XCUBE_SMOS_INDEX_PATH`. 
 
 Here are a number of options. They could also be provided in combination. 
 
@@ -13,18 +25,19 @@ Here are a number of options. They could also be provided in combination.
 * Provide installable aux-data package in conda/pip (faster).
 * Bundle aux-data with container image.
 * Put aux-data in publicly available FTP for download and configure store
-  via env var.
+  via env var `XCUBE_SMOS_INDEX_PATH`.
 
 ### Issues with the SMOS NetCDF Kerchunk index
 
-* The index requires daily updating, need a nightly service that calls `nckcidx` tool
+* The index requires daily updating, need a nightly service that calls
+  `nckcidx` tool.
 * The index is a directory with 250,000+ files, several GB in size. 
   However, it compresses well, therefore consider a single Zip archive 
-  or annual/monthly Zip archives. A monthly Zip archive can be updating more
-  efficiently. 
+  or annual/monthly Zip archives. Note, a monthly Zip archive can be 
+  updated more efficiently. 
 * Currently, a SMOS NetCDF Kerchunk index contains a file `nckc-index.json`
   that also contains the Creodias S3 credentials for EDC user.
-  **THIS IS INSECURE**. Switch to dedicated env vars instead.
+  **THIS IS INSECURE**. Switch to dedicated env vars or AWS profile instead.
 
 ### fsspec.exceptions.FSTimeoutError
 
@@ -56,7 +69,7 @@ https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
 
 ### OSError: Unable to open file (file signature not found)
 
-Some files seems to be corrupt or h5py is broken:
+Some files seem to be corrupt or h5py is broken:
 
 ```
   ...
