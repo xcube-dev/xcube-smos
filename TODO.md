@@ -1,4 +1,4 @@
-### Updating SMOS NetCDF Kerchunk index
+## Updating SMOS NetCDF Kerchunk index
 
 The current index comprises 2020 to 2023-05.
 
@@ -8,9 +8,9 @@ Consider indexing on a Creodias VM.
 2. Update 2023-05+. 
 
 
-### Aux-data
+## Aux-data
 
-We need way(s) to provide required aux-data
+We need way(s) to provide required aux-data for the xcube data store `smos`:
 
 1. SMOS discrete global grid data. We currently rely on a version installed 
    by SNAP plugin *SMOS-Box* in `~/.snap/auxdata/smos-dgg/grid-tiles`.
@@ -27,7 +27,7 @@ Here are a number of options. They could also be provided in combination.
 * Put aux-data in publicly available FTP for download and configure store
   via env var `XCUBE_SMOS_INDEX_PATH`.
 
-### Issues with concurrent processing
+## Issues with concurrent processing
 
 We currently cannot use `dask.distributed` at all, because Python's
 `RLock` is not serializable (and does not really apply).
@@ -40,7 +40,17 @@ See also `dask.utils.SerializableLock`, which, however, is not reentrant.
 
 See also https://github.com/dask/dask/issues/3832
 
-### Issues with the SMOS NetCDF Kerchunk index
+## Split repo
+
+The `nckcidx` CLI has package dependencies that are not needed by the 
+xcube data store `smos`. Therefore, consider splitting the two: 
+
+* `smos-nckcidx`: Currently in `xcube_smos.nckcindex.*` with dependencies
+   `kerchunk`, `h3netcdf`, `h5py`.
+* `xcube-smos`: Currently `xcube_smos.*` with dependency: `xcube`.
+
+
+## Issues with the SMOS NetCDF Kerchunk index
 
 * The index requires daily updating, need a nightly service that calls
   `nckcidx` tool.
