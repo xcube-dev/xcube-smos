@@ -30,6 +30,7 @@ import xarray as xr
 from xcube.core.mldataset import LazyMultiLevelDataset
 from xcube.core.zarrstore import GenericArray
 from xcube.core.zarrstore import GenericZarrStore
+from xcube.util.assertions import assert_true
 from xcube_smos.constants import DEFAULT_SMOS_DGG_PATH
 from xcube_smos.constants import DGG_ENV_VAR_NAME
 
@@ -62,21 +63,30 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
 
     DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder('>')
 
-    def __init__(self, path: Optional[str] = None):
+    def __init__(self, path: Optional[str] = None,
+                 load: bool = False,
+                 level0: int = 0):
         super().__init__()
         path = os.path.expanduser(path
                                   or os.environ.get(DGG_ENV_VAR_NAME)
                                   or DEFAULT_SMOS_DGG_PATH)
-        if not os.path.exists(path):
-            raise ValueError(f'SMOS DDG not found: {path}')
+        assert_true(os.path.exists(path),
+                    message=f'SMOS DDG not found: {path}')
+        assert_true(0 <= level0 < self.NUM_LEVELS,
+                    message=f'Invalid level0: {level0}')
         self._path = os.path.expanduser(path)
+        self._load = load
+        self._level0 = level0
 
     def _get_num_levels_lazily(self) -> int:
-        return self.NUM_LEVELS
+        return self.NUM_LEVELS - self._level0
 
     def _get_dataset_lazily(self,
                             level: int,
                             parameters: Dict[str, Any]) -> xr.Dataset:
+
+        level = level + self._level0
+
         spatial_res = (1 << level) * self.SPATIAL_RES
 
         width = self.WIDTH >> level
@@ -108,8 +118,11 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
                                  height),
             ),
         )
-        dataset = xr.open_zarr(zarr_store)
-        dataset.zarr_store.set(zarr_store)
+        dataset: xr.Dataset = xr.open_zarr(zarr_store)
+        if self._load:
+            dataset.load()
+        else:
+            dataset.zarr_store.set(zarr_store)
         return dataset
 
     def _load_smos_dgg_tile(self,
