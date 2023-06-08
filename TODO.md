@@ -27,6 +27,19 @@ Here are a number of options. They could also be provided in combination.
 * Put aux-data in publicly available FTP for download and configure store
   via env var `XCUBE_SMOS_INDEX_PATH`.
 
+### Issues with concurrent processing
+
+We currently cannot use `dask.distributed` at all, because Python's
+`RLock` is not serializable (and does not really apply).
+Unfortunately, xcube uses `RLock`s quite frequently.
+
+Maybe we can customize serialization of classes that use `RLock` manually, see
+https://docs.python.org/3/library/pickle.html#handling-stateful-objects
+
+See also `dask.utils.SerializableLock`, which, however, is not reentrant.
+
+See also https://github.com/dask/dask/issues/3832
+
 ### Issues with the SMOS NetCDF Kerchunk index
 
 * The index requires daily updating, need a nightly service that calls
