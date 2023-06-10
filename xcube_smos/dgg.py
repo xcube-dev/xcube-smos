@@ -22,7 +22,7 @@
 import os
 import os.path
 import zipfile
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 import numpy as np
 import xarray as xr
@@ -51,14 +51,17 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
     MIN_SEQNUM = 1
     MAX_SEQNUM = 2621442
 
+    # TODO: Rename into MAX_WIDTH, MAX_HEIGHT
     WIDTH = 16384
     HEIGHT = 8064
 
     TILE_WIDTH = 512
     TILE_HEIGHT = 504
 
+    # TODO: Rename into MAX_NUM_LEVELS
     NUM_LEVELS = 5
 
+    # TODO: Rename into MAX_SPATIAL_RES
     SPATIAL_RES = 360. / WIDTH
 
     DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder('>')
@@ -81,16 +84,18 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
     def _get_num_levels_lazily(self) -> int:
         return self.NUM_LEVELS - self._level0
 
+    def get_level_geom(self, level: int) -> Tuple[int, int, float]:
+        level = level + self._level0
+        width = self.WIDTH >> level
+        height = self.HEIGHT >> level
+        spatial_res = (1 << level) * self.SPATIAL_RES
+        return width, height, spatial_res
+
     def _get_dataset_lazily(self,
                             level: int,
                             parameters: Dict[str, Any]) -> xr.Dataset:
 
-        level = level + self._level0
-
-        spatial_res = (1 << level) * self.SPATIAL_RES
-
-        width = self.WIDTH >> level
-        height = self.HEIGHT >> level
+        width, height, spatial_res = self.get_level_geom(level)
 
         zarr_store = GenericZarrStore(
             GenericArray(
@@ -128,6 +133,7 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
     def _load_smos_dgg_tile(self,
                             chunk_info: Dict[str, Any],
                             level: int = 0) -> np.ndarray:
+        level = level + self._level0
         y_index, x_index = chunk_info["index"]
         shape = chunk_info["shape"]
         path = self._path + f"/{level}/{x_index}-{y_index}.raw.zip"

@@ -33,20 +33,21 @@ from xcube.core.store import DatasetDescriptor
 from xcube.core.store import MULTI_LEVEL_DATASET_TYPE
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
-from .catalog import SmosCatalog
+from .catalog import SmosCatalog, AbstractSmosCatalog
 from .dgg import SmosDiscreteGlobalGrid
 from .l2cube import SmosMappedL2Cube
 from .l2index import SmosL2Index
 from .l2prod import SmosMappedL2Product
+from .new_algo import SmosGlobalL2Cube
 from .schema import OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
 from .timeinfo import parse_time_ranges
 
 _DATASETS = {
-    'SMOS-L2-SM': {
+    'SMOS-L2C-SM': {
         'title': 'SMOS Level-2 Soil Moisture'
     },
-    'SMOS-L2-OS': {
+    'SMOS-L2C-OS': {
         'title': 'SMOS Level-2 Ocean Salinity'
     }
 }
@@ -61,10 +62,12 @@ class SmosDataStore(DataStore):
     def __init__(self,
                  dgg_path: Optional[str] = None,
                  index_urlpath: Optional[str] = None,
-                 index_options: Optional[Dict[str, Any]] = None):
+                 index_options: Optional[Dict[str, Any]] = None,
+                 catalog: Optional[AbstractSmosCatalog] = None):
         self._dgg_path = dgg_path
         self._index_urlpath = index_urlpath
         self._index_options = index_options
+        self._catalog = catalog
 
     @classmethod
     def get_data_store_params_schema(cls) -> JsonObjectSchema:
@@ -147,13 +150,11 @@ class SmosDataStore(DataStore):
         return OPEN_PARAMS_SCHEMA
 
     @cached_property
-    def catalog(self) -> SmosCatalog:
+    def catalog(self) -> AbstractSmosCatalog:
+        if self._catalog is not None:
+            return self._catalog
         return SmosCatalog(index_urlpath=self._index_urlpath,
                            index_options=self._index_options)
-
-    @cached_property
-    def dgg(self) -> SmosDiscreteGlobalGrid:
-        return SmosDiscreteGlobalGrid(path=self._dgg_path)
 
     def open_data(self,
                   data_id: str,
@@ -167,45 +168,19 @@ class SmosDataStore(DataStore):
 
         # Required parameter time_range:
         time_range = open_params["time_range"]
-        # Output debugging info to stdout
-        debug = open_params.get("debug", False)
-        # Force lazy loading of variable data from SMOS L2 products
-        lazy_load = open_params.get("lazy_load", False)
 
-        files = self.catalog.find_files(product_type, time_range)
-        mapped_l2_products = []
-        time_ranges = []
-        for index_path, start, stop in files:
-            index_filename = index_path.rsplit("/", maxsplit=1)[-1]
-            index_json_path = f"{index_path}/{index_filename}.nc.json"
-            self._debug_print(debug, f"Opening L2 product {index_json_path}")
-            l2_product = xr.open_dataset(
-                "reference://",
-                engine="zarr",
-                backend_kwargs={
-                    "storage_options": {
-                        "fo": index_json_path,
-                        "remote_protocol": "s3",
-                        "remote_options": self.catalog.s3_options
-                    },
-                    "consolidated": False
-                },
-                decode_cf=False  # IMPORTANT!
-            )
-            self._debug_print(debug, "Creating L2 index")
-            l2_index = SmosL2Index(l2_product.Grid_Point_ID, self.dgg)
-            self._debug_print(debug, "Mapping L2 product")
-            mapped_l2_product = SmosMappedL2Product(l2_product,
-                                                    l2_index,
-                                                    lazy_load=lazy_load)
-            mapped_l2_products.append(mapped_l2_product)
-            time_ranges.append((start, stop))
+        datasets = self.catalog.find_datasets(product_type, time_range)
+        dataset_paths = [dataset_path for dataset_path, _, _ in datasets]
+        time_ranges = [(start, stop) for _, start, stop in datasets]
+        time_bounds = parse_time_ranges(time_ranges, is_compact=True)
 
-        self._debug_print(debug, "Creating L2 cube")
-        ml_dataset = SmosMappedL2Cube(
-            mapped_l2_products,
-            time_bounds=parse_time_ranges(time_ranges, is_compact=True)
+        ml_dataset = SmosGlobalL2Cube(
+            data_id,
+            dataset_paths,
+            self.catalog.open_dataset,
+            time_bounds,
         )
+
         if data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE):
             return ml_dataset
         else:

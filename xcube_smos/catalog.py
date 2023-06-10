@@ -18,13 +18,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
+import abc
 import os
 import re
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, Tuple, List
 
 import pandas as pd
+import xarray as xr
 
 from xcube.util.assertions import assert_given
 from xcube_smos.constants import INDEX_ENV_VAR_NAME
@@ -36,7 +37,45 @@ from xcube_smos.nckcindex.producttype import ProductTypeLike
 _ONE_DAY = pd.Timedelta(1, unit="days")
 
 
-class SmosCatalog:
+class AbstractSmosCatalog(abc.ABC):
+
+    @abc.abstractmethod
+    def open_dataset(self, dataset_path: str) -> xr.Dataset:
+        """Open a dataset using *dataset_path* as
+        returned from :meth:find_files().
+
+        It is important that the dataset is opened using `decode_cf=False`
+        if xarray is used.
+        Otherwise, a given _FillValue attribute will turn Grid_Point_ID
+        and other variables from integers into floating point.
+
+        :param dataset_path: File path returned from a search.
+        :return: xarray dataset
+        """
+
+    @abc.abstractmethod
+    def find_datasets(self,
+                      product_type: ProductTypeLike,
+                      time_range: Tuple[Optional[str], Optional[str]]) \
+            -> List[Tuple[str, str, str]]:
+        """Find SMOS L2 datasets in the given *time_range*.
+
+        :param product_type: SMOS product type
+        :param time_range: Time range (from, to) ISO format, UTC
+        :return: List of tuples of the form (dataset_path, start, stop), where
+            start and stop represent the observation time range
+            using "compact" datetime format, e.g., "20230503103546".
+        """
+
+
+class SmosCatalog(AbstractSmosCatalog):
+    """
+    SMOS L2 dataset catalog that uses a Kerchunk index (NcKcIndex).
+
+    :param index_urlpath: Path or URL to the root directory
+    :param index_options: Storage options to access *index_urlpath*.
+    """
+
     def __init__(self,
                  index_urlpath: Optional[Union[str, Path]] = None,
                  index_options: Optional[Dict[str, Any]] = None):
@@ -46,25 +85,38 @@ class SmosCatalog:
         self._nc_kc_index = NcKcIndex.open(index_urlpath,
                                            index_options=index_options)
 
-    @property
-    def s3_options(self) -> Dict[str, Any]:
-        return self._nc_kc_index.s3_options
+    def open_dataset(self, dataset_path: str) -> xr.Dataset:
+        index_filename = dataset_path.rsplit("/", maxsplit=1)[-1]
+        index_json_path = f"{dataset_path}/{index_filename}.nc.json"
+        return xr.open_dataset(
+            "reference://",
+            engine="zarr",
+            backend_kwargs={
+                "storage_options": {
+                    "fo": index_json_path,
+                    "remote_protocol": "s3",
+                    "remote_options": self._nc_kc_index.s3_options
+                },
+                "consolidated": False
+            },
+            decode_cf=False  # IMPORTANT!
+        )
 
-    def find_files(self,
-                   product_type: ProductTypeLike,
-                   time_range: Tuple[Optional[str], Optional[str]]) \
+    def find_datasets(self,
+                      product_type: ProductTypeLike,
+                      time_range: Tuple[Optional[str], Optional[str]]) \
             -> List[Tuple[str, str, str]]:
         product_type = ProductType.normalize(product_type)
         start, end = self._normalize_time_range(time_range)
 
-        start_times = self.find_files_for_date(product_type,
-                                               start.year,
-                                               start.month,
-                                               start.day)
-        end_times = self.find_files_for_date(product_type,
-                                             end.year,
-                                             end.month,
-                                             end.day)
+        start_times = self._find_files_for_date(product_type,
+                                                start.year,
+                                                start.month,
+                                                start.day)
+        end_times = self._find_files_for_date(product_type,
+                                              end.year,
+                                              end.month,
+                                              end.day)
 
         start_str = start.strftime(COMMON_FILENAME_DATETIME_FORMAT)
         end_str = end.strftime(COMMON_FILENAME_DATETIME_FORMAT)
@@ -99,10 +151,10 @@ class SmosCatalog:
             time = start_p1d
             while time <= end_m1d:
                 in_between_names.extend(
-                    self.find_files_for_date(product_type,
-                                             time.year,
-                                             time.month,
-                                             time.day)
+                    self._find_files_for_date(product_type,
+                                              time.year,
+                                              time.month,
+                                              time.day)
                 )
                 time += _ONE_DAY
 
@@ -112,11 +164,11 @@ class SmosCatalog:
 
         return start_names + in_between_names + end_names
 
-    def find_files_for_date(self,
-                            product_type: ProductTypeLike,
-                            year: int,
-                            month: int,
-                            day: int) -> List[Tuple[str, str, str]]:
+    def _find_files_for_date(self,
+                             product_type: ProductTypeLike,
+                             year: int,
+                             month: int,
+                             day: int) -> List[Tuple[str, str, str]]:
         product_type = ProductType.normalize(product_type)
         path_pattern = product_type.path_pattern
         name_pattern = product_type.name_pattern
@@ -137,6 +189,7 @@ class SmosCatalog:
                     start = m.group("sd") + m.group("st")
                     end = m.group("ed") + m.group("et")
                     result.append((path + "/" + name, start, end))
+
         return sorted(result, key=lambda item: item[1])
 
     @staticmethod

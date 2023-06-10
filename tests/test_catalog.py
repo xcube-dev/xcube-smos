@@ -18,10 +18,10 @@ class SmosArchiveTest(unittest.TestCase):
     def test_find_files(self):
         archive = SmosCatalog(index_path)
 
-        files = archive.find_files("SM", ("2021-05-01", "2021-05-03"))
+        files = archive.find_datasets("SM", ("2021-05-01", "2021-05-03"))
         self.assertIsInstance(files, list)
         self.assertTrue(len(files) >= 20)
 
-        files = archive.find_files("OS", ("2021-05-01", "2021-05-03"))
+        files = archive.find_datasets("OS", ("2021-05-01", "2021-05-03"))
         self.assertIsInstance(files, list)
         self.assertTrue(len(files) >= 20)
