@@ -104,11 +104,12 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
                 dtype=var.dtype.str,
                 dims=("time", "lat", "lon"),
                 shape=(len(self.time), height, width),
-                # chunks=(1, self.TILE_HEIGHT, self.TILE_WIDTH),
                 chunks=(1, height, width),
                 get_data=self.load_time_step,
                 get_data_params=dict(level=level),
-                fill_value=l2_product.l2_fill_values[var_name],
+                fill_value=self._sanitize_attr_value(
+                    l2_product.l2_fill_values[var_name]
+                ),
                 chunk_encoding="ndarray",
                 attrs=self._sanitize_attrs(var.attrs)
             )
@@ -122,21 +123,15 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
                 dims="time",
                 data=self.time,
                 attrs={
+                    "long_name": "time",
                     "standard_name": "time",
-                    "calendar": "proleptic_gregorian",
-                    "units": "seconds since 1970-01-01T00:00:00",
                     "bounds": "time_bnds",
                 },
-
             ),
             GenericArray(
                 name="time_bnds",
                 dims=("time", "bnds"),
                 data=self.time_bounds,
-                attrs={
-                    "calendar": "proleptic_gregorian",
-                    "units": "seconds since 1970-01-01T00:00:00",
-                }
             ),
             GenericArray(
                 name="lon",

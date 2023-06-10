@@ -36,7 +36,7 @@ def parse_time_ranges(time_ranges: Sequence[Tuple[str, str]],
                       is_compact: bool = False) -> np.array:
     if is_compact:
         time_ranges = compact_to_iso_time_ranges(time_ranges)
-    return np.array(time_ranges, dtype="datetime64[us]")
+    return np.array(time_ranges, dtype="datetime64[ns]")
 
 
 def compact_to_iso_time_ranges(time_ranges: Sequence[Tuple[str, str]]) \
