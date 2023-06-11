@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Union, Dict, Any, Optional, Iterator, List, Tuple
 
 import fsspec
-import kerchunk.hdf
 
 from .constants import DEFAULT_BUCKET_NAME
 from .constants import DEFAULT_INDEX_NAME
@@ -191,6 +190,8 @@ class NcKcIndex:
         :return: None, if the NetCDF file has been successfully indexed.
             Otherwise, a message indicating the problem.
         """
+        import kerchunk.hdf
+
         nc_index_path = f"{self.index_path}/{nc_path}.json"
 
         if not force and self.index_fs.exists(nc_index_path):

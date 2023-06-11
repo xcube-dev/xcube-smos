@@ -83,7 +83,10 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
         self.time = time_bounds[:, 0] + (
                 time_bounds[:, 1] - time_bounds[:, 0]
         ) / 2
-        self.dgg = SmosDiscreteGlobalGrid(level0=1)
+
+    @cached_property
+    def dgg(self) -> SmosDiscreteGlobalGrid:
+        return SmosDiscreteGlobalGrid(load=True, level0=1)
 
     def _get_num_levels_lazily(self) -> int:
         return self.dgg.num_levels
@@ -170,7 +173,7 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
     def load_time_step(self,
                        level: int,
                        array_info: Dict[str, Any],
-                       chunk_info: Dict[str, Any]):
+                       chunk_info: Dict[str, Any]) -> np.ndarray:
         var_name = array_info["name"]
         time_idx, lat_idx, lon_idx = chunk_info["index"]
         assert lat_idx == 0 and lon_idx == 0, \
@@ -187,7 +190,7 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
         dataset_path = self.dataset_paths[time_idx]
         l2_dataset = self.dataset_opener(dataset_path)
         l2_dataset = l2_dataset.chunk()  # Wrap numpy arrays into dask arrays
-        return SmosL2Product(l2_dataset)
+        return SmosL2Product(self.dgg, l2_dataset)
 
     @classmethod
     def _sanitize_attrs(cls, attrs: Dict[str, Any]):
@@ -205,7 +208,9 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
 
 class SmosL2Product:
 
-    def __init__(self, l2_dataset: xr.Dataset):
+    def __init__(self,
+                 dgg: SmosDiscreteGlobalGrid,
+                 l2_dataset: xr.Dataset):
 
         grid_point_id = l2_dataset.Grid_Point_ID.values
         l2_seqnum = SmosDiscreteGlobalGrid.grid_point_id_to_seqnum(
@@ -242,6 +247,7 @@ class SmosL2Product:
                               f" using {fill_value} instead.")
             l2_fill_values[l2_var_name] = fill_value
 
+        self.dgg = dgg
         self.l2_dataset = l2_dataset
         self.l2_fill_values = l2_fill_values
         self.l2_seqnum_to_index = l2_seqnum_to_index
@@ -252,20 +258,21 @@ class SmosL2Product:
         """Get the global, mapped L2 product for given *level*
         LRU-cached access.
         """
-        return SmosGlobalL2Product(self, level)
+        return SmosGlobalL2Product(self.dgg.get_dataset(level).seqnum.values,
+                                   self,
+                                   level)
 
 
 class SmosGlobalL2Product:
-    def __init__(self, l2_product: SmosL2Product, level: int):
+    def __init__(self,
+                 global_seqnum: np.ndarray,
+                 l2_product: SmosL2Product,
+                 level: int):
         self.l2_product = l2_product
         self.global_l2_index = map_seqnum_to_l2_index(
-            self.dgg.get_dataset(level).seqnum.values,
+            global_seqnum,
             self.l2_product.l2_seqnum_to_index
         )
-
-    @cached_property
-    def dgg(self) -> SmosDiscreteGlobalGrid:
-        return SmosDiscreteGlobalGrid(load=True, level0=1)
 
     def map_l2_var(self, l2_var_name: Hashable) -> np.ndarray:
         l2_var = self.l2_product.l2_dataset[l2_var_name]
@@ -311,9 +318,9 @@ def map_l2_values(index_2d: np.ndarray,
                   var_data: np.ndarray,
                   missing_index: int,
                   fill_value: Union[int, float]) -> np.ndarray:
-    # print("Computing ", l2_index_block.shape)
     if index_2d.size == 0:
         return index_2d.astype(var_data.dtype)
-    l2_index_ok = np.where(index_2d != missing_index, index_2d, 0)
+    l2_mask_2d = index_2d != missing_index
+    l2_index_ok = np.where(l2_mask_2d, index_2d, 0)
     mapped_l2_value = var_data[l2_index_ok]
-    return np.where(index_2d != missing_index, mapped_l2_value, fill_value)
+    return np.where(l2_mask_2d, mapped_l2_value, fill_value)

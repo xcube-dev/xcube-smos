@@ -143,7 +143,7 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
                 buffer = fp.read()
                 return np.frombuffer(buffer, dtype=self.DTYPE).reshape(shape)
 
-    # TODO (forman): check if numba.jit can significantly improve speed
+    # check if numba.jit can significantly improve speed
     @staticmethod
     def grid_point_id_to_seqnum(grid_point_id: np.ndarray) -> np.ndarray:
         # TODO (forman): add link to SMOS DGG docs here to
