@@ -35,7 +35,7 @@ class SmosDiscreteGlobalGridTest(unittest.TestCase):
     def test_default(self):
         dgg = SmosDiscreteGlobalGrid()
 
-        self.assertEqual(5, dgg.num_levels)
+        self.assertEqual(7, dgg.num_levels)
 
         ds0 = dgg.get_dataset(0)
         self.assertIn("seqnum", ds0)
@@ -50,7 +50,7 @@ class SmosDiscreteGlobalGridTest(unittest.TestCase):
     def test_load(self):
         dgg = SmosDiscreteGlobalGrid(load=True)
 
-        self.assertEqual(5, dgg.num_levels)
+        self.assertEqual(7, dgg.num_levels)
 
         ds0 = dgg.get_dataset(0)
         self.assertIn("seqnum", ds0)
@@ -62,10 +62,15 @@ class SmosDiscreteGlobalGridTest(unittest.TestCase):
         self.assertEqual((504, 1024), ds4.seqnum.shape)
         self.assertEqual(None, ds4.seqnum.chunks)
 
+        ds6 = dgg.get_dataset(6)
+        self.assertIn("seqnum", ds6)
+        self.assertEqual((126, 256), ds6.seqnum.shape)
+        self.assertEqual(None, ds6.seqnum.chunks)
+
     def test_load_and_level0(self):
         dgg = SmosDiscreteGlobalGrid(load=True, level0=1)
 
-        self.assertEqual(4, dgg.num_levels)
+        self.assertEqual(6, dgg.num_levels)
 
         ds0 = dgg.get_dataset(0)
         self.assertIn("seqnum", ds0)
@@ -76,3 +81,8 @@ class SmosDiscreteGlobalGridTest(unittest.TestCase):
         self.assertIn("seqnum", ds4)
         self.assertEqual((504, 1024), ds4.seqnum.shape)
         self.assertEqual(None, ds4.seqnum.chunks)
+
+        ds5 = dgg.get_dataset(5)
+        self.assertIn("seqnum", ds5)
+        self.assertEqual((126, 256), ds5.seqnum.shape)
+        self.assertEqual(None, ds5.seqnum.chunks)

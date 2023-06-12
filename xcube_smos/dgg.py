@@ -21,6 +21,7 @@
 
 import os
 import os.path
+import sys
 import zipfile
 from typing import Dict, Any, Optional, Tuple
 
@@ -59,16 +60,17 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
     TILE_HEIGHT = 504
 
     # TODO: Rename into MAX_NUM_LEVELS
-    NUM_LEVELS = 5
+    NUM_LEVELS = 7
 
     # TODO: Rename into MAX_SPATIAL_RES
     SPATIAL_RES = 360. / WIDTH
 
     DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder('>')
 
-    def __init__(self, path: Optional[str] = None,
-                 load: bool = False,
-                 level0: int = 0):
+    def __init__(self,
+                 path: Optional[str] = None,
+                 level0: int = 0,
+                 load: bool = False):
         super().__init__()
         path = os.path.expanduser(path
                                   or os.environ.get(DGG_ENV_VAR_NAME)
@@ -104,8 +106,11 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
                 dims=("lat", "lon"),
                 shape=(height, width),
                 chunks=(self.TILE_HEIGHT, self.TILE_WIDTH),
-                get_data=self._load_smos_dgg_tile,
-                get_data_params=dict(level=level),
+                get_data=SmosDiscreteGlobalGrid.load_smos_dgg_tile,
+                get_data_params=dict(
+                    level=level + self._level0,
+                    base_path=self._path,
+                ),
                 chunk_encoding="ndarray"
             ),
             GenericArray(
@@ -125,23 +130,32 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
         )
         dataset: xr.Dataset = xr.open_zarr(zarr_store)
         if self._load:
-            dataset.load()
+            try:
+                dataset.load()
+            except Exception as e:
+                import traceback
+                print(80 * "=")
+                traceback.print_exc()
+                print(80 * "=")
+                #sys.exit(9)
         else:
             dataset.zarr_store.set(zarr_store)
         return dataset
 
-    def _load_smos_dgg_tile(self,
-                            chunk_info: Dict[str, Any],
-                            level: int = 0) -> np.ndarray:
-        level = level + self._level0
+    @staticmethod
+    def load_smos_dgg_tile(chunk_info: Dict[str, Any],
+                           array_info: Dict[str, Any],
+                           level: int,
+                           base_path: str) -> np.ndarray:
         y_index, x_index = chunk_info["index"]
         shape = chunk_info["shape"]
-        path = self._path + f"/{level}/{x_index}-{y_index}.raw.zip"
+        dtype = array_info["dtype"]
+        path = f"{base_path}/{level}/{x_index}-{y_index}.raw.zip"
         with zipfile.ZipFile(path) as zf:
             name = zf.namelist()[0]
             with zf.open(name) as fp:
                 buffer = fp.read()
-                return np.frombuffer(buffer, dtype=self.DTYPE).reshape(shape)
+                return np.frombuffer(buffer, dtype=dtype).reshape(shape)
 
     # check if numba.jit can significantly improve speed
     @staticmethod

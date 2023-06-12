@@ -22,7 +22,7 @@ import abc
 import os
 import re
 from pathlib import Path
-from typing import Union, Dict, Any, Optional, Tuple, List
+from typing import Union, Dict, Any, Optional, Tuple, List, Callable
 
 import pandas as pd
 import xarray as xr
@@ -36,22 +36,33 @@ from xcube_smos.nckcindex.producttype import ProductTypeLike
 
 _ONE_DAY = pd.Timedelta(1, unit="days")
 
+DatasetOpener = Callable[[str, Optional[Dict[str, Any]]], xr.Dataset]
+
 
 class AbstractSmosCatalog(abc.ABC):
 
+    @property
     @abc.abstractmethod
-    def open_dataset(self, dataset_path: str) -> xr.Dataset:
-        """Open a dataset using *dataset_path* as
-        returned from :meth:find_files().
+    def dataset_opener(self) -> DatasetOpener:
+        """Get a function that opens a dataset. The function
+        must have the signature:::
+
+            open(dataset_path: str, remote_storage_options: dict)
+
+        and must return a xarray dataset. The data set path is one
+        of the returned paths from :meth:find_datasets() and
+        *remote_storage_options* are the catalog's remote storage options.
 
         It is important that the dataset is opened using `decode_cf=False`
         if xarray is used.
         Otherwise, a given _FillValue attribute will turn Grid_Point_ID
         and other variables from integers into floating point.
-
-        :param dataset_path: File path returned from a search.
-        :return: xarray dataset
         """
+
+    @property
+    def remote_storage_options(self) -> Optional[Dict[str, Any]]:
+        """Get options for the remote data storage."""
+        return None
 
     @abc.abstractmethod
     def find_datasets(self,
@@ -85,7 +96,13 @@ class SmosCatalog(AbstractSmosCatalog):
         self._nc_kc_index = NcKcIndex.open(index_urlpath,
                                            index_options=index_options)
 
-    def open_dataset(self, dataset_path: str) -> xr.Dataset:
+    @property
+    def dataset_opener(self) -> DatasetOpener:
+        return SmosCatalog.open_dataset
+
+    @staticmethod
+    def open_dataset(dataset_path: str, remote_storage_options: dict) \
+            -> xr.Dataset:
         index_filename = dataset_path.rsplit("/", maxsplit=1)[-1]
         index_json_path = f"{dataset_path}/{index_filename}.nc.json"
         return xr.open_dataset(
@@ -95,12 +112,16 @@ class SmosCatalog(AbstractSmosCatalog):
                 "storage_options": {
                     "fo": index_json_path,
                     "remote_protocol": "s3",
-                    "remote_options": self._nc_kc_index.s3_options
+                    "remote_options": remote_storage_options or {}
                 },
                 "consolidated": False
             },
             decode_cf=False  # IMPORTANT!
         )
+
+    @property
+    def remote_storage_options(self) -> Optional[Dict[str, Any]]:
+        return self._nc_kc_index.s3_options
 
     def find_datasets(self,
                       product_type: ProductTypeLike,

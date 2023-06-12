@@ -13,9 +13,11 @@ import xarray as xr
 from xcube.core.store import DatasetDescriptor
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
-from xcube_smos.catalog import INDEX_ENV_VAR_NAME, AbstractSmosCatalog
-from xcube_smos.nckcindex.producttype import ProductTypeLike, \
-    COMMON_NAME_PATTERN
+from xcube_smos.catalog import AbstractSmosCatalog
+from xcube_smos.catalog import DatasetOpener
+from xcube_smos.catalog import INDEX_ENV_VAR_NAME
+from xcube_smos.nckcindex.producttype import COMMON_NAME_PATTERN
+from xcube_smos.nckcindex.producttype import ProductTypeLike
 from xcube_smos.schema import OPEN_PARAMS_SCHEMA
 from xcube_smos.schema import STORE_PARAMS_SCHEMA
 from xcube_smos.store import SmosDataStore
@@ -29,9 +31,16 @@ else:
 
 
 class SmosTestCatalog(AbstractSmosCatalog):
+    @property
+    def dataset_opener(self) -> DatasetOpener:
+        return SmosTestCatalog.open_dataset
 
-    def open_dataset(self, dataset_path: str) -> xr.Dataset:
-        return xr.open_dataset(dataset_path, decode_cf=False)
+    @staticmethod
+    def open_dataset(dataset_path: str, remote_storage_options: dict) \
+            -> xr.Dataset:
+        return xr.open_dataset(dataset_path,
+                               decode_cf=False,
+                               **(remote_storage_options or {}))
 
     def find_datasets(self,
                       product_type: ProductTypeLike,

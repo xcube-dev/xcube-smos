@@ -1,6 +1,6 @@
 import warnings
-from functools import cached_property, lru_cache
-from typing import Dict, Any, Callable, Sequence
+from functools import cached_property
+from typing import Dict, Any, Callable, List, Optional
 from typing import Hashable, Union
 
 import numba as nb
@@ -55,7 +55,10 @@ DATASETS = {
     }
 }
 
-DatasetOpener = Callable[[str], xr.Dataset]
+
+def new_dgg():
+    """Create a 4-level DGG that is not chunked"""
+    return SmosDiscreteGlobalGrid(level0=1, load=True)
 
 
 class SmosGlobalL2Cube(LazyMultiLevelDataset):
@@ -64,29 +67,24 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
     using a geographic projection.
 
     :param dataset_id: Dataset identifier.
-    :param dataset_paths: Paths to SMOS Level 2 datasets.
-    :param dataset_opener: Function that can open SMOS L2 datasets.
     :param time_bounds: Time bounds with dimensions (time, 2), where
         time has the same length as *dataset_paths*.
+    :param time_step_loader: Serializable class that can load data
+        for time steps.
     """
 
     def __init__(self,
                  dataset_id: str,
-                 dataset_paths: Sequence[str],
-                 dataset_opener: DatasetOpener,
-                 time_bounds: np.array):
+                 time_bounds: np.array,
+                 time_step_loader: "TimeStepLoader"):
         super().__init__()
         self.dataset_id = dataset_id
-        self.dataset_paths = dataset_paths
-        self.dataset_opener = dataset_opener
         self.time_bounds = time_bounds
-        self.time = time_bounds[:, 0] + (
-                time_bounds[:, 1] - time_bounds[:, 0]
-        ) / 2
+        self.time_step_loader = time_step_loader
 
     @cached_property
     def dgg(self) -> SmosDiscreteGlobalGrid:
-        return SmosDiscreteGlobalGrid(load=True, level0=1)
+        return new_dgg()
 
     def _get_num_levels_lazily(self) -> int:
         return self.dgg.num_levels
@@ -99,16 +97,27 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
                             parameters: Dict[str, Any]) -> xr.Dataset:
         width, height, spatial_res = self.dgg.get_level_geom(level)
 
-        l2_product = self.load_l2_product(0)
+        # Load prototype product (cached)
+        l2_product = self.time_step_loader.load_l2_product(0)
+
+        time_bounds = self.time_bounds
+        time_start = time_bounds[:, 0]
+        time_stop = time_bounds[:, 1]
+        time = time_start + (time_stop - time_start) / 2
+
+        # Note, it is important that the get_data function and its parameters
+        # get_data_params is serializable and slim when serialized.
+        # Therefore, we pack the stuff that we need to fetch L2 data into
+        # a separate, serializable data class TimeStepLoader.
 
         global_l2_vars = [
             GenericArray(
                 name=var_name,
                 dtype=var.dtype.str,
                 dims=("time", "lat", "lon"),
-                shape=(len(self.time), height, width),
+                shape=(len(time), height, width),
                 chunks=(1, height, width),
-                get_data=self.load_time_step,
+                get_data=self.time_step_loader.load_time_step,
                 get_data_params=dict(level=level),
                 fill_value=self._sanitize_attr_value(
                     l2_product.l2_fill_values[var_name]
@@ -124,7 +133,7 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
             GenericArray(
                 name="time",
                 dims="time",
-                data=self.time,
+                data=time,
                 attrs={
                     "long_name": "time",
                     "standard_name": "time",
@@ -134,7 +143,7 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
             GenericArray(
                 name="time_bnds",
                 dims=("time", "bnds"),
-                data=self.time_bounds,
+                data=time_bounds,
             ),
             GenericArray(
                 name="lon",
@@ -170,28 +179,6 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
         dataset.zarr_store.set(zarr_store)
         return dataset
 
-    def load_time_step(self,
-                       level: int,
-                       array_info: Dict[str, Any],
-                       chunk_info: Dict[str, Any]) -> np.ndarray:
-        var_name = array_info["name"]
-        time_idx, lat_idx, lon_idx = chunk_info["index"]
-        assert lat_idx == 0 and lon_idx == 0, \
-            "should not be chunked in spatial dimensions"
-        l2_product = self.load_l2_product(time_idx)
-        global_l2_product = l2_product.get_global_s2_product(level)
-        return global_l2_product.map_l2_var(var_name)
-
-    @lru_cache()
-    def load_l2_product(self, time_idx: int) -> 'SmosL2Product':
-        """Load the SMOS L2 product for the given *time_idx*.
-        LRU-cached access.
-        """
-        dataset_path = self.dataset_paths[time_idx]
-        l2_dataset = self.dataset_opener(dataset_path)
-        l2_dataset = l2_dataset.chunk()  # Wrap numpy arrays into dask arrays
-        return SmosL2Product(self.dgg, l2_dataset)
-
     @classmethod
     def _sanitize_attrs(cls, attrs: Dict[str, Any]):
         return {k: cls._sanitize_attr_value(v) for k, v in attrs.items()}
@@ -206,11 +193,68 @@ class SmosGlobalL2Cube(LazyMultiLevelDataset):
         return value
 
 
-class SmosL2Product:
+class DggMixin:
+    """A mixin that provides a DGG either from an attribute "_dgg"
+    or generates a new, cached one.
+    """
+
+    @property
+    def dgg(self):
+        if self._dgg is not None:
+            return self._dgg
+        self._dgg = new_dgg()
+        return self._dgg
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop('_dgg', None)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._dgg = None
+
+
+class TimeStepLoader(DggMixin):
+    def __init__(self,
+                 dataset_paths: List[str],
+                 dataset_opener: Callable,
+                 storage_options: Optional[Dict[str, Any]],
+                 dgg: Optional[SmosDiscreteGlobalGrid] = None):
+        self.dataset_paths = dataset_paths
+        self.dataset_opener = dataset_opener
+        self.storage_options = storage_options
+        self._dgg = dgg
+
+    def load_time_step(self,
+                       level: int,
+                       array_info: Dict[str, Any],
+                       chunk_info: Dict[str, Any]) -> np.ndarray:
+        var_name = array_info["name"]
+        time_idx, lat_idx, lon_idx = chunk_info["index"]
+        assert lat_idx == 0 and lon_idx == 0, \
+            "should not be chunked in spatial dimensions"
+        l2_product = self.load_l2_product(time_idx)
+        global_l2_product = l2_product.get_global_s2_product(level)
+        return global_l2_product.map_l2_var(var_name)
+
+    # @lru_cache()
+    def load_l2_product(self, time_idx: int) -> 'SmosL2Product':
+        """Load the SMOS L2 product for the given *time_idx*.
+        LRU-cached access w.r.t. *time_idx*.
+        """
+        dataset_path = self.dataset_paths[time_idx]
+        l2_dataset = self.dataset_opener(dataset_path, self.storage_options)
+        l2_dataset = l2_dataset.chunk()  # Wrap numpy arrays into dask arrays
+        return SmosL2Product(l2_dataset,
+                             dgg=self._dgg if self._dgg is not None else None)
+
+
+class SmosL2Product(DggMixin):
 
     def __init__(self,
-                 dgg: SmosDiscreteGlobalGrid,
-                 l2_dataset: xr.Dataset):
+                 l2_dataset: xr.Dataset,
+                 dgg: Optional[SmosDiscreteGlobalGrid] = None):
 
         grid_point_id = l2_dataset.Grid_Point_ID.values
         l2_seqnum = SmosDiscreteGlobalGrid.grid_point_id_to_seqnum(
@@ -247,39 +291,44 @@ class SmosL2Product:
                               f" using {fill_value} instead.")
             l2_fill_values[l2_var_name] = fill_value
 
-        self.dgg = dgg
         self.l2_dataset = l2_dataset
         self.l2_fill_values = l2_fill_values
         self.l2_seqnum_to_index = l2_seqnum_to_index
         self.l2_missing_index = l2_missing_index
+        self._dgg = dgg
 
-    @lru_cache()
+    #@lru_cache()
     def get_global_s2_product(self, level: int):
         """Get the global, mapped L2 product for given *level*
-        LRU-cached access.
+        LRU-cached access w.r.t. *level*.
         """
-        return SmosGlobalL2Product(self.dgg.get_dataset(level).seqnum.values,
-                                   self,
-                                   level)
+        dgg_dataset = self.dgg.get_dataset(level)
+        seqnum = dgg_dataset.seqnum
+        return SmosGlobalL2Product(self, seqnum.values)
 
 
 class SmosGlobalL2Product:
-    def __init__(self,
-                 global_seqnum: np.ndarray,
-                 l2_product: SmosL2Product,
-                 level: int):
+    def __init__(self, l2_product: SmosL2Product, global_seqnum: np.ndarray):
         self.l2_product = l2_product
         self.global_l2_index = map_seqnum_to_l2_index(
             global_seqnum,
             self.l2_product.l2_seqnum_to_index
         )
 
+    # Could make this LRU-cached, but most likely every L2 variable will
+    # only be read once.
+    # @lru_cache()
     def map_l2_var(self, l2_var_name: Hashable) -> np.ndarray:
+        """Reproject L2 variable to global grid.
+
+        :param l2_var_name: The L2 variable name
+        :return: 3D array of shape (1, height, width)
+        """
         l2_var = self.l2_product.l2_dataset[l2_var_name]
         l2_fill_value = self.l2_product.l2_fill_values[l2_var_name]
         l2_missing_index = self.l2_product.l2_missing_index
         mapped_l2_values = map_l2_values(self.global_l2_index,
-                                         l2_var.values,
+                                         l2_var.values,  # reads L2 variable
                                          l2_missing_index,
                                          l2_fill_value)
         return np.expand_dims(mapped_l2_values, axis=0)

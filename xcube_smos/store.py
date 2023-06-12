@@ -18,6 +18,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
 from functools import cached_property
 from typing import Iterator, Any, Tuple, Container, Union, Dict, Optional
 
@@ -34,11 +35,8 @@ from xcube.core.store import MULTI_LEVEL_DATASET_TYPE
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import SmosCatalog, AbstractSmosCatalog
-from .dgg import SmosDiscreteGlobalGrid
-from .l2cube import SmosMappedL2Cube
-from .l2index import SmosL2Index
-from .l2prod import SmosMappedL2Product
 from .new_algo import SmosGlobalL2Cube
+from .new_algo import TimeStepLoader
 from .schema import OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
 from .timeinfo import parse_time_ranges
@@ -174,11 +172,16 @@ class SmosDataStore(DataStore):
         time_ranges = [(start, stop) for _, start, stop in datasets]
         time_bounds = parse_time_ranges(time_ranges, is_compact=True)
 
+        time_step_loader = TimeStepLoader(
+            dataset_paths,
+            self.catalog.dataset_opener,
+            self.catalog.remote_storage_options
+        )
+
         ml_dataset = SmosGlobalL2Cube(
             data_id,
-            dataset_paths,
-            self.catalog.open_dataset,
             time_bounds,
+            time_step_loader,
         )
 
         if data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE):
