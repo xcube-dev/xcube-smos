@@ -4,7 +4,9 @@ import re
 import unittest
 from typing import Tuple, Optional, List
 
+import dask.array as da
 import jsonschema
+import numpy as np
 import pytest
 import xarray as xr
 
@@ -285,7 +287,45 @@ class SmosDataStoreTest(unittest.TestCase):
             set(dataset.data_vars)
         )
 
+        sm_var = dataset.Soil_Moisture
+        self.assertEqual((5, 4032, 8192), sm_var.shape)
+        self.assertEqual(((1, 1, 1, 1, 1), (4032,), (8192,)), sm_var.chunks)
+        self.assertEqual(('time', 'lat', 'lon'), sm_var.dims)
+        self.assertEqual(np.float32, sm_var.dtype)
+        self.assertEqual({'units': 'm3 m-3'}, sm_var.attrs)
+        self.assertEqual(
+            {
+                '_FillValue': -999.0,
+                'chunks': (1, 4032, 8192),
+                'compressor': None,
+                'dtype': np.dtype('float32'),
+                'filters': None,
+                'preferred_chunks': {'lat': 4032, 'lon': 8192, 'time': 1}
+            },
+            sm_var.encoding
+        )
+
+        self.assertIsInstance(sm_var.data, da.Array)
         sm_data = dataset.Soil_Moisture.values
+        self.assertIsInstance(sm_data, np.ndarray)
 
 
-        # TODO (forman): more tests
+class SmosDistributedDataStoreTest(unittest.TestCase):
+    def setUp(self) -> None:
+        import dask.distributed
+        self._client = dask.distributed.Client(processes=True)
+
+    def tearDown(self) -> None:
+        self._client.cluster.close()
+        self._client.close()
+
+    def test_open_data(self):
+        store = SmosDataStore(catalog=SmosTestCatalog())
+
+        dataset = store.open_data('SMOS-L2C-SM',
+                                  time_range=("2022-05-05", "2022-05-07"))
+        self.assertIsInstance(dataset, xr.Dataset)
+        self.assertIsInstance(dataset.Soil_Moisture, xr.DataArray)
+        sm_var: xr.DataArray = dataset.Soil_Moisture
+        self.assertIsInstance(sm_var.data, da.Array)
+        self.assertIsInstance(sm_var.values, np.ndarray)  # trigger compute()
