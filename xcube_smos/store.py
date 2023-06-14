@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import os
 from functools import cached_property
 from typing import Iterator, Any, Tuple, Container, Union, Dict, Optional
 
@@ -34,12 +35,17 @@ from xcube.core.store import DatasetDescriptor
 from xcube.core.store import MULTI_LEVEL_DATASET_TYPE
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
-from .catalog import SmosCatalog, AbstractSmosCatalog
-from .new_algo import SmosGlobalL2Cube
-from .new_algo import TimeStepLoader
+from .catalog import AbstractSmosCatalog
+from .catalog import SmosIndexCatalog
+from .constants import DEFAULT_SMOS_DGG_PATH
+from .constants import DGG_ENV_VAR_NAME
+from .mldataset.l2cube import SmosL2Cube
+from .mldataset.l2cube import TimeStepLoader
+from .mldataset.l2cube import new_dgg
 from .schema import OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
 from .timeinfo import parse_time_ranges
+from .utils import NotSerializable
 
 _DATASETS = {
     'SMOS-L2C-SM': {
@@ -56,16 +62,36 @@ ML_DATASET_OPENER_ID = 'mldataset:zarr:smos'
 DEFAULT_OPENER_ID = DATASET_OPENER_ID
 
 
-class SmosDataStore(DataStore):
+class SmosDataStore(NotSerializable, DataStore):
+    """Data store for SMOS L2C data cubes.
+
+    :param dgg_urlpath: Path or URL to the DGG as a SNAP image pyramid.
+        If not given, the value of the environment variable named
+        "XCUBE_SMOS_DGG_PATH" is used.
+        If this isn't given as well, *path* defaults to
+        "~/.snap/auxdata/smos-dgg/grid-tiles", which is installed
+        by the SNAP SMOS-Box plugin.
+    :param index_urlpath: Path or URL to the SMOS Kerchunk index
+    :param index_options: Storage options for accessing *index_urlpath*.
+    :param catalog: Catalog (mock) instance used for testing only.
+        If given, *index_urlpath* and *index_options* are ignored.
+    """
+
     def __init__(self,
-                 dgg_path: Optional[str] = None,
+                 dgg_urlpath: Optional[str] = None,
                  index_urlpath: Optional[str] = None,
                  index_options: Optional[Dict[str, Any]] = None,
                  catalog: Optional[AbstractSmosCatalog] = None):
-        self._dgg_path = dgg_path
+        self._dgg_urlpath = (dgg_urlpath
+                             or os.environ.get(DGG_ENV_VAR_NAME)
+                             or DEFAULT_SMOS_DGG_PATH)
         self._index_urlpath = index_urlpath
         self._index_options = index_options
         self._catalog = catalog
+
+    @cached_property
+    def dgg(self):
+        return new_dgg(self._dgg_urlpath)
 
     @classmethod
     def get_data_store_params_schema(cls) -> JsonObjectSchema:
@@ -132,10 +158,22 @@ class SmosDataStore(DataStore):
                       data_type: DataTypeLike = None) -> DataDescriptor:
         self._assert_valid_data_id(data_id)
         data_type = self._assert_valid_data_type(data_type)
+        # TODO (forman): implement descriptors.
+        #   Implementation note: It should be possible to provide
+        #   all/more required metadata statically from the DGG and
+        #   other sources.
+        lat_max = self.dgg.HEIGHT * self.dgg.SPATIAL_RES / 2
+        metadata = dict(
+            bbox=[-180., -lat_max, 180., lat_max],
+            spatial_res=(1 << self.dgg.level0) * self.dgg.SPATIAL_RES,
+            time_range=["2010-01-01", None],  # TODO (forman): adjust start!
+        )
         if data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE):
-            return MultiLevelDatasetDescriptor(data_id, num_levels=6)
+            return MultiLevelDatasetDescriptor(data_id,
+                                               num_levels=6,
+                                               **metadata)
         else:
-            return DatasetDescriptor(data_id)
+            return DatasetDescriptor(data_id, **metadata)
 
     def get_open_data_params_schema(
             self,
@@ -151,8 +189,8 @@ class SmosDataStore(DataStore):
     def catalog(self) -> AbstractSmosCatalog:
         if self._catalog is not None:
             return self._catalog
-        return SmosCatalog(index_urlpath=self._index_urlpath,
-                           index_options=self._index_options)
+        return SmosIndexCatalog(index_urlpath=self._index_urlpath,
+                                index_options=self._index_options)
 
     def open_data(self,
                   data_id: str,
@@ -173,12 +211,14 @@ class SmosDataStore(DataStore):
         time_bounds = parse_time_ranges(time_ranges, is_compact=True)
 
         time_step_loader = TimeStepLoader(
+            self.dgg,
             dataset_paths,
             self.catalog.dataset_opener,
             self.catalog.remote_storage_options
         )
 
-        ml_dataset = SmosGlobalL2Cube(
+        ml_dataset = SmosL2Cube(
+            self.dgg,
             data_id,
             time_bounds,
             time_step_loader,

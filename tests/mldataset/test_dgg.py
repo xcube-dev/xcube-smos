@@ -20,11 +20,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os.path
-import os.path
 import unittest
 
-from xcube_smos.dgg import SmosDiscreteGlobalGrid
-from xcube_smos.l2prod import SmosMappedL2Product
+from xcube_smos.mldataset.dgg import SmosDiscreteGlobalGrid
 
 dgg_path = os.path.expanduser("~/.snap/auxdata/smos-dgg/grid-tiles")
 
@@ -33,7 +31,7 @@ dgg_path = os.path.expanduser("~/.snap/auxdata/smos-dgg/grid-tiles")
                      f"cannot find {dgg_path}")
 class SmosDiscreteGlobalGridTest(unittest.TestCase):
     def test_default(self):
-        dgg = SmosDiscreteGlobalGrid()
+        dgg = SmosDiscreteGlobalGrid(dgg_path)
 
         self.assertEqual(7, dgg.num_levels)
 
@@ -48,7 +46,7 @@ class SmosDiscreteGlobalGridTest(unittest.TestCase):
         self.assertEqual(((504,), (512, 512)), ds4.seqnum.chunks)
 
     def test_load(self):
-        dgg = SmosDiscreteGlobalGrid(load=True)
+        dgg = SmosDiscreteGlobalGrid(dgg_path, compute=True)
 
         self.assertEqual(7, dgg.num_levels)
 
@@ -68,7 +66,7 @@ class SmosDiscreteGlobalGridTest(unittest.TestCase):
         self.assertEqual(None, ds6.seqnum.chunks)
 
     def test_load_and_level0(self):
-        dgg = SmosDiscreteGlobalGrid(load=True, level0=1)
+        dgg = SmosDiscreteGlobalGrid(dgg_path, compute=True, level0=1)
 
         self.assertEqual(6, dgg.num_levels)
 

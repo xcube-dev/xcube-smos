@@ -1,8 +1,5 @@
-import os
-import os.path
-import re
 import unittest
-from typing import Tuple, Optional, List
+from pathlib import Path
 
 import dask.array as da
 import jsonschema
@@ -14,54 +11,23 @@ from xcube.core.store import DatasetDescriptor
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from xcube_smos.catalog import AbstractSmosCatalog
-from xcube_smos.catalog import DatasetOpener
-from xcube_smos.catalog import INDEX_ENV_VAR_NAME
-from xcube_smos.nckcindex.producttype import COMMON_NAME_PATTERN
-from xcube_smos.nckcindex.producttype import ProductTypeLike
+from xcube_smos.catalog import SmosSimpleCatalog
 from xcube_smos.schema import OPEN_PARAMS_SCHEMA
 from xcube_smos.schema import STORE_PARAMS_SCHEMA
 from xcube_smos.store import SmosDataStore
 
-INDEX_PATH = os.environ.get(INDEX_ENV_VAR_NAME)
 
-if not INDEX_PATH:
-    reason = f"env var {INDEX_ENV_VAR_NAME!r} not set {INDEX_PATH}"
-else:
-    reason = f"index {INDEX_PATH} not found"
-
-
-class SmosTestCatalog(AbstractSmosCatalog):
-    @property
-    def dataset_opener(self) -> DatasetOpener:
-        return SmosTestCatalog.open_dataset
-
-    @staticmethod
-    def open_dataset(dataset_path: str, remote_storage_options: dict) \
-            -> xr.Dataset:
-        return xr.open_dataset(dataset_path,
-                               decode_cf=False,
-                               **(remote_storage_options or {}))
-
-    def find_datasets(self,
-                      product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]]) \
-            -> List[Tuple[str, str, str]]:
-        path = os.path.normpath(
-            os.path.join(os.path.dirname(__file__),
-                         "..",
-                         "testdata",
-                         "SM")
-        )
-        filenames = os.listdir(path)
-        result = []
-        for filename in filenames:
-            name, _ = os.path.splitext(filename)
-            name_pattern = f"SM_OPER_MIR_SMUDP2_{COMMON_NAME_PATTERN}"
-            m = re.match(name_pattern, name)
-            start = m.group("sd") + m.group("st")
-            end = m.group("ed") + m.group("et")
-            result.append((os.path.join(path, filename), start, end))
-        return result
+def new_test_catalog() -> AbstractSmosCatalog:
+    path = Path(__file__).parent / ".." / "testdata" / "SM"
+    smos_l2_sm_paths = [
+        str(path / name)
+        for name in path.resolve().iterdir()
+        if name.suffix == ".nc"
+    ]
+    return SmosSimpleCatalog(
+        smos_l2_sm_paths=smos_l2_sm_paths,
+        smos_l2_os_paths=[]
+    )
 
 
 class SmosDataStoreTest(unittest.TestCase):
@@ -142,12 +108,18 @@ class SmosDataStoreTest(unittest.TestCase):
             {
                 'data_id': 'SMOS-L2C-SM',
                 'data_type': 'mldataset',
-                'num_levels': 6
+                'num_levels': 6,
+                'spatial_res': 0.0439453125,
+                'bbox': [-180.0, -88.59375, 180.0, 88.59375],
+                'time_range': ['2010-01-01', None]
             },
             {
                 'data_id': 'SMOS-L2C-OS',
                 'data_type': 'mldataset',
-                'num_levels': 6
+                'num_levels': 6,
+                'spatial_res': 0.0439453125,
+                'bbox': [-180.0, -88.59375, 180.0, 88.59375],
+                'time_range': ['2010-01-01', None]
             }
         ]
 
@@ -155,10 +127,16 @@ class SmosDataStoreTest(unittest.TestCase):
             {
                 'data_id': 'SMOS-L2C-SM',
                 'data_type': 'dataset',
+                'spatial_res': 0.0439453125,
+                'bbox': [-180.0, -88.59375, 180.0, 88.59375],
+                'time_range': ['2010-01-01', None]
             },
             {
                 'data_id': 'SMOS-L2C-OS',
                 'data_type': 'dataset',
+                'spatial_res': 0.0439453125,
+                'bbox': [-180.0, -88.59375, 180.0, 88.59375],
+                'time_range': ['2010-01-01', None]
             },
         ]
 
@@ -271,7 +249,7 @@ class SmosDataStoreTest(unittest.TestCase):
                             time_period="2D")
 
     def test_open_data(self):
-        store = SmosDataStore(catalog=SmosTestCatalog())
+        store = SmosDataStore(catalog=new_test_catalog())
 
         dataset = store.open_data('SMOS-L2C-SM',
                                   time_range=("2022-05-05", "2022-05-07"))
@@ -329,7 +307,7 @@ class SmosDistributedDataStoreTest(unittest.TestCase):
         self._client.close()
 
     def test_open_data(self):
-        store = SmosDataStore(catalog=SmosTestCatalog())
+        store = SmosDataStore(catalog=new_test_catalog())
 
         dataset = store.open_data('SMOS-L2C-SM',
                                   time_range=("2022-05-05", "2022-05-07"))

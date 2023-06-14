@@ -21,32 +21,32 @@
 
 import os
 import os.path
-import sys
 import zipfile
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Tuple
 
+import fsspec.core
 import numpy as np
 import xarray as xr
 
 from xcube.core.mldataset import LazyMultiLevelDataset
 from xcube.core.zarrstore import GenericArray
 from xcube.core.zarrstore import GenericZarrStore
+from xcube.util.assertions import assert_given
 from xcube.util.assertions import assert_true
-from xcube_smos.constants import DEFAULT_SMOS_DGG_PATH
-from xcube_smos.constants import DGG_ENV_VAR_NAME
+from xcube_smos.utils import NotSerializable
 
 
-class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
+class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
     """
     A multi-level dataset that represents the SMOS discrete global grid (DGG)
     in geographic projection.
 
-    :param path: Path to the DGG as a SNAP image pyramid.
-        If not given, the value of the environment variable named
-        "XCUBE_SMOS_DGG_PATH" is used.
-        If this isn't given as well, *path* defaults to
-        "~/.snap/auxdata/smos-dgg/grid-tiles", which is installed
-        by the SNAP SMOS-Box plugin.
+    :param urlpath: Path or URL to the DGG as a SNAP image pyramid.
+    :param level0: The level that will become level zero.
+        Default is zero.
+    :param compute: Whether to compute and entirely load
+        the DGG level datasets. If True, data will not be chunked.
+        Default is False.
     """
 
     MIN_SEQNUM = 1
@@ -68,20 +68,36 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
     DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder('>')
 
     def __init__(self,
-                 path: Optional[str] = None,
+                 urlpath: str,
                  level0: int = 0,
-                 load: bool = False):
+                 compute: bool = False):
         super().__init__()
-        path = os.path.expanduser(path
-                                  or os.environ.get(DGG_ENV_VAR_NAME)
-                                  or DEFAULT_SMOS_DGG_PATH)
-        assert_true(os.path.exists(path),
-                    message=f'SMOS DDG not found: {path}')
+        assert_given(urlpath, name="urlpath")
+        protocol, path = fsspec.core.split_protocol(urlpath)
+        protocol = protocol or "file"
+        fs: fsspec.AbstractFileSystem = fsspec.filesystem(protocol)
+        if protocol == "file":
+            path = os.path.expanduser(path)
+            urlpath = path
+        assert_true(fs.exists(path),
+                    message=f'SMOS DDG not found: {urlpath}')
         assert_true(0 <= level0 < self.NUM_LEVELS,
                     message=f'Invalid level0: {level0}')
-        self._path = os.path.expanduser(path)
-        self._load = load
+        self._urlpath = urlpath
+        self._compute = compute
         self._level0 = level0
+
+    @property
+    def urlpath(self) -> str:
+        return self._urlpath
+
+    @property
+    def compute(self) -> bool:
+        return self._compute
+
+    @property
+    def level0(self) -> int:
+        return self._level0
 
     def _get_num_levels_lazily(self) -> int:
         return self.NUM_LEVELS - self._level0
@@ -109,7 +125,7 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
                 get_data=SmosDiscreteGlobalGrid.load_smos_dgg_tile,
                 get_data_params=dict(
                     level=level + self._level0,
-                    base_path=self._path,
+                    base_path=self._urlpath,
                 ),
                 chunk_encoding="ndarray"
             ),
@@ -129,19 +145,15 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
             ),
         )
         dataset: xr.Dataset = xr.open_zarr(zarr_store)
-        if self._load:
-            try:
-                dataset.load()
-            except Exception as e:
-                import traceback
-                print(80 * "=")
-                traceback.print_exc()
-                print(80 * "=")
-                #sys.exit(9)
+        if self._compute:
+            dataset.load()
         else:
             dataset.zarr_store.set(zarr_store)
         return dataset
 
+    # It is very important that this method is static.
+    # Otherwise, the current object will be serialized
+    # to Dask workers! This must not happen.
     @staticmethod
     def load_smos_dgg_tile(chunk_info: Dict[str, Any],
                            array_info: Dict[str, Any],
@@ -150,6 +162,8 @@ class SmosDiscreteGlobalGrid(LazyMultiLevelDataset):
         y_index, x_index = chunk_info["index"]
         shape = chunk_info["shape"]
         dtype = array_info["dtype"]
+        # TODO (forman): this currently works for local base_path only.
+        #   Fix code to also load tiles from S3
         path = f"{base_path}/{level}/{x_index}-{y_index}.raw.zip"
         with zipfile.ZipFile(path) as zf:
             name = zf.namelist()[0]

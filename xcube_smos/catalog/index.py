@@ -18,11 +18,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-import abc
+
 import os
 import re
 from pathlib import Path
-from typing import Union, Dict, Any, Optional, Tuple, List, Callable
+from typing import Union, Dict, Any, Optional, Tuple, List
 
 import pandas as pd
 import xarray as xr
@@ -33,55 +33,14 @@ from xcube_smos.nckcindex.nckcindex import NcKcIndex
 from xcube_smos.nckcindex.producttype import COMMON_FILENAME_DATETIME_FORMAT
 from xcube_smos.nckcindex.producttype import ProductType
 from xcube_smos.nckcindex.producttype import ProductTypeLike
+from .base import AbstractSmosCatalog
+from .base import DatasetOpener
 
 _ONE_DAY = pd.Timedelta(1, unit="days")
 
-DatasetOpener = Callable[[str, Optional[Dict[str, Any]]], xr.Dataset]
 
-
-class AbstractSmosCatalog(abc.ABC):
-
-    @property
-    @abc.abstractmethod
-    def dataset_opener(self) -> DatasetOpener:
-        """Get a function that opens a dataset. The function
-        must have the signature:::
-
-            open(dataset_path: str, remote_storage_options: dict)
-
-        and must return a xarray dataset. The data set path is one
-        of the returned paths from :meth:find_datasets() and
-        *remote_storage_options* are the catalog's remote storage options.
-
-        It is important that the dataset is opened using `decode_cf=False`
-        if xarray is used.
-        Otherwise, a given _FillValue attribute will turn Grid_Point_ID
-        and other variables from integers into floating point.
-        """
-
-    @property
-    def remote_storage_options(self) -> Optional[Dict[str, Any]]:
-        """Get options for the remote data storage."""
-        return None
-
-    @abc.abstractmethod
-    def find_datasets(self,
-                      product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]]) \
-            -> List[Tuple[str, str, str]]:
-        """Find SMOS L2 datasets in the given *time_range*.
-
-        :param product_type: SMOS product type
-        :param time_range: Time range (from, to) ISO format, UTC
-        :return: List of tuples of the form (dataset_path, start, stop), where
-            start and stop represent the observation time range
-            using "compact" datetime format, e.g., "20230503103546".
-        """
-
-
-class SmosCatalog(AbstractSmosCatalog):
-    """
-    SMOS L2 dataset catalog that uses a Kerchunk index (NcKcIndex).
+class SmosIndexCatalog(AbstractSmosCatalog):
+    """A SMOS L2 dataset catalog that uses a Kerchunk index (NcKcIndex).
 
     :param index_urlpath: Path or URL to the root directory
     :param index_options: Storage options to access *index_urlpath*.
@@ -98,7 +57,7 @@ class SmosCatalog(AbstractSmosCatalog):
 
     @property
     def dataset_opener(self) -> DatasetOpener:
-        return SmosCatalog.open_dataset
+        return SmosIndexCatalog.open_dataset
 
     @staticmethod
     def open_dataset(dataset_path: str, remote_storage_options: dict) \

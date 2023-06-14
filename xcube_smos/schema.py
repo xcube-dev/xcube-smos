@@ -25,13 +25,13 @@ from xcube.util.jsonschema import JsonDateSchema
 from xcube.util.jsonschema import JsonNumberSchema
 from xcube.util.jsonschema import JsonObjectSchema
 from xcube.util.jsonschema import JsonStringSchema
-from xcube_smos.dgg import SmosDiscreteGlobalGrid
+from xcube_smos.mldataset.dgg import SmosDiscreteGlobalGrid
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
-        dgg_path=JsonStringSchema(
+        dgg_urlpath=JsonStringSchema(
             min_length=1,
-            title='Path to the local SMOS Discrete Global Grid.',
+            title='Path or URL to the local SMOS Discrete Global Grid.',
         ),
         index_urlpath=JsonStringSchema(
             min_length=1,
@@ -81,15 +81,6 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
             default='10m',  # 10 minutes
             format='^([1-9]*[0-9]*)[NULSTH]$',
             title='Time tolerance'
-        ),
-        # ----------------------------------------
-        debug=JsonBooleanSchema(
-            title='Output debugging information to stdout',
-            default=False,
-        ),
-        lazy_load=JsonBooleanSchema(
-            title='Force lazy loading of variable data from SMOS L2 products',
-            default=False,
         ),
     ),
     additional_properties=False
