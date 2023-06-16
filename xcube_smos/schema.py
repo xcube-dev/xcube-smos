@@ -61,8 +61,8 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
             title='Bounding box [x1,y1, x2,y2] in geographical coordinates'
         ),
         spatial_res=JsonNumberSchema(
-            enum=[(1 << level) * SmosDiscreteGlobalGrid.SPATIAL_RES
-                  for level in range(SmosDiscreteGlobalGrid.NUM_LEVELS)],
+            enum=[(1 << level) * SmosDiscreteGlobalGrid.MIN_PIXEL_SIZE
+                  for level in range(SmosDiscreteGlobalGrid.MAX_NUM_LEVELS)],
             title='Spatial resolution in decimal degrees.',
         ),
         time_range=JsonArraySchema(

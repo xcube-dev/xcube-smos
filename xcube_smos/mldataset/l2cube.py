@@ -241,8 +241,8 @@ class TimeStepLoader(DggHolder):
         assert lat_idx == 0 and lon_idx == 0, \
             "should not be chunked in spatial dimensions"
         l2_product = self.load_l2_product(time_idx)
-        global_l2_product = l2_product.get_global_s2_product(level)
-        return global_l2_product.map_l2_var(var_name)
+        mapped_l2_product = l2_product.get_mapped_s2_product(level)
+        return mapped_l2_product.map_l2_var(var_name)
 
     def load_l2_product(self, time_idx: int) -> 'SmosL2Product':
         """Load the SMOS L2 product for the given *time_idx*.
@@ -305,7 +305,7 @@ class SmosL2Product(DggHolder):
         self.l2_seqnum_to_index = l2_seqnum_to_index
         self.l2_missing_index = l2_missing_index
 
-    def get_global_s2_product(self, level: int):
+    def get_mapped_s2_product(self, level: int):
         """Get the global, mapped L2 product for given *level*
         LRU-cached access w.r.t. *level*.
         """
@@ -316,10 +316,10 @@ class SmosL2Product(DggHolder):
         #   this class is no longer serializable.
         from dask.distributed import print
         print(f'creating global L2 product for level={level}', flush=True)
-        return SmosGlobalL2Product(self, seqnum.values)
+        return SmosMappedL2Product(self, seqnum.values)
 
 
-class SmosGlobalL2Product:
+class SmosMappedL2Product:
     def __init__(self, l2_product: SmosL2Product, global_seqnum: np.ndarray):
         self.l2_product = l2_product
         self.global_l2_index = map_seqnum_to_l2_index(

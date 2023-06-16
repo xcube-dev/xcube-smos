@@ -49,23 +49,29 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
         Default is False.
     """
 
+    # Constant data type of "seqnum"
+    DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder('>')
+
+    # Smallest possible "seqnum" value
     MIN_SEQNUM = 1
+    # Greatest possible "seqnum" value
     MAX_SEQNUM = 2621442
 
-    # TODO: Rename into MAX_WIDTH, MAX_HEIGHT
-    WIDTH = 16384
-    HEIGHT = 8064
+    # Total number of resolution levels
+    MAX_NUM_LEVELS = 7
 
+    # Width in pixels at level zero
+    MAX_WIDTH = 16384
+    # Height in pixels at level zero
+    MAX_HEIGHT = 8064
+
+    # Constant tile width in pixels
     TILE_WIDTH = 512
+    # Constant tile height in pixels
     TILE_HEIGHT = 504
 
-    # TODO: Rename into MAX_NUM_LEVELS
-    NUM_LEVELS = 7
-
-    # TODO: Rename into MAX_SPATIAL_RES
-    SPATIAL_RES = 360. / WIDTH
-
-    DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder('>')
+    # Pixel size in degrees at lever zero (= highest spatial resolution)
+    MIN_PIXEL_SIZE = 360. / MAX_WIDTH
 
     def __init__(self,
                  urlpath: str,
@@ -81,7 +87,7 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
             urlpath = path
         assert_true(fs.exists(path),
                     message=f'SMOS DDG not found: {urlpath}')
-        assert_true(0 <= level0 < self.NUM_LEVELS,
+        assert_true(0 <= level0 < self.MAX_NUM_LEVELS,
                     message=f'Invalid level0: {level0}')
         self._urlpath = urlpath
         self._compute = compute
@@ -100,13 +106,13 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
         return self._level0
 
     def _get_num_levels_lazily(self) -> int:
-        return self.NUM_LEVELS - self._level0
+        return self.MAX_NUM_LEVELS - self._level0
 
     def get_level_geom(self, level: int) -> Tuple[int, int, float]:
         level = level + self._level0
-        width = self.WIDTH >> level
-        height = self.HEIGHT >> level
-        spatial_res = (1 << level) * self.SPATIAL_RES
+        width = self.MAX_WIDTH >> level
+        height = self.MAX_HEIGHT >> level
+        spatial_res = (1 << level) * self.MIN_PIXEL_SIZE
         return width, height, spatial_res
 
     def _get_dataset_lazily(self,

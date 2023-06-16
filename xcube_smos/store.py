@@ -161,11 +161,11 @@ class SmosDataStore(NotSerializable, DataStore):
         # TODO (forman): implement descriptors.
         #   Implementation note: It should be possible to provide
         #   all/more required metadata statically from the DGG and
-        #   other sources.
-        lat_max = self.dgg.HEIGHT * self.dgg.SPATIAL_RES / 2
+        #   other sources such as the SMOS Kerchunk index.
+        lat_max = self.dgg.MAX_HEIGHT * self.dgg.MIN_PIXEL_SIZE / 2
         metadata = dict(
             bbox=[-180., -lat_max, 180., lat_max],
-            spatial_res=(1 << self.dgg.level0) * self.dgg.SPATIAL_RES,
+            spatial_res=(1 << self.dgg.level0) * self.dgg.MIN_PIXEL_SIZE,
             time_range=["2010-01-01", None],  # TODO (forman): adjust start!
         )
         if data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE):

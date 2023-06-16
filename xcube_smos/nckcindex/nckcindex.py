@@ -161,8 +161,8 @@ class NcKcIndex:
                 else:
                     problems.append(problem)
         else:
-            # TODO: setup mult-threaded/-process executor with num_workers
-            #   and submit workload in blocks.
+            # TODO: setup mult-threaded/-process (Dask) executor with
+            #   num_workers and submit workload in blocks.
             warnings.warn(f'num_workers={num_workers}:'
                           f' parallel processing not implemented yet.')
             for nc_file_block in self.get_nc_file_blocks(prefix=prefix,
