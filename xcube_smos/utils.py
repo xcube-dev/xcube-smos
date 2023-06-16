@@ -20,6 +20,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import collections
+import collections.abc
 import threading
 from typing import TypeVar, Generic, Dict, Any, Callable, Optional, \
     Deque, Iterator
@@ -37,7 +38,7 @@ class NotSerializable:
 T = TypeVar('T')
 
 
-class LruCache(Generic[T], NotSerializable, collections.Mapping[Any, T]):
+class LruCache(Generic[T], NotSerializable, collections.abc.Mapping[Any, T]):
     def __init__(self,
                  max_size: int = 128,
                  dispose_value: Optional[Callable[[T], Any]] = None):
