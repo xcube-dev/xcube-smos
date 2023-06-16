@@ -25,6 +25,8 @@ import threading
 from typing import TypeVar, Generic, Dict, Any, Callable, Optional, \
     Deque, Iterator
 
+from xcube.util.assertions import assert_instance, assert_true
+
 
 class NotSerializable:
     """A mixin that avoids serialization."""
@@ -35,19 +37,28 @@ class NotSerializable:
                            f" are not serializable")
 
 
-T = TypeVar('T')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 
 
-class LruCache(Generic[T], NotSerializable, collections.abc.Mapping[Any, T]):
+class LruCache(Generic[KT, VT],
+               NotSerializable,
+               collections.abc.Mapping[KT, VT]):
     def __init__(self,
                  max_size: int = 128,
-                 dispose_value: Optional[Callable[[T], Any]] = None):
+                 dispose_value: Optional[Callable[[VT], Any]] = None):
+        assert_instance(max_size, int, name="max_size")
+        assert_true(max_size >= 0,
+                    message="max_size must be greater or equal zero")
         if dispose_value is None:
             dispose_value = self.dispose_value
+        else:
+            assert_true(callable(dispose_value),
+                        message="dispose_value must be callable")
         self._max_size = max_size
         self._dispose_value = dispose_value
-        self._keys: Deque[Any] = collections.deque([], max_size)
-        self._values: Dict[Any, T] = {}
+        self._keys: Deque[KT] = collections.deque([], max_size)
+        self._values: Dict[KT, VT] = {}
         self._lock = threading.RLock()
         self._undefined = object()
 
@@ -57,13 +68,13 @@ class LruCache(Generic[T], NotSerializable, collections.abc.Mapping[Any, T]):
     def __len__(self) -> int:
         return self.size
 
-    def __iter__(self) -> Iterator[T]:
+    def __iter__(self) -> Iterator[KT]:
         yield from self.keys()
 
-    def __contains__(self, key: Any) -> bool:
+    def __contains__(self, key: KT) -> bool:
         return key in self._values
 
-    def __getitem__(self, key: Any) -> T:
+    def __getitem__(self, key: KT) -> VT:
         value = self.get(key, self._undefined)
         if value is self._undefined:
             raise KeyError(key)
@@ -80,14 +91,16 @@ class LruCache(Generic[T], NotSerializable, collections.abc.Mapping[Any, T]):
     def size(self) -> int:
         return len(self._keys)
 
-    def keys(self) -> Iterator[Any]:
+    def keys(self) -> Iterator[KT]:
         yield from self._keys
 
-    def values(self) -> Iterator[T]:
+    def values(self) -> Iterator[VT]:
         for k in self._keys:
             yield self._values[k]
 
-    def get(self, key: Any, default: Optional[T] = None) -> T:
+    def get(self, key: KT, default: Optional[VT] = None) -> VT:
+        if not self._max_size:
+            return default
         value = self._values.get(key, self._undefined)
         if value is self._undefined:
             return default
@@ -96,7 +109,9 @@ class LruCache(Generic[T], NotSerializable, collections.abc.Mapping[Any, T]):
             self.put(key, value)
         return value
 
-    def put(self, key: Any, value: T):
+    def put(self, key: KT, value: VT):
+        if not self._max_size:
+            return
         with self._lock:
             if key in self._values:
                 prev_value = self._values[key]
@@ -121,6 +136,6 @@ class LruCache(Generic[T], NotSerializable, collections.abc.Mapping[Any, T]):
             for value in values:
                 self._dispose_value(value)
 
-    def dispose_value(self, value: T):
+    def dispose_value(self, value: VT):
         """May be overridden by subclasses."""
         pass

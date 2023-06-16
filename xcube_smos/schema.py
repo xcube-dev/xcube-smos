@@ -20,7 +20,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 from xcube.util.jsonschema import JsonArraySchema
-from xcube.util.jsonschema import JsonBooleanSchema
+from xcube.util.jsonschema import JsonIntegerSchema
 from xcube.util.jsonschema import JsonDateSchema
 from xcube.util.jsonschema import JsonNumberSchema
 from xcube.util.jsonschema import JsonObjectSchema
@@ -82,6 +82,12 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
             format='^([1-9]*[0-9]*)[NULSTH]$',
             title='Time tolerance'
         ),
+        l2_product_cache_size=JsonIntegerSchema(
+            default=0,
+            minimum=0,
+            title='Size of the SMOS L2 product cache.',
+            description='Maximum number of SMOS L2 products to be cached.',
+        )
     ),
     additional_properties=False
 )

@@ -8,7 +8,7 @@ from xcube_smos.utils import LruCache
 
 class LruCacheTest(unittest.TestCase):
     def test_get(self):
-        c = LruCache[int](max_size=3)
+        c = LruCache[str, int](max_size=3)
         self.assertEqual(3, c.max_size)
         self.assertEqual(0, c.size)
         self.assertEqual(None, c.get('x'))
@@ -17,7 +17,7 @@ class LruCacheTest(unittest.TestCase):
         self.assertEqual(0, c.size)
 
     def test_put(self):
-        c = LruCache[int](max_size=3)
+        c = LruCache[str, int](max_size=3)
         self.assertEqual(3, c.max_size)
         self.assertEqual(0, c.size)
 
@@ -51,7 +51,7 @@ class LruCacheTest(unittest.TestCase):
         self.assertEqual(['y', 'u', 'z'], list(c.keys()))
 
     def test_clear(self):
-        c = LruCache[int](max_size=3)
+        c = LruCache[str, int](max_size=3)
 
         c.put('x', 13)
         c.put('y', 58)
@@ -65,6 +65,16 @@ class LruCacheTest(unittest.TestCase):
         self.assertEqual([], list(c.keys()))
         self.assertEqual([], list(c.values()))
 
+    def test_zero_size(self):
+        c = LruCache[str, int](max_size=0)
+        c.put('x', 13)
+        c.put('y', 58)
+        self.assertEqual(0, c.size)
+        self.assertEqual(None, c.get('x'))
+        self.assertEqual(None, c.get('y'))
+        self.assertEqual([], list(c.keys()))
+        self.assertEqual([], list(c.values()))
+
     def test_dispose(self):
         disposed_values = []
 
@@ -72,7 +82,7 @@ class LruCacheTest(unittest.TestCase):
             nonlocal disposed_values
             disposed_values.append(v)
 
-        c = LruCache[int](max_size=3, dispose_value=dispose_value)
+        c = LruCache[str, int](max_size=3, dispose_value=dispose_value)
 
         c.put('x', 13)
         c.put('y', 58)
@@ -99,10 +109,10 @@ class LruCacheTest(unittest.TestCase):
         self.assertEqual([81, 59, 32], disposed_values)
 
     def test_default_dispose(self):
-        c = LruCache[str]()
+        c = LruCache[str, str]()
         self.assertIsNone(c.dispose_value(13))
 
-        class MyCache(LruCache[str]):
+        class MyCache(LruCache[str, str]):
             disposed_values = []
 
             def dispose_value(self, value: str):
@@ -116,7 +126,7 @@ class LruCacheTest(unittest.TestCase):
         self.assertEqual(['C', 'B', 'A'], my_c.disposed_values)
 
     def test_mapping_interface(self):
-        c = LruCache[int]()
+        c = LruCache[str, int]()
 
         c.put('x', 13)
         c.put('y', 58)

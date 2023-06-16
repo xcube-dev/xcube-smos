@@ -40,7 +40,7 @@ from .catalog import SmosIndexCatalog
 from .constants import DEFAULT_SMOS_DGG_PATH
 from .constants import DGG_ENV_VAR_NAME
 from .mldataset.l2cube import SmosL2Cube
-from .mldataset.l2cube import TimeStepLoader
+from .mldataset.l2cube import SmosTimeStepLoader
 from .mldataset.l2cube import new_dgg
 from .schema import OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
@@ -202,19 +202,22 @@ class SmosDataStore(NotSerializable, DataStore):
         opener_id = self._assert_valid_opener_id(opener_id)
         data_type = DataType.normalize(opener_id.split(":")[0])
 
-        # Required parameter time_range:
-        time_range = open_params["time_range"]
+        time_range = open_params["time_range"]   # required
+        l2_product_cache_size = open_params.get("l2_product_cache_size", 0)
+
+        # TODO (forman): respect other parameter from open_params here
 
         datasets = self.catalog.find_datasets(product_type, time_range)
         dataset_paths = [dataset_path for dataset_path, _, _ in datasets]
         time_ranges = [(start, stop) for _, start, stop in datasets]
         time_bounds = parse_time_ranges(time_ranges, is_compact=True)
 
-        time_step_loader = TimeStepLoader(
+        time_step_loader = SmosTimeStepLoader(
             self.dgg,
             dataset_paths,
             self.catalog.dataset_opener,
-            self.catalog.remote_storage_options
+            self.catalog.remote_storage_options,
+            l2_product_cache_size
         )
 
         ml_dataset = SmosL2Cube(
