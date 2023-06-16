@@ -49,6 +49,9 @@ xcube data store `smos`. Therefore, consider splitting the two:
    `kerchunk`, `h3netcdf`, `h5py`.
 * `xcube-smos`: Currently `xcube_smos.*` with dependency: `xcube`.
 
+It is also possible to have two packages build from one repo: Just have the 
+two top level directories `smos-nckcidx`, `xcube-smos` with own setup info
+each.
 
 ## Issues with the SMOS NetCDF Kerchunk index
 

@@ -1,24 +1,33 @@
-import os
 import unittest
+from pathlib import Path
 
+import dask.array as da
 import jsonschema
+import numpy as np
 import pytest
 import xarray as xr
 
 from xcube.core.store import DatasetDescriptor
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
-from xcube_smos.catalog import INDEX_ENV_VAR_NAME
+from xcube_smos.catalog import AbstractSmosCatalog
+from xcube_smos.catalog import SmosSimpleCatalog
 from xcube_smos.schema import OPEN_PARAMS_SCHEMA
 from xcube_smos.schema import STORE_PARAMS_SCHEMA
 from xcube_smos.store import SmosDataStore
 
-INDEX_PATH = os.environ.get(INDEX_ENV_VAR_NAME)
 
-if not INDEX_PATH:
-    reason = f"env var {INDEX_ENV_VAR_NAME!r} not set {INDEX_PATH}"
-else:
-    reason = f"index {INDEX_PATH} not found"
+def new_test_catalog() -> AbstractSmosCatalog:
+    path = Path(__file__).parent / ".." / "testdata" / "SM"
+    smos_l2_sm_paths = [
+        str(path / name)
+        for name in path.resolve().iterdir()
+        if name.suffix == ".nc"
+    ]
+    return SmosSimpleCatalog(
+        smos_l2_sm_paths=smos_l2_sm_paths,
+        smos_l2_os_paths=[]
+    )
 
 
 class SmosDataStoreTest(unittest.TestCase):
@@ -36,9 +45,9 @@ class SmosDataStoreTest(unittest.TestCase):
     def test_get_data_types_for_data(self):
         store = SmosDataStore()
         self.assertEqual(('dataset', 'mldataset'),
-                         store.get_data_types_for_data('SMOS-L2-SM'))
+                         store.get_data_types_for_data('SMOS-L2C-SM'))
         self.assertEqual(('dataset', 'mldataset'),
-                         store.get_data_types_for_data('SMOS-L2-OS'))
+                         store.get_data_types_for_data('SMOS-L2C-OS'))
         with pytest.raises(ValueError,
                            match="Unknown dataset identifier 'SMOS-L3-OS'"):
             store.get_data_types_for_data('SMOS-L3-OS')
@@ -48,37 +57,37 @@ class SmosDataStoreTest(unittest.TestCase):
         for data_type in ('dataset', 'mldataset'):
             self.assertEqual(
                 [
-                    'SMOS-L2-SM',
-                    'SMOS-L2-OS'
+                    'SMOS-L2C-SM',
+                    'SMOS-L2C-OS'
                 ],
                 list(store.get_data_ids(data_type))
             )
             self.assertEqual(
                 [
-                    ('SMOS-L2-SM', {'title': 'SMOS Level-2 Soil Moisture'}),
-                    ('SMOS-L2-OS', {'title': 'SMOS Level-2 Ocean Salinity'})
+                    ('SMOS-L2C-SM', {'title': 'SMOS Level-2 Soil Moisture'}),
+                    ('SMOS-L2C-OS', {'title': 'SMOS Level-2 Ocean Salinity'})
                 ],
                 list(store.get_data_ids(data_type,
                                         include_attrs=['title'])))
             self.assertEqual(
                 [
-                    ('SMOS-L2-SM', {}),
-                    ('SMOS-L2-OS', {})
+                    ('SMOS-L2C-SM', {}),
+                    ('SMOS-L2C-OS', {})
                 ],
                 list(store.get_data_ids(data_type,
                                         include_attrs=['color'])))
 
     def test_has_data(self):
         store = SmosDataStore()
-        self.assertEqual(True, store.has_data('SMOS-L2-SM'))
-        self.assertEqual(True, store.has_data('SMOS-L2-OS'))
+        self.assertEqual(True, store.has_data('SMOS-L2C-SM'))
+        self.assertEqual(True, store.has_data('SMOS-L2C-OS'))
         self.assertEqual(False, store.has_data('SMOS-L3-OS'))
 
-        self.assertEqual(True, store.has_data('SMOS-L2-SM',
+        self.assertEqual(True, store.has_data('SMOS-L2C-SM',
                                               data_type='dataset'))
-        self.assertEqual(True, store.has_data('SMOS-L2-SM',
+        self.assertEqual(True, store.has_data('SMOS-L2C-SM',
                                               data_type='mldataset'))
-        self.assertEqual(False, store.has_data('SMOS-L2-SM',
+        self.assertEqual(False, store.has_data('SMOS-L2C-SM',
                                                data_type='geodataframe'))
 
     def test_get_search_params_schema(self):
@@ -97,25 +106,37 @@ class SmosDataStoreTest(unittest.TestCase):
 
         expected_ml_ds_descriptors = [
             {
-                'data_id': 'SMOS-L2-SM',
+                'data_id': 'SMOS-L2C-SM',
                 'data_type': 'mldataset',
-                'num_levels': 6
+                'num_levels': 6,
+                'spatial_res': 0.0439453125,
+                'bbox': [-180.0, -88.59375, 180.0, 88.59375],
+                'time_range': ['2010-01-01', None]
             },
             {
-                'data_id': 'SMOS-L2-OS',
+                'data_id': 'SMOS-L2C-OS',
                 'data_type': 'mldataset',
-                'num_levels': 6
+                'num_levels': 6,
+                'spatial_res': 0.0439453125,
+                'bbox': [-180.0, -88.59375, 180.0, 88.59375],
+                'time_range': ['2010-01-01', None]
             }
         ]
 
         expected_ds_descriptors = [
             {
-                'data_id': 'SMOS-L2-SM',
+                'data_id': 'SMOS-L2C-SM',
                 'data_type': 'dataset',
+                'spatial_res': 0.0439453125,
+                'bbox': [-180.0, -88.59375, 180.0, 88.59375],
+                'time_range': ['2010-01-01', None]
             },
             {
-                'data_id': 'SMOS-L2-OS',
+                'data_id': 'SMOS-L2C-OS',
                 'data_type': 'dataset',
+                'spatial_res': 0.0439453125,
+                'bbox': [-180.0, -88.59375, 180.0, 88.59375],
+                'time_range': ['2010-01-01', None]
             },
         ]
 
@@ -153,7 +174,7 @@ class SmosDataStoreTest(unittest.TestCase):
         )
         self.assertEqual(
             ('dataset:zarr:smos', 'mldataset:zarr:smos'),
-            store.get_data_opener_ids(data_id='SMOS-L2-OS')
+            store.get_data_opener_ids(data_id='SMOS-L2C-OS')
         )
         self.assertEqual(
             ('dataset:zarr:smos',),
@@ -201,38 +222,97 @@ class SmosDataStoreTest(unittest.TestCase):
 
         with pytest.raises(ValueError,
                            match="Invalid opener identifier 'dataset:zarr:s3'"):
-            store.open_data('SMOS-L2-SM',
+            store.open_data('SMOS-L2C-SM',
                             time_range=time_range,
                             opener_id='dataset:zarr:s3')
 
         with pytest.raises(jsonschema.exceptions.ValidationError,
                            match="'time_range' is a required property"):
-            store.open_data('SMOS-L2-SM',
+            store.open_data('SMOS-L2C-SM',
                             bbox="10, 20, 30, 40")
 
         with pytest.raises(jsonschema.exceptions.ValidationError,
                            match="10 is not of type 'string', 'null'"):
-            store.open_data('SMOS-L2-SM', time_range=[10, 20])
+            store.open_data('SMOS-L2C-SM', time_range=[10, 20])
 
         with pytest.raises(jsonschema.exceptions.ValidationError,
                            match="'10, 20, 30, 40' is not of type 'array'"):
-            store.open_data('SMOS-L2-SM',
+            store.open_data('SMOS-L2C-SM',
                             time_range=time_range,
                             bbox="10, 20, 30, 40")
 
         with pytest.raises(jsonschema.exceptions.ValidationError,
                            match="Additional properties are not allowed"
                                  " \\('time_period' was unexpected\\)"):
-            store.open_data('SMOS-L2-SM',
+            store.open_data('SMOS-L2C-SM',
                             time_range=time_range,
                             time_period="2D")
 
-    @unittest.skipUnless(INDEX_PATH and os.path.exists(INDEX_PATH), reason)
     def test_open_data(self):
-        store = SmosDataStore(index_urlpath=INDEX_PATH)
+        store = SmosDataStore(catalog=new_test_catalog())
 
-        dataset = store.open_data('SMOS-L2-OS',
+        dataset = store.open_data('SMOS-L2C-SM',
                                   time_range=("2022-05-05", "2022-05-07"))
         self.assertIsInstance(dataset, xr.Dataset)
 
-        # TODO (forman): more tests
+        self.assertEqual({'lon': 8192, 'lat': 4032, 'time': 5, 'bnds': 2},
+                         dataset.dims)
+
+        self.assertEqual({'lon', 'lat', 'time', 'time_bnds'},
+                         set(dataset.coords))
+
+        self.assertEqual(
+            {
+                'Chi_2',
+                'Chi_2_P',
+                'N_RFI_X',
+                'N_RFI_Y',
+                'RFI_Prob',
+                'Soil_Moisture',
+                'Soil_Moisture_DQX',
+            },
+            set(dataset.data_vars)
+        )
+
+        sm_var = dataset.Soil_Moisture
+        self.assertEqual((5, 4032, 8192), sm_var.shape)
+        self.assertEqual(((1, 1, 1, 1, 1), (4032,), (8192,)), sm_var.chunks)
+        self.assertEqual(('time', 'lat', 'lon'), sm_var.dims)
+        self.assertEqual(np.float32, sm_var.dtype)
+        self.assertEqual({'units': 'm3 m-3'}, sm_var.attrs)
+        self.assertEqual(
+            {
+                '_FillValue': -999.0,
+                'chunks': (1, 4032, 8192),
+                'compressor': None,
+                'dtype': np.dtype('float32'),
+                'filters': None,
+                'preferred_chunks': {'lat': 4032, 'lon': 8192, 'time': 1}
+            },
+            sm_var.encoding
+        )
+
+        self.assertIsInstance(sm_var.data, da.Array)
+        sm_data = dataset.Soil_Moisture.values
+        self.assertIsInstance(sm_data, np.ndarray)
+
+
+class SmosDistributedDataStoreTest(unittest.TestCase):
+    def setUp(self) -> None:
+        import dask.distributed
+        self._client = dask.distributed.Client(processes=True)
+
+    def tearDown(self) -> None:
+        self._client.cluster.close()
+        self._client.close()
+
+    def test_open_data(self):
+        store = SmosDataStore(catalog=new_test_catalog())
+
+        dataset = store.open_data('SMOS-L2C-SM',
+                                  time_range=("2022-05-05", "2022-05-07"))
+        self.assertIsInstance(dataset, xr.Dataset)
+        self.assertIsInstance(dataset.Soil_Moisture, xr.DataArray)
+        sm_var: xr.DataArray = dataset.Soil_Moisture
+        self.assertIsInstance(sm_var.data, da.Array)
+        self.assertIsInstance(sm_var.values, np.ndarray)  # trigger compute()

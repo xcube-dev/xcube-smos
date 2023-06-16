@@ -20,18 +20,18 @@
 # DEALINGS IN THE SOFTWARE.
 
 from xcube.util.jsonschema import JsonArraySchema
-from xcube.util.jsonschema import JsonBooleanSchema
+from xcube.util.jsonschema import JsonIntegerSchema
 from xcube.util.jsonschema import JsonDateSchema
 from xcube.util.jsonschema import JsonNumberSchema
 from xcube.util.jsonschema import JsonObjectSchema
 from xcube.util.jsonschema import JsonStringSchema
-from xcube_smos.dgg import SmosDiscreteGlobalGrid
+from xcube_smos.mldataset.dgg import SmosDiscreteGlobalGrid
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
-        dgg_path=JsonStringSchema(
+        dgg_urlpath=JsonStringSchema(
             min_length=1,
-            title='Path to the local SMOS Discrete Global Grid.',
+            title='Path or URL to the local SMOS Discrete Global Grid.',
         ),
         index_urlpath=JsonStringSchema(
             min_length=1,
@@ -61,8 +61,8 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
             title='Bounding box [x1,y1, x2,y2] in geographical coordinates'
         ),
         spatial_res=JsonNumberSchema(
-            enum=[(1 << level) * SmosDiscreteGlobalGrid.SPATIAL_RES
-                  for level in range(SmosDiscreteGlobalGrid.NUM_LEVELS)],
+            enum=[(1 << level) * SmosDiscreteGlobalGrid.MIN_PIXEL_SIZE
+                  for level in range(SmosDiscreteGlobalGrid.MAX_NUM_LEVELS)],
             title='Spatial resolution in decimal degrees.',
         ),
         time_range=JsonArraySchema(
@@ -82,15 +82,12 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
             format='^([1-9]*[0-9]*)[NULSTH]$',
             title='Time tolerance'
         ),
-        # ----------------------------------------
-        debug=JsonBooleanSchema(
-            title='Output debugging information to stdout',
-            default=False,
-        ),
-        lazy_load=JsonBooleanSchema(
-            title='Force lazy loading of variable data from SMOS L2 products',
-            default=False,
-        ),
+        l2_product_cache_size=JsonIntegerSchema(
+            default=0,
+            minimum=0,
+            title='Size of the SMOS L2 product cache.',
+            description='Maximum number of SMOS L2 products to be cached.',
+        )
     ),
     additional_properties=False
 )
