@@ -4,6 +4,7 @@ channels:
   - defaults
 dependencies:
   - click
+  - boto3
   - h5netcdf
   - h5py
   - kerchunk

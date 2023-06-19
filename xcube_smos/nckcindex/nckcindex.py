@@ -11,7 +11,6 @@ from .constants import DEFAULT_INDEX_NAME
 from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
 from .producttype import ProductType
-from .s3scanner import S3Scanner
 
 
 class NcKcIndex:
@@ -245,6 +244,7 @@ class NcKcIndex:
 
     def get_nc_files(self,
                      prefix: Optional[str] = None) -> Iterator[str]:
+        from .s3scanner import S3Scanner
         s3_bucket = self.index_config["s3_bucket"]
         s3_options = self.index_config["s3_options"]
         s3_scanner = S3Scanner(**s3_options)
