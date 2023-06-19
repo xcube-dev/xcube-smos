@@ -43,7 +43,7 @@ VT = TypeVar('VT')
 
 class LruCache(Generic[KT, VT],
                NotSerializable,
-               collections.abc.Mapping[KT, VT]):
+               collections.abc.Mapping):
     def __init__(self,
                  max_size: int = 128,
                  dispose_value: Optional[Callable[[VT], Any]] = None):

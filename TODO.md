@@ -1,4 +1,41 @@
-## Updating SMOS NetCDF Kerchunk index
+## Setup project / product
+
+* setup CI
+* setup MkDocs documentation and configure RTD
+* setup conda-forge + PyPI deployment
+* write README.md
+
+### Investigate
+
+- [x] For the SMOS data source, i.e., NetCDF L2 files on S3, investigate
+  w.r.t. to maximum performance into Kerchunk and/or into own virtual 
+  Zarr store.  **DONE: Using combination of a SMOS NetCDF Kerchunk index and 
+  a virtual Zarr Store for the cube**
+- [ ] Will we provide user-supplied spatial resolutions or are we fine
+  providing multi-resolution datasets with fixed spatial resolutions?
+  **Pending: Currently, the SMOS data store can provide multi-level datasets
+  with fixed resolutions or a max. resolution xarray dataset (level 0)**
+- [ ] Find the best representation of SMOS discrete global grid,
+  currently in `~/.snap/auxdata/smos-dgg`. Bundle as aux data in 
+  Python package or put on S3? Using original or xcube levels/zarr format?
+  **Pending: see section below.**
+- [ ] Check if we can provide the DGG in different projections,
+  e.g., LAEA for Europe AOI.
+  **Pending: that should be possible by transforming the DGG for the desired
+  projection and AOI.**
+
+## Fix concurrent processing
+
+We currently cannot use `dask.distributed` at all neither using
+`dask.distributed.Client(processes=True)` nor 
+`dask.distributed.Client(processes=False)`. Once we compute the dataset 
+returned from the data store (e.g. `dataset.compute()`, 
+`dataset.to_zarr("smos.zarr")`, 
+`dataset.Soil_Moisture.isel(time=0).plot.imshow()`) DAG tasks are being 
+executed first but then quickly become idle and computation pauses.
+
+
+## Update SMOS NetCDF Kerchunk index
 
 The current index comprises 2020 to 2023-05.
 
@@ -8,7 +45,7 @@ Consider indexing on a Creodias VM.
 2. Update 2023-05+. 
 
 
-## Aux-data
+## Provide aux-data
 
 We need way(s) to provide required aux-data for the xcube data store `smos`:
 
@@ -27,18 +64,6 @@ Here are a number of options. They could also be provided in combination.
 * Put aux-data in publicly available FTP for download and configure store
   via env var `XCUBE_SMOS_INDEX_PATH`.
 
-## Issues with concurrent processing
-
-We currently cannot use `dask.distributed` at all, because Python's
-`RLock` is not serializable (and does not really apply).
-Unfortunately, xcube uses `RLock`s quite frequently.
-
-Maybe we can customize serialization of classes that use `RLock` manually, see
-https://docs.python.org/3/library/pickle.html#handling-stateful-objects
-
-See also `dask.utils.SerializableLock`, which, however, is not reentrant.
-
-See also https://github.com/dask/dask/issues/3832
 
 ## Split repo
 
@@ -53,7 +78,7 @@ It is also possible to have two packages build from one repo: Just have the
 two top level directories `smos-nckcidx`, `xcube-smos` with own setup info
 each.
 
-## Issues with the SMOS NetCDF Kerchunk index
+## Fix issues with the SMOS NetCDF Kerchunk index
 
 * The index requires daily updating, need a nightly service that calls
   `nckcidx` tool.
