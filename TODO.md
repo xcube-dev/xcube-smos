@@ -34,7 +34,6 @@ returned from the data store (e.g. `dataset.compute()`,
 `dataset.Soil_Moisture.isel(time=0).plot.imshow()`) DAG tasks are being 
 executed first but then quickly become idle and computation pauses.
 
-
 ## Update SMOS NetCDF Kerchunk index
 
 The current index comprises 2020 to 2023-05.
@@ -43,7 +42,6 @@ Consider indexing on a Creodias VM.
 
 1. Generate indexes for the years 2010 to 2019
 2. Update 2023-05+. 
-
 
 ## Provide aux-data
 
@@ -63,7 +61,6 @@ Here are a number of options. They could also be provided in combination.
 * Bundle aux-data with container image.
 * Put aux-data in publicly available FTP for download and configure store
   via env var `XCUBE_SMOS_INDEX_PATH`.
-
 
 ## Split repo
 
@@ -180,4 +177,3 @@ $ nckcidx sync --prefix SMOS/L2OS/MIR_OSUDP2/2021
   Error creating index s3://EODATA/SMOS/L2OS/MIR_OSUDP2/2021/03/21/SM_OPER_MIR_OSUDP2_20210321T155058_20210321T164417_662_002_1/SM_OPER_MIR_OSUDP2_20210321T155058_20210321T164417_662_002_1.nc: Unable to open file (file signature not found)
   Error creating index s3://EODATA/SMOS/L2OS/MIR_OSUDP2/2021/03/21/SM_OPER_MIR_OSUDP2_20210321T141053_20210321T150412_662_002_1/SM_OPER_MIR_OSUDP2_20210321T141053_20210321T150412_662_002_1.nc: Unable to open file (file signature not found)
 ```
-
