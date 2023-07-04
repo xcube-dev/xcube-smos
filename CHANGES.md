@@ -1,4 +1,7 @@
-## Version 0.1.0 (in development)
+## Version 0.1.0
 
-Initial version.
+Initial release.
 
+* Access to SMOS data via xcube data store interface
+
+* nckcindex tool for management of SMOS Kerchunk indices
