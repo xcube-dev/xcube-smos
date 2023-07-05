@@ -20,7 +20,7 @@ Currently, you need to install code and aux-data separately.
 
 #### For users
 
-xcube-smos end users can install cxube-smos directly from its git repository
+xcube-smos end users can install xcube-smos directly from its git repository
 into an xcube environment created with
 [mamba](https://mamba.readthedocs.io/en/latest/installation.html)
 (recommended) or
@@ -47,7 +47,8 @@ mamba install -c conda-forge kerchunk h5py h5netcdf
 nckcidx --help
 ```
 
-See [relevant section](./TODO.md#setup-project--product) on package management in [TODO.md](./TODO.md).
+See [relevant section](./TODO.md#setup-project--product) on package management
+in [TODO.md](./TODO.md).
 
 ### Aux-data
 
