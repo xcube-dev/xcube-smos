@@ -77,7 +77,7 @@ class NcKcIndex:
             See fsspec/s3fs.
         :param replace_existing: Whether to replace an existing
             NetCDF Kerchunk index.
-        :return:
+        :return: A new NetCDF file index.
         """
 
         index_urlpath = str(index_urlpath)

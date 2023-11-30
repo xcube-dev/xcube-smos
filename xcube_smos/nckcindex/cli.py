@@ -18,10 +18,11 @@ from xcube_smos.nckcindex.constants import DEFAULT_INDEX_NAME
 def cli(ctx, debug, traceback):
     """Manage NetCDF Kerchunk indexes.
 
-    NetCDF Kerchunk index is a directory that contains references to
-    NetCDF files stored in S3. It stores a Kerchunk JSON file for
-    a given NetCDF file using a directory tree that corresponds
-    to the NetCDF file's S3 key prefix (relative to bucket name).
+    A NetCDF Kerchunk index is a directory that contains references to
+    NetCDF files stored in S3. For every NetCDF file in S3, a
+    Kerchunk JSON file is created and saved.
+    The JSON files are stored in a directory tree that corresponds
+    to the NetCDF file S3 key prefix relative to the bucket name.
 
     This form of the NetCDF Kerchunk index is useful for NetCDF files
     that represent datasets that cannot easily be concatenated along

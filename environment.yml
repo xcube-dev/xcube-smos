@@ -5,9 +5,10 @@ channels:
 dependencies:
   - click
   - boto3
-  - h5netcdf
-  - h5py
-  - kerchunk
+  # Pinned kerchunk deps while under test
+  - h5netcdf =1.1.0
+  - h5py =3.8.0
+  - kerchunk =0.1.2
   - xcube
   # development
   - pytest
