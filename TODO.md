@@ -3,7 +3,6 @@
 * setup CI
 * setup MkDocs documentation and configure RTD
 * setup conda-forge + PyPI deployment
-* write README.md
 
 ### Investigate
 
@@ -34,7 +33,7 @@ returned from the data store (e.g. `dataset.compute()`,
 `dataset.Soil_Moisture.isel(time=0).plot.imshow()`) DAG tasks are being 
 executed first but then quickly become idle and computation pauses.
 
-## Update SMOS NetCDF Kerchunk index
+## Update SMOS NetCDF Kerchunk index [#10] 
 
 The current index comprises 2020 to 2023-05.
 
@@ -43,7 +42,7 @@ Consider indexing on a Creodias VM.
 1. Generate indexes for the years 2010 to 2019
 2. Update 2023-05+. 
 
-## Provide aux-data
+## Provide aux-data [#9]
 
 We need way(s) to provide required aux-data for the xcube data store `smos`:
 
@@ -77,15 +76,16 @@ each.
 
 ## Fix issues with the SMOS NetCDF Kerchunk index
 
+* Currently, a SMOS NetCDF Kerchunk index contains a file `nckc-index.json`
+  that also contains the Creodias S3 credentials for EDC user. 
+  **THIS IS INSECURE**. 
+  Switch to dedicated env vars or AWS profile instead. [#6]
 * The index requires daily updating, need a nightly service that calls
-  `nckcidx` tool.
+  `nckcidx` tool. [#7]
 * The index is a directory with 250,000+ files, several GB in size. 
   However, it compresses well, therefore consider a single Zip archive 
   or annual/monthly Zip archives. Note, a monthly Zip archive can be 
-  updated more efficiently. 
-* Currently, a SMOS NetCDF Kerchunk index contains a file `nckc-index.json`
-  that also contains the Creodias S3 credentials for EDC user.
-  **THIS IS INSECURE**. Switch to dedicated env vars or AWS profile instead.
+  updated more efficiently. [#8]
 
 ### fsspec.exceptions.FSTimeoutError
 
