@@ -56,7 +56,7 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
         """
 
     @property
-    def remote_storage_options(self) -> Optional[Dict[str, Any]]:
+    def source_storage_options(self) -> Optional[Dict[str, Any]]:
         """Get options for the remote data storage."""
         return None
 

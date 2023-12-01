@@ -216,7 +216,7 @@ class SmosDataStore(NotSerializable, DataStore):
             self.dgg,
             dataset_paths,
             self.catalog.dataset_opener,
-            self.catalog.remote_storage_options,
+            self.catalog.source_storage_options,
             l2_product_cache_size
         )
 

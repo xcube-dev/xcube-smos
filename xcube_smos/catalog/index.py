@@ -79,8 +79,8 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         )
 
     @property
-    def remote_storage_options(self) -> Optional[Dict[str, Any]]:
-        return self._nc_kc_index.s3_options
+    def source_storage_options(self) -> Optional[Dict[str, Any]]:
+        return self._nc_kc_index.source_storage_options
 
     def find_datasets(self,
                       product_type: ProductTypeLike,
