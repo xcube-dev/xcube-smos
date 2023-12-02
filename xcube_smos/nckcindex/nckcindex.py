@@ -263,8 +263,6 @@ class NcKcIndex:
 
     def get_nc_files(self,
                      prefix: Optional[str] = None) -> Iterator[str]:
-        # if self.source_protocol == "s3":
-        #     return self.get_nc_files_from_s3(prefix)
 
         source_fs = self.source_fs
         source_path = self.source_path
@@ -281,24 +279,6 @@ class NcKcIndex:
             for file in files:
                 if file.endswith(".nc"):
                     yield path + "/" + file
-
-    def get_nc_files_from_s3(
-        self,
-        prefix: Optional[str] = None
-    ) -> Iterator[str]:
-        from .s3scanner import S3Scanner
-        s3_bucket = self.index_config["source_path"]
-        s3_options = self.index_config["source_storage_options"]
-        s3_scanner = S3Scanner(**s3_options)
-        if prefix is not None:
-            yield from s3_scanner.get_keys(s3_bucket,
-                                           prefix=prefix,
-                                           suffix=".nc")
-        else:
-            for pt in ProductType.get_all():
-                yield from s3_scanner.get_keys(s3_bucket,
-                                               prefix=pt.path_prefix,
-                                               suffix=".nc")
 
     def get_nc_file_blocks(self,
                            prefix: Optional[str] = None,
