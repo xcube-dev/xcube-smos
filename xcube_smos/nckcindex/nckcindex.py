@@ -7,9 +7,7 @@ import warnings
 
 import fsspec
 from xcube.util.undefined import UNDEFINED
-from .constants import DEFAULT_SOURCE_PATH
 from .constants import DEFAULT_SOURCE_PROTOCOL
-from .constants import DEFAULT_SOURCE_STORAGE_OPTIONS
 from .constants import DEFAULT_INDEX_NAME
 from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
@@ -46,7 +44,7 @@ class NcKcIndex:
         self.source_storage_options = _get_config_param(
             index_config,
             "source_storage_options", dict,
-            dict(DEFAULT_SOURCE_STORAGE_OPTIONS)
+            {}
         )
 
     @cached_property
@@ -70,8 +68,8 @@ class NcKcIndex:
         cls,
         index_path: Union[str, Path] = DEFAULT_INDEX_NAME,
         index_storage_options: Optional[Dict[str, Any]] = None,
-        source_path: str = DEFAULT_SOURCE_PATH,
-        source_protocol: Optional[Union[str, Path]] = DEFAULT_SOURCE_PROTOCOL,
+        source_path: Optional[Union[str, Path]] = None,
+        source_protocol: Optional[str] = DEFAULT_SOURCE_PROTOCOL,
         source_storage_options: Optional[Dict[str, Any]] = None,
         replace_existing: bool = False,
     ) -> "NcKcIndex":
@@ -92,13 +90,14 @@ class NcKcIndex:
             NetCDF Kerchunk index.
         :return: A new NetCDF file index.
         """
+        if not source_path:
+            raise ValueError("Missing source_path")
 
         index_path = str(index_path)
 
         path_protocol, source_path = fsspec.core.split_protocol(source_path)
         source_protocol = source_protocol or path_protocol or "file"
-        source_storage_options = source_storage_options or \
-                                 dict(DEFAULT_SOURCE_STORAGE_OPTIONS)
+        source_storage_options = source_storage_options or {}
 
         index_config = dict(
             version=INDEX_CONFIG_VERSION,
