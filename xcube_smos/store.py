@@ -189,8 +189,8 @@ class SmosDataStore(NotSerializable, DataStore):
     def catalog(self) -> AbstractSmosCatalog:
         if self._catalog is not None:
             return self._catalog
-        return SmosIndexCatalog(index_urlpath=self._index_urlpath,
-                                index_options=self._index_options)
+        return SmosIndexCatalog(index_path=self._index_urlpath,
+                                index_storage_options=self._index_options)
 
     def open_data(self,
                   data_id: str,
