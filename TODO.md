@@ -61,12 +61,13 @@ Here are a number of options. They could also be provided in combination.
 * Put aux-data in publicly available FTP for download and configure store
   via env var `XCUBE_SMOS_INDEX_PATH`.
 
-## Split repo
+## Split repo [#13]
 
 The `nckcidx` CLI has package dependencies that are not needed by the 
-xcube data store `smos`. Therefore, consider splitting the two: 
+xcube data store `smos`. Vice versa, the tool is useful on its own.
+Therefore, consider splitting the two: 
 
-* `smos-nckcidx`: Currently in `xcube_smos.nckcindex.*` with dependencies
+* `nckc-index`: Currently in `xcube_smos.nckcindex.*` with dependencies
    `kerchunk`, `h3netcdf`, `h5py`.
 * `xcube-smos`: Currently `xcube_smos.*` with dependency: `xcube`.
 

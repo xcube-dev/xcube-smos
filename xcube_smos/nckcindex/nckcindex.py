@@ -6,7 +6,6 @@ from typing import Union, Dict, Any, Optional, Iterator, List, \
 import warnings
 
 import fsspec
-from xcube.util.undefined import UNDEFINED
 from .constants import DEFAULT_SOURCE_PROTOCOL
 from .constants import DEFAULT_INDEX_NAME
 from .constants import INDEX_CONFIG_FILENAME
@@ -183,7 +182,7 @@ class NcKcIndex:
                     problems.append(problem)
         else:
             # TODO: setup mult-threaded/-process (Dask) executor with
-            #   num_workers and submit workload in blocks.
+            #   num_workers and submit workload in blocks. [#12]
             warnings.warn(f'num_workers={num_workers}:'
                           f' parallel processing not implemented yet.')
             for nc_file_block in self.get_nc_file_blocks(prefix=prefix,
@@ -197,6 +196,37 @@ class NcKcIndex:
                     else:
                         problems.append(problem)
         return num_files, problems
+
+    def get_nc_files(self,
+                     prefix: Optional[str] = None) -> Iterator[str]:
+
+        source_fs = self.source_fs
+        source_path = self.source_path
+
+        if prefix:
+            source_path += "/" + prefix
+
+        def handle_error(e: OSError):
+            print(f"Error scanning source {source_path}:"
+                  f" {e.__class__.__name__}: {e}")
+
+        for path, _, files in source_fs.walk(source_path,
+                                             on_error=handle_error):
+            for file in files:
+                if file.endswith(".nc"):
+                    yield path + "/" + file
+
+    def get_nc_file_blocks(self,
+                           prefix: Optional[str] = None,
+                           block_size: int = 100) -> Iterator[List[str]]:
+        block = []
+        for nc_file in self.get_nc_files(prefix=prefix):
+            block.append(nc_file)
+            if len(block) >= block_size:
+                yield block
+                block = []
+        if block:
+            yield block
 
     def index_nc_file(self,
                       nc_source_path: str,
@@ -264,47 +294,17 @@ class NcKcIndex:
         fs = fsspec.filesystem(protocol, **(storage_options or {}))
         return fs, path, protocol
 
-    def get_nc_files(self,
-                     prefix: Optional[str] = None) -> Iterator[str]:
-
-        source_fs = self.source_fs
-        source_path = self.source_path
-
-        if prefix:
-            source_path += "/" + prefix
-
-        def handle_error(e: OSError):
-            print(f"Error scanning source {source_path}:"
-                  f" {e.__class__.__name__}: {e}")
-
-        for path, _, files in source_fs.walk(source_path,
-                                             on_error=handle_error):
-            for file in files:
-                if file.endswith(".nc"):
-                    yield path + "/" + file
-
-    def get_nc_file_blocks(self,
-                           prefix: Optional[str] = None,
-                           block_size: int = 100) -> Iterator[List[str]]:
-        block = []
-        for nc_file in self.get_nc_files(prefix=prefix):
-            block.append(nc_file)
-            if len(block) >= block_size:
-                yield block
-                block = []
-        if block:
-            yield block
-
 
 T = TypeVar('T')
+_UNDEFINED = "_UNDEFINED"
 
 
 def _get_config_param(index_config: Dict[str, Any],
                       param_name: str,
                       param_type: Type[T] = str,
-                      default_value: Any = UNDEFINED) -> T:
+                      default_value: Any = _UNDEFINED) -> T:
     if param_name not in index_config:
-        if default_value is UNDEFINED:
+        if default_value == _UNDEFINED:
             raise ValueError(f"Missing configuration "
                              f"parameter '{param_name}'")
         return default_value

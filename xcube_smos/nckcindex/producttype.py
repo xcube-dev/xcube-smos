@@ -1,8 +1,5 @@
 from typing import Union
 
-from xcube.util.assertions import assert_given
-from xcube.util.assertions import assert_true
-
 
 COMMON_SUB_PATH_PATTERN = "{year}/{month}/{day}"
 
@@ -21,9 +18,10 @@ class ProductType:
                  id: str,
                  path_prefix: str,
                  name_prefix: str):
-        assert_given(path_prefix, "path_prefix")
-        assert_true(path_prefix.endswith("/"),
-                    message="path_prefix must end with '/'")
+        if not path_prefix:
+            raise ValueError("path_prefix must be given")
+        if not path_prefix.endswith("/"):
+            raise ValueError("path_prefix must end with '/'")
         self.id = id
         self.path_prefix = path_prefix
         self.path_pattern = path_prefix + COMMON_SUB_PATH_PATTERN
