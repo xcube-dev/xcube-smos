@@ -9,7 +9,7 @@ from xcube_smos.nckcindex.constants import EXAMPLE_S3_ENDPOINT_URL
 from xcube_smos.nckcindex.constants import DEFAULT_INDEX_NAME
 
 
-@click.group()
+@click.group(name='nckcidx')
 @click.option('--debug', is_flag=True,
               help='Output verbose debugging information.'
                    ' NOT IMPLEMENTED YET.')
@@ -146,8 +146,8 @@ def sync(ctx,
               help=f'Local index directory path. Must exist.'
                    f' Defaults to "{DEFAULT_INDEX_NAME}".')
 @click.pass_context
-def info(ctx, index_path):
-    """Inform about a NetCDF Kerchunk index."""
+def describe(ctx, index_path):
+    """Describe a NetCDF Kerchunk index."""
     from xcube_smos.nckcindex.nckcindex import NcKcIndex
     # click.echo(f"Debug is {'on' if ctx.obj['DEBUG'] else 'off'}")
     index = NcKcIndex.open(index_path=index_path)

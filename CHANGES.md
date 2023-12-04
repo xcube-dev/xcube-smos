@@ -1,5 +1,6 @@
 ## Version 0.2.0 (in development)
 
+* CLI `nckcidx info` has been renamed to `nckcidx describe`.
 * Source NetCDF files to be index can now also be provided in the local 
   filesystem instead of S3 only. [#4]
   - Changed JSON format of the index configuration to allow for any 
