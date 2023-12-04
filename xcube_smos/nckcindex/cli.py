@@ -2,12 +2,18 @@ import os
 
 import click
 
-from xcube_smos.nckcindex.constants import DEFAULT_BUCKET_NAME
-from xcube_smos.nckcindex.constants import DEFAULT_ENDPOINT_URL
-from xcube_smos.nckcindex.constants import DEFAULT_INDEX_NAME
+
+S3_PROTOCOL = "s3"
+FILE_PROTOCOL = "file"
+
+DEFAULT_INDEX_NAME = "nckc-index"
+DEFAULT_SOURCE_PROTOCOL = FILE_PROTOCOL
+
+EXAMPLE_S3_ENDPOINT_URL = "https://s3.cloudferro.com"
+EXAMPLE_S3_BUCKET = "EODATA"
 
 
-@click.group()
+@click.group(name='nckcidx')
 @click.option('--debug', is_flag=True,
               help='Output verbose debugging information.'
                    ' NOT IMPLEMENTED YET.')
@@ -19,10 +25,9 @@ def cli(ctx, debug, traceback):
     """Manage NetCDF Kerchunk indexes.
 
     A NetCDF Kerchunk index is a directory that contains references to
-    NetCDF files stored in S3. For every NetCDF file in S3, a
-    Kerchunk JSON file is created and saved.
-    The JSON files are stored in a directory tree that corresponds
-    to the NetCDF file S3 key prefix relative to the bucket name.
+    NetCDF files stored in some archive. For every NetCDF file, a
+    Kerchunk JSON file is created and saved in a corresponding
+    directory tree relative to a given prefix.
 
     This form of the NetCDF Kerchunk index is useful for NetCDF files
     that represent datasets that cannot easily be concatenated along
@@ -33,72 +38,101 @@ def cli(ctx, debug, traceback):
     ctx.obj['TRACEBACK'] = traceback
 
 
+# TODO: allow for profiles/template, so we can easily configure a
+#    SMOS index, e.g.: nckcidx create --profile smos-l2
 @cli.command()
 @click.pass_context
-@click.option('--index', nargs=1, metavar='<path>',
+@click.option('--index', 'index_path', nargs=1, metavar='<path>',
               default=DEFAULT_INDEX_NAME,
               help=f'Local index directory path. Must not exist.'
                    f' Defaults to "{DEFAULT_INDEX_NAME}".')
-@click.option('--endpoint', nargs=1, metavar='<url>',
-              default=DEFAULT_ENDPOINT_URL,
-              help=f'S3 endpoint URL.'
-                   f' Defaults to "{DEFAULT_ENDPOINT_URL}".')
-@click.option('--bucket', nargs=1, metavar='<name>',
-              default=DEFAULT_BUCKET_NAME,
-              help=f'S3 bucket name.'
-                   f' Defaults to "{DEFAULT_BUCKET_NAME}".')
-@click.option('--key', nargs=1, metavar='<key>',
-              help='S3 access key identifier')
-@click.option('--secret', nargs=1, metavar='<secret>',
-              help='S3 secret access key')
-@click.option('--anon', is_flag=True, default=None,
-              help='Force anonymous S3 access.')
+@click.option('--source', 'source_path', nargs=1, metavar='<path>',
+              help=f'Source directory path or URL.')
+@click.option('--source-protocol', nargs=1, metavar='<path>',
+              help=f'Source protocol,'
+                   f' for example "{S3_PROTOCOL}".'
+                   f' If not given, derived if source is a URL,'
+                   f' otherwise it defaults to'
+                   f' "{DEFAULT_SOURCE_PROTOCOL}".')
+@click.option('--s3-endpoint', nargs=1, metavar='<url>',
+              help=f'S3 endpoint URL if source protocol is'
+                   f' "{S3_PROTOCOL}",'
+                   f' for example "{EXAMPLE_S3_ENDPOINT_URL}".')
+@click.option('--s3-bucket', nargs=1, metavar='<name>',
+              help=f'S3 bucket name if source protocol is'
+                   f' "{S3_PROTOCOL}",'
+                   f' for example "{EXAMPLE_S3_BUCKET}".')
+@click.option('--s3-key', nargs=1, metavar='<key>',
+              help='S3 access key identifier if source protocol is'
+                   f' "{S3_PROTOCOL}".')
+@click.option('--s3-secret', nargs=1, metavar='<secret>',
+              help='S3 secret access key if source protocol is'
+                   f' "{S3_PROTOCOL}".')
+@click.option('--s3-anon', is_flag=True, default=None,
+              help='Force anonymous S3 access if source protocol is'
+                   f' "{S3_PROTOCOL}".')
 def create(ctx,
-           index,
-           endpoint,
-           bucket,
-           key,
-           secret,
-           anon):
+           index_path,
+           source_path,
+           source_protocol,
+           s3_endpoint,
+           s3_bucket,
+           s3_key,
+           s3_secret,
+           s3_anon):
     """Create a NetCDF Kerchunk index."""
     from xcube_smos.nckcindex.nckcindex import NcKcIndex
+    if not source_protocol and source_path:
+        import fsspec
+        source_protocol, _ = fsspec.core.split_protocol(source_path)
     # click.echo(f"Debug is {'on' if ctx.obj['DEBUG'] else 'off'}")
-    s3_options = {
-        "anon": anon,
-        "key": key,
-        "secret": secret,
-        "endpoint_url": endpoint,
-    }
-    nc_kc_index = NcKcIndex.create(
-        index_urlpath=index,
-        s3_bucket=bucket,
-        s3_options={k: v for k, v in s3_options.items() if v is not None}
+    if source_protocol == S3_PROTOCOL:
+        s3_storage_options = {
+            "anon": s3_anon,
+            "key": s3_key,
+            "secret": s3_secret,
+            "endpoint_url": s3_endpoint,
+        }
+        source_path = \
+            f"{source_path}/{s3_bucket}" if source_path and s3_bucket\
+                else source_path if source_path \
+                else s3_bucket
+        source_storage_options = {k: v for k, v in s3_storage_options.items()
+                                  if v is not None}
+    else:
+        source_storage_options = {}
+    if not source_path:
+        raise click.UsageError('Option --source must be given')
+    index = NcKcIndex.create(
+        index_path=index_path,
+        source_path=source_path,
+        source_storage_options=source_storage_options
     )
-    print(f"Created empty index {os.path.abspath(nc_kc_index.index_path)}")
+    print(f"Created empty index {os.path.abspath(index.index_path)}")
 
 
 @cli.command()
-@click.option('--index', nargs=1, metavar='<path>',
+@click.option('--index', 'index_path', nargs=1, metavar='<path>',
               default=DEFAULT_INDEX_NAME,
               help=f'Local index directory path. Must exist.'
                    f' Defaults to "{DEFAULT_INDEX_NAME}".')
-@click.option('--prefix', metavar='<path>',
-              help='S3 key prefix')
+@click.option('--prefix', 'prefix_path', metavar='<path>',
+              help='Source prefix path')
 @click.option('--force', is_flag=True,
               help='Do not skip existing indexes.')
 @click.option('--dry-run', is_flag=True,
               help='Do not create any indexes.')
 @click.pass_context
 def sync(ctx,
-         index,
-         prefix,
+         index_path,
+         prefix_path,
          force,
          dry_run):
     """Synchronize a NetCDF Kerchunk index."""
     from xcube_smos.nckcindex.nckcindex import NcKcIndex
     # click.echo(f"Debug is {'on' if ctx.obj['DEBUG'] else 'off'}")
-    nc_kc_index = NcKcIndex.open(index_urlpath=index)
-    num_files, problems = nc_kc_index.sync(prefix=prefix,
+    nc_kc_index = NcKcIndex.open(index_path=index_path)
+    num_files, problems = nc_kc_index.sync(prefix=prefix_path,
                                            force=force,
                                            dry_run=dry_run)
     print(f"{num_files} file(s) synchronized"
@@ -110,25 +144,32 @@ def sync(ctx,
 
 
 @cli.command()
-@click.option('--index', nargs=1, metavar='<path>',
+@click.option('--index', 'index_path',
+              nargs=1, metavar='<path>',
               default=DEFAULT_INDEX_NAME,
               help=f'Local index directory path. Must exist.'
                    f' Defaults to "{DEFAULT_INDEX_NAME}".')
 @click.pass_context
-def info(ctx, index):
-    """Inform about a NetCDF Kerchunk index."""
+def describe(ctx, index_path):
+    """Describe a NetCDF Kerchunk index."""
     from xcube_smos.nckcindex.nckcindex import NcKcIndex
     # click.echo(f"Debug is {'on' if ctx.obj['DEBUG'] else 'off'}")
-    nc_kc_index = NcKcIndex.open(index_urlpath=index)
-    print(f"Index path: {os.path.abspath(nc_kc_index.index_path)}")
-    print(f"S3 endpoint URL: {nc_kc_index.s3_endpoint_url}")
-    print(f"S3 bucket: {nc_kc_index.s3_bucket}")
-    if nc_kc_index.s3_prefixes:
-        print("S3 prefixes:")
-        for k, v in nc_kc_index.s3_prefixes.items():
-            print(f"  {k}: {v}")
+    index = NcKcIndex.open(index_path=index_path)
+    print(f"Index path: {os.path.abspath(index.index_path)}")
+    print(f"Source path: {index.source_path}")
+    print(f"Source protocol: {index.source_protocol}")
+    if index.source_storage_options:
+        print(f"Source storage options:")
+        for k, v in index.source_storage_options.items():
+            print(f"  {k}: {'*****' if v in ('key', 'secret') else v}")
     else:
-        print("No defined S3 prefixes.")
+        print(f"Source storage options: <none>")
+    # if index.prefixes:
+    #     print("Prefixes:")
+    #     for k, v in index.prefixes.items():
+    #         print(f"  {k}: {v}")
+    # else:
+    #     print("Prefixes: <none>")
 
 
 if __name__ == '__main__':

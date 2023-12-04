@@ -28,11 +28,11 @@ import pandas as pd
 import xarray as xr
 
 from xcube.util.assertions import assert_given
-from xcube_smos.constants import INDEX_ENV_VAR_NAME
-from xcube_smos.nckcindex.nckcindex import NcKcIndex
-from xcube_smos.nckcindex.producttype import COMMON_FILENAME_DATETIME_FORMAT
-from xcube_smos.nckcindex.producttype import ProductType
-from xcube_smos.nckcindex.producttype import ProductTypeLike
+from ..constants import INDEX_ENV_VAR_NAME
+from ..nckcindex.nckcindex import NcKcIndex
+from ..nckcindex.producttype import ProductType
+from ..nckcindex.producttype import ProductTypeLike
+from xcube_smos.timeinfo import to_compact_time
 from .base import AbstractSmosCatalog
 from .base import DatasetOpener
 
@@ -42,25 +42,27 @@ _ONE_DAY = pd.Timedelta(1, unit="days")
 class SmosIndexCatalog(AbstractSmosCatalog):
     """A SMOS L2 dataset catalog that uses a Kerchunk index (NcKcIndex).
 
-    :param index_urlpath: Path or URL to the root directory
-    :param index_options: Storage options to access *index_urlpath*.
+    :param index_path: Path or URL to the root directory
+    :param index_storage_options: Storage options to access *index_urlpath*.
     """
 
     def __init__(self,
-                 index_urlpath: Optional[Union[str, Path]] = None,
-                 index_options: Optional[Dict[str, Any]] = None):
-        index_urlpath = index_urlpath or os.environ.get(INDEX_ENV_VAR_NAME)
-        assert_given(index_urlpath, name='index_urlpath')
-        index_urlpath = os.path.expanduser(str(index_urlpath))
-        self._nc_kc_index = NcKcIndex.open(index_urlpath,
-                                           index_options=index_options)
+                 index_path: Optional[Union[str, Path]] = None,
+                 index_storage_options: Optional[Dict[str, Any]] = None):
+        index_path = index_path or os.environ.get(INDEX_ENV_VAR_NAME)
+        assert_given(index_path, name='index_path')
+        index_path = os.path.expanduser(str(index_path))
+        self._nc_kc_index = NcKcIndex.open(
+            index_path=index_path,
+            index_storage_options=index_storage_options
+        )
 
     @property
     def dataset_opener(self) -> DatasetOpener:
         return SmosIndexCatalog.open_dataset
 
     @staticmethod
-    def open_dataset(dataset_path: str, remote_storage_options: dict) \
+    def open_dataset(dataset_path: str, source_storage_options: dict) \
             -> xr.Dataset:
         index_filename = dataset_path.rsplit("/", maxsplit=1)[-1]
         index_json_path = f"{dataset_path}/{index_filename}.nc.json"
@@ -71,7 +73,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                 "storage_options": {
                     "fo": index_json_path,
                     "remote_protocol": "s3",
-                    "remote_options": remote_storage_options or {}
+                    "remote_options": source_storage_options or {}
                 },
                 "consolidated": False
             },
@@ -79,8 +81,8 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         )
 
     @property
-    def remote_storage_options(self) -> Optional[Dict[str, Any]]:
-        return self._nc_kc_index.s3_options
+    def source_storage_options(self) -> Optional[Dict[str, Any]]:
+        return self._nc_kc_index.source_storage_options
 
     def find_datasets(self,
                       product_type: ProductTypeLike,
@@ -98,8 +100,8 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                                               end.month,
                                               end.day)
 
-        start_str = start.strftime(COMMON_FILENAME_DATETIME_FORMAT)
-        end_str = end.strftime(COMMON_FILENAME_DATETIME_FORMAT)
+        start_str = to_compact_time(start)
+        end_str = to_compact_time(end)
 
         start_index = -1
         for index, (_, _, start_end_str) in enumerate(start_times):

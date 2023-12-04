@@ -4,6 +4,7 @@ import unittest
 from xcube_smos.constants import INDEX_ENV_VAR_NAME
 from xcube_smos.catalog import SmosIndexCatalog
 
+
 index_path = os.environ.get(INDEX_ENV_VAR_NAME)
 
 if not index_path:
@@ -13,7 +14,7 @@ else:
 
 
 @unittest.skipUnless(index_path and os.path.exists(index_path), reason)
-class SmosCatalogTest(unittest.TestCase):
+class SmosIndexCatalogTest(unittest.TestCase):
 
     def test_find_files(self):
         archive = SmosIndexCatalog(index_path)
