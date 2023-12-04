@@ -2,11 +2,15 @@ import os
 
 import click
 
-from xcube_smos.nckcindex.constants import S3_PROTOCOL
-from xcube_smos.nckcindex.constants import DEFAULT_SOURCE_PROTOCOL
-from xcube_smos.nckcindex.constants import EXAMPLE_S3_BUCKET
-from xcube_smos.nckcindex.constants import EXAMPLE_S3_ENDPOINT_URL
-from xcube_smos.nckcindex.constants import DEFAULT_INDEX_NAME
+
+S3_PROTOCOL = "s3"
+FILE_PROTOCOL = "file"
+
+DEFAULT_INDEX_NAME = "nckc-index"
+DEFAULT_SOURCE_PROTOCOL = FILE_PROTOCOL
+
+EXAMPLE_S3_ENDPOINT_URL = "https://s3.cloudferro.com"
+EXAMPLE_S3_BUCKET = "EODATA"
 
 
 @click.group(name='nckcidx')
@@ -160,13 +164,12 @@ def describe(ctx, index_path):
             print(f"  {k}: {'*****' if v in ('key', 'secret') else v}")
     else:
         print(f"Source storage options: <none>")
-    # TODO: prefixes is not used!
-    if index.prefixes:
-        print("Prefixes:")
-        for k, v in index.prefixes.items():
-            print(f"  {k}: {v}")
-    else:
-        print("Prefixes: <none>")
+    # if index.prefixes:
+    #     print("Prefixes:")
+    #     for k, v in index.prefixes.items():
+    #         print(f"  {k}: {v}")
+    # else:
+    #     print("Prefixes: <none>")
 
 
 if __name__ == '__main__':

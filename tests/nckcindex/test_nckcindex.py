@@ -11,6 +11,8 @@ local_path = os.path.dirname(__file__)
 index_path = os.path.join(local_path, "test-index")
 index_config_path = os.path.join(index_path, INDEX_CONFIG_FILENAME)
 
+source_path = os.path.realpath(os.path.join(local_path, "..", ".."))
+
 
 class NcKcIndexTest(unittest.TestCase):
 
@@ -21,43 +23,31 @@ class NcKcIndexTest(unittest.TestCase):
         shutil.rmtree(index_path, ignore_errors=True)
 
     def test_create(self):
-        index = NcKcIndex.create(index_path=index_path)
-        self.assertEqual("EODATA",
-                         index.source_path)
-        self.assertEqual({'endpoint_url': 'https://s3.cloudferro.com'},
-                         index.source_storage_options)
-        self.assertEqual({'OS': 'SMOS/L2OS/MIR_OSUDP2/',
-                          'SM': 'SMOS/L2SM/MIR_SMUDP2/'},
-                         index.prefixes)
-        self.assertIsInstance(index.source_fs, fsspec.AbstractFileSystem)
-        self.assertEqual(('s3', 's3a'), index.source_fs.protocol)
-
+        index = NcKcIndex.create(index_path=index_path,
+                                 source_path=source_path)
+        self.assert_local_index_ok(index)
         with open(index_config_path) as fp:
             config = json.load(fp)
-        self.assertEqual(
-            {
-                'version': 2,
-                'prefixes': {'OS': 'SMOS/L2OS/MIR_OSUDP2/',
-                             'SM': 'SMOS/L2SM/MIR_SMUDP2/'},
-                'source_path': 'EODATA',
-                'source_protocol': 's3',
-                'source_storage_options': {
-                    'endpoint_url': 'https://s3.cloudferro.com'
+            self.assertEqual(
+                {
+                    'version': 2,
+                    'source_path': source_path,
+                    'source_protocol': 'file',
+                    'source_storage_options': {},
                 },
-            },
-            config
-        )
+                config
+            )
 
     def test_open(self):
-        NcKcIndex.create(index_path=index_path)
+        NcKcIndex.create(index_path=index_path,
+                         source_path=source_path)
         index = NcKcIndex.open(index_path=index_path)
-        self.assertEqual("EODATA",
-                         index.source_path)
-        self.assertEqual({'endpoint_url': 'https://s3.cloudferro.com'},
-                         index.source_storage_options)
-        self.assertEqual({'OS': 'SMOS/L2OS/MIR_OSUDP2/',
-                          'SM': 'SMOS/L2SM/MIR_SMUDP2/'},
-                         index.prefixes)
+        self.assert_local_index_ok(index)
+
+    def assert_local_index_ok(self, index):
+        self.assertEqual(source_path, index.source_path)
+        self.assertEqual("file", index.source_protocol)
+        self.assertEqual({}, index.source_storage_options)
         self.assertIsInstance(index.source_fs, fsspec.AbstractFileSystem)
-        self.assertEqual(('s3', 's3a'), index.source_fs.protocol)
+        self.assertEqual(('file', 'local'), index.source_fs.protocol)
 

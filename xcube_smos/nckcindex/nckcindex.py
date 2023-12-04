@@ -1,3 +1,24 @@
+# The MIT License (MIT)
+# Copyright (c) 2023 by the xcube development team and contributors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
 from functools import cached_property
 import json
 from pathlib import Path
@@ -6,12 +27,8 @@ from typing import Union, Dict, Any, Optional, Iterator, List, \
 import warnings
 
 import fsspec
-from .constants import DEFAULT_SOURCE_PROTOCOL
-from .constants import DEFAULT_INDEX_NAME
 from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
-# TODO: remove dependency
-from .producttype import ProductType
 
 
 class NcKcIndex:
@@ -59,18 +76,13 @@ class NcKcIndex:
         return fsspec.filesystem(self.source_protocol,
                                  **self.source_storage_options)
 
-    # TODO: prefixes is not used!
-    @cached_property
-    def prefixes(self) -> Dict[str, Any]:
-        return self.index_config["prefixes"] or {}
-
     @classmethod
     def create(
         cls,
-        index_path: Union[str, Path] = DEFAULT_INDEX_NAME,
+        index_path: Union[str, Path],
         index_storage_options: Optional[Dict[str, Any]] = None,
         source_path: Optional[Union[str, Path]] = None,
-        source_protocol: Optional[str] = DEFAULT_SOURCE_PROTOCOL,
+        source_protocol: Optional[str] = None,
         source_storage_options: Optional[Dict[str, Any]] = None,
         replace_existing: bool = False,
     ) -> "NcKcIndex":
@@ -105,9 +117,6 @@ class NcKcIndex:
             source_path=source_path,
             source_protocol=source_protocol,
             source_storage_options=source_storage_options,
-            # TODO: prefixes is not used!
-            prefixes={pt.id: pt.path_prefix
-                      for pt in ProductType.get_all()}
         )
 
         index_fs, index_path, _ = cls._get_fs_path_protocol(
@@ -125,7 +134,7 @@ class NcKcIndex:
     @classmethod
     def open(
         cls,
-        index_path: Union[str, Path] = DEFAULT_INDEX_NAME,
+        index_path: Union[str, Path],
         index_storage_options: Optional[Dict[str, Any]] = None
     ) -> "NcKcIndex":
         """Open the given index at *index_path*.
@@ -185,8 +194,9 @@ class NcKcIndex:
             #   num_workers and submit workload in blocks. [#12]
             warnings.warn(f'num_workers={num_workers}:'
                           f' parallel processing not implemented yet.')
-            for nc_file_block in self.get_nc_file_blocks(prefix=prefix,
-                                                         block_size=block_size):
+            for nc_file_block in self.get_nc_file_blocks(
+                    prefix=prefix, block_size=block_size
+            ):
                 for nc_file in nc_file_block:
                     problem = self.index_nc_file(
                         nc_file, force=force, dry_run=dry_run
