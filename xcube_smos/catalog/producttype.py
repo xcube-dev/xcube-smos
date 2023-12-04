@@ -3,18 +3,17 @@ from typing import Union
 from xcube.util.assertions import assert_given
 from xcube.util.assertions import assert_true
 
+
 COMMON_SUB_PATH_PATTERN = "{year}/{month}/{day}"
 
 COMMON_NAME_PATTERN = r"(?P<sd>\d{8})T(?P<st>\d{6})_" \
                       r"(?P<ed>\d{8})T(?P<et>\d{6})_" \
                       r"\d{3}_\d{3}_\d{1}"
 
-# TODO: move into ../timeinfo as COMPACT_DATETIME_FORMAT
-COMMON_FILENAME_DATETIME_FORMAT = "%Y%m%d%H%M%S"
 
 ProductTypeLike = Union[str, "ProductType"]
 
-# TODO: move class into ../catalog/
+
 class ProductType:
     """SMOS product type."""
 
@@ -26,7 +25,6 @@ class ProductType:
         assert_true(path_prefix.endswith("/"),
                     message="path_prefix must end with '/'")
         self.id = id
-        # TODO: path_prefix is not used!
         self.path_prefix = path_prefix
         self.path_pattern = path_prefix + COMMON_SUB_PATH_PATTERN
         self.name_pattern = name_prefix + COMMON_NAME_PATTERN

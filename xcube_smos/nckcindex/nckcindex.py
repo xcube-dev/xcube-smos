@@ -11,7 +11,8 @@ from .constants import DEFAULT_SOURCE_PROTOCOL
 from .constants import DEFAULT_INDEX_NAME
 from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
-from .producttype import ProductType
+# TODO: remove dependency
+from ..catalog.producttype import ProductType
 
 
 class NcKcIndex:
@@ -59,6 +60,7 @@ class NcKcIndex:
         return fsspec.filesystem(self.source_protocol,
                                  **self.source_storage_options)
 
+    # TODO: prefixes is not used!
     @cached_property
     def prefixes(self) -> Dict[str, Any]:
         return self.index_config["prefixes"] or {}
@@ -104,6 +106,7 @@ class NcKcIndex:
             source_path=source_path,
             source_protocol=source_protocol,
             source_storage_options=source_storage_options,
+            # TODO: prefixes is not used!
             prefixes={pt.id: pt.path_prefix
                       for pt in ProductType.get_all()}
         )

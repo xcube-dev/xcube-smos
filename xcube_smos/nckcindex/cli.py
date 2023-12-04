@@ -160,7 +160,7 @@ def info(ctx, index_path):
             print(f"  {k}: {'*****' if v in ('key', 'secret') else v}")
     else:
         print(f"Source storage options: <none>")
-    # TODO: make prefixes a command line arg!
+    # TODO: prefixes is not used!
     if index.prefixes:
         print("Prefixes:")
         for k, v in index.prefixes.items():

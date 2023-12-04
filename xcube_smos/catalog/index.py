@@ -30,9 +30,9 @@ import xarray as xr
 from xcube.util.assertions import assert_given
 from xcube_smos.constants import INDEX_ENV_VAR_NAME
 from xcube_smos.nckcindex.nckcindex import NcKcIndex
-from xcube_smos.nckcindex.producttype import COMMON_FILENAME_DATETIME_FORMAT
-from xcube_smos.nckcindex.producttype import ProductType
-from xcube_smos.nckcindex.producttype import ProductTypeLike
+from xcube_smos.catalog.producttype import ProductType
+from xcube_smos.catalog.producttype import ProductTypeLike
+from xcube_smos.timeinfo import to_compact_time
 from .base import AbstractSmosCatalog
 from .base import DatasetOpener
 
@@ -50,10 +50,12 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                  index_path: Optional[Union[str, Path]] = None,
                  index_storage_options: Optional[Dict[str, Any]] = None):
         index_path = index_path or os.environ.get(INDEX_ENV_VAR_NAME)
-        assert_given(index_path, name='index_urlpath')
+        assert_given(index_path, name='index_path')
         index_path = os.path.expanduser(str(index_path))
-        self._nc_kc_index = NcKcIndex.open(index_path=index_path,
-                                           index_storage_options=index_storage_options)
+        self._nc_kc_index = NcKcIndex.open(
+            index_path=index_path,
+            index_storage_options=index_storage_options
+        )
 
     @property
     def dataset_opener(self) -> DatasetOpener:
@@ -98,9 +100,8 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                                               end.month,
                                               end.day)
 
-        # TODO: move into ../timeinfo as format_datetime_compact()
-        start_str = start.strftime(COMMON_FILENAME_DATETIME_FORMAT)
-        end_str = end.strftime(COMMON_FILENAME_DATETIME_FORMAT)
+        start_str = to_compact_time(start)
+        end_str = to_compact_time(end)
 
         start_index = -1
         for index, (_, _, start_end_str) in enumerate(start_times):

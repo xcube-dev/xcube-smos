@@ -27,7 +27,7 @@ that has a corresponding structure to `<source-path>`:
 
 ```
   <index-path>/
-    nckc-index.json
+    nckc-config.json
     <index-prefix>/<nc-path>/<nc-filename>.nc.json
 ```
 

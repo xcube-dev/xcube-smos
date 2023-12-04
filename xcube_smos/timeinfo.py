@@ -19,12 +19,17 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import datetime
 from typing import Tuple, Sequence
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 from xcube.util.assertions import assert_true
+
+
+COMPACT_DATETIME_FORMAT = "%Y%m%d%H%M%S"
 
 
 def parse_smos_time_ranges(l2_products: Sequence[xr.Dataset]) -> np.array:
@@ -53,6 +58,11 @@ def compact_to_iso_time(compact_time: str) -> str:
             f"{compact_time[8:10]}:"
             f"{compact_time[10:12]}:"
             f"{compact_time[12:14]}")
+
+
+def to_compact_time(time: datetime.datetime | pd.Timestamp | str) -> str:
+    time = pd.to_datetime(time)
+    return time.strftime(COMPACT_DATETIME_FORMAT)
 
 
 def get_time_range(l2_product: xr.Dataset) -> Tuple[str, str]:

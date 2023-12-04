@@ -52,6 +52,5 @@ class NcKcIndexTest(unittest.TestCase):
 
     def test_open(self):
         NcKcIndex.create(index_path=index_path)
-
         NcKcIndex.open(index_path=index_path)
 
