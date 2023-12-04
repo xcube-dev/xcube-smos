@@ -13,7 +13,7 @@ COMMON_FILENAME_DATETIME_FORMAT = "%Y%m%d%H%M%S"
 
 ProductTypeLike = Union[str, "ProductType"]
 
-
+# TODO: move class into ../catalog/
 class ProductType:
     """SMOS product type."""
 
@@ -25,6 +25,7 @@ class ProductType:
         assert_true(path_prefix.endswith("/"),
                     message="path_prefix must end with '/'")
         self.id = id
+        # TODO: path_prefix is not used!
         self.path_prefix = path_prefix
         self.path_pattern = path_prefix + COMMON_SUB_PATH_PATTERN
         self.name_pattern = name_prefix + COMMON_NAME_PATTERN

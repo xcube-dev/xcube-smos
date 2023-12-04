@@ -34,6 +34,8 @@ def cli(ctx, debug, traceback):
     ctx.obj['TRACEBACK'] = traceback
 
 
+# TODO: allow for profiles/template, so we can easily configure a
+#    SMOS index, e.g.: nckcidx create --profile smos-l2
 @cli.command()
 @click.pass_context
 @click.option('--index', 'index_path', nargs=1, metavar='<path>',
@@ -158,6 +160,7 @@ def info(ctx, index_path):
             print(f"  {k}: {'*****' if v in ('key', 'secret') else v}")
     else:
         print(f"Source storage options: <none>")
+    # TODO: make prefixes a command line arg!
     if index.prefixes:
         print("Prefixes:")
         for k, v in index.prefixes.items():
