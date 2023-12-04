@@ -24,8 +24,8 @@ from typing import Dict, Any, Optional, Tuple, List, Callable
 
 import xarray as xr
 
-from xcube_smos.catalog.producttype import ProductTypeLike
-from xcube_smos.utils import NotSerializable
+from ..nckcindex.producttype import ProductTypeLike
+from ..utils import NotSerializable
 
 DatasetOpener = Callable[[str, Optional[Dict[str, Any]]], xr.Dataset]
 

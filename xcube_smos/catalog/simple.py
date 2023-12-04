@@ -27,8 +27,8 @@ from typing import Tuple, Optional, List
 
 import xarray as xr
 
-from xcube_smos.catalog.producttype import ProductType
-from xcube_smos.catalog.producttype import ProductTypeLike
+from xcube_smos.nckcindex.producttype import ProductType
+from xcube_smos.nckcindex.producttype import ProductTypeLike
 from .base import AbstractSmosCatalog
 from .base import DatasetOpener
 

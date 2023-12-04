@@ -28,10 +28,10 @@ import pandas as pd
 import xarray as xr
 
 from xcube.util.assertions import assert_given
-from xcube_smos.constants import INDEX_ENV_VAR_NAME
-from xcube_smos.nckcindex.nckcindex import NcKcIndex
-from xcube_smos.catalog.producttype import ProductType
-from xcube_smos.catalog.producttype import ProductTypeLike
+from ..constants import INDEX_ENV_VAR_NAME
+from ..nckcindex.nckcindex import NcKcIndex
+from ..nckcindex.producttype import ProductType
+from ..nckcindex.producttype import ProductTypeLike
 from xcube_smos.timeinfo import to_compact_time
 from .base import AbstractSmosCatalog
 from .base import DatasetOpener

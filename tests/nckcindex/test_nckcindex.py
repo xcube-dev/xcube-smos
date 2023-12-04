@@ -32,8 +32,6 @@ class NcKcIndexTest(unittest.TestCase):
         self.assertIsInstance(index.source_fs, fsspec.AbstractFileSystem)
         self.assertEqual(('s3', 's3a'), index.source_fs.protocol)
 
-        self.assertTrue(index_config_path)
-
         with open(index_config_path) as fp:
             config = json.load(fp)
         self.assertEqual(
@@ -52,5 +50,14 @@ class NcKcIndexTest(unittest.TestCase):
 
     def test_open(self):
         NcKcIndex.create(index_path=index_path)
-        NcKcIndex.open(index_path=index_path)
+        index = NcKcIndex.open(index_path=index_path)
+        self.assertEqual("EODATA",
+                         index.source_path)
+        self.assertEqual({'endpoint_url': 'https://s3.cloudferro.com'},
+                         index.source_storage_options)
+        self.assertEqual({'OS': 'SMOS/L2OS/MIR_OSUDP2/',
+                          'SM': 'SMOS/L2SM/MIR_SMUDP2/'},
+                         index.prefixes)
+        self.assertIsInstance(index.source_fs, fsspec.AbstractFileSystem)
+        self.assertEqual(('s3', 's3a'), index.source_fs.protocol)
 

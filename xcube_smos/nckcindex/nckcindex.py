@@ -12,7 +12,7 @@ from .constants import DEFAULT_INDEX_NAME
 from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
 # TODO: remove dependency
-from ..catalog.producttype import ProductType
+from .producttype import ProductType
 
 
 class NcKcIndex:
