@@ -24,6 +24,7 @@ import json
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, Iterator, List, \
     Tuple, TypeVar, Type
+import os
 import warnings
 
 import fsspec
@@ -39,18 +40,21 @@ class NcKcIndex:
     def __init__(self,
                  index_fs: fsspec.AbstractFileSystem,
                  index_path: str,
+                 index_protocol: str,
                  index_config: Dict[str, Any]):
         """
         Private constructor. Use :meth:create() or :meth:open() instead.
 
         :param index_fs: Index filesystem.
         :param index_path: Path to the index directory.
+        :param index_protocol: The protocol used by the index filesystem.
         :param index_config: Optional storage options for accessing the
             filesystem of *index_path*.
             See fsspec for protocol given by *index_urlpath*.
         """
         self.index_fs = index_fs
         self.index_path = index_path
+        self.index_protocol = index_protocol
         self.index_config = index_config
 
         self.source_path = _get_config_param(index_config, "source_path")
@@ -80,6 +84,7 @@ class NcKcIndex:
     def create(
         cls,
         index_path: Union[str, Path],
+        index_protocol: Optional[str] = None,
         index_storage_options: Optional[Dict[str, Any]] = None,
         source_path: Optional[Union[str, Path]] = None,
         source_protocol: Optional[str] = None,
@@ -90,15 +95,17 @@ class NcKcIndex:
         Create a new NetCDF Kerchunk index.
 
         :param index_path: The index path or URL.
+        :param index_protocol: The index protocol.
+            If not provided, it will be derived from *index_path*.
         :param index_storage_options: Optional storage options for accessing
             the filesystem of *index_path*.
-            See fsspec for protocol given by *index_urlpath*.
+            See Python fsspec package spec for the used index protocol.
         :param source_path: The source path or URL.
         :param source_protocol: Optional protocol for the source filesystem.
-            If not provided, it will be derived from *index_path*.
+            If not provided, it will be derived from *source_path*.
         :param source_storage_options: Storage options for source
             NetCDF files, e.g., options for an S3 filesystem,
-            see fsspec/s3fs.
+            See Python fsspec package spec for the used source protocol.
         :param replace_existing: Whether to replace an existing
             NetCDF Kerchunk index.
         :return: A new NetCDF file index.
@@ -106,11 +113,18 @@ class NcKcIndex:
         if not source_path:
             raise ValueError("Missing source_path")
 
-        index_path = str(index_path)
+        index_fs, index_path, _ = cls._get_fs_path_protocol(
+            index_path,
+            protocol=index_protocol,
+            storage_options=index_storage_options
+        )
 
-        path_protocol, source_path = fsspec.core.split_protocol(source_path)
-        source_protocol = source_protocol or path_protocol or "file"
         source_storage_options = source_storage_options or {}
+        _, source_path, source_protocol = cls._get_fs_path_protocol(
+            source_path,
+            protocol=source_protocol,
+            storage_options=source_storage_options
+        )
 
         index_config = dict(
             version=INDEX_CONFIG_VERSION,
@@ -119,10 +133,6 @@ class NcKcIndex:
             source_storage_options=source_storage_options,
         )
 
-        index_fs, index_path, _ = cls._get_fs_path_protocol(
-            index_path,
-            storage_options=index_storage_options
-        )
         if replace_existing and index_fs.isdir(index_path):
             index_fs.rm(index_path, recursive=True)
         index_fs.mkdirs(index_path)
@@ -135,18 +145,22 @@ class NcKcIndex:
     def open(
         cls,
         index_path: Union[str, Path],
+        index_protocol: Optional[str] = None,
         index_storage_options: Optional[Dict[str, Any]] = None
     ) -> "NcKcIndex":
         """Open the given index at *index_path*.
 
-        :param index_path: Local file path or URL.
-        :param index_storage_options: Optional storage options for the
-            filesystem of *index_path*.
-            See fsspec for protocol given by *index_path*.
+        :param index_path: The index path or URL.
+        :param index_protocol: The index protocol.
+            If not provided, it will be derived from *index_path*.
+        :param index_storage_options: Optional storage options for accessing
+            the filesystem of *index_path*.
+            See Python fsspec package spec for the used index protocol.
         :return: A NetCDF file index.
         """
-        index_fs, index_path, _ = cls._get_fs_path_protocol(
+        index_fs, index_path, index_protocol = cls._get_fs_path_protocol(
             index_path,
+            protocol=index_protocol,
             storage_options=index_storage_options
         )
         with index_fs.open(cls._index_config_path(index_path), "r") as f:
@@ -154,6 +168,7 @@ class NcKcIndex:
         return NcKcIndex(
             index_fs,
             index_path,
+            index_protocol,
             index_config
         )
 
@@ -253,7 +268,12 @@ class NcKcIndex:
         """
         import kerchunk.hdf
 
-        nc_index_path = f"{self.index_path}/{nc_source_path}.json"
+        if nc_source_path.startswith(self.source_path + "/"):
+            nc_source_rel_path = nc_source_path[(len(self.source_path) + 1):]
+        else:
+            nc_source_rel_path = nc_source_path
+
+        nc_index_path = f"{self.index_path}/{nc_source_rel_path}.json"
 
         if not force and self.index_fs.exists(nc_index_path):
             print(f"Skipping {nc_source_path}, index exists")
@@ -296,11 +316,15 @@ class NcKcIndex:
     @classmethod
     def _get_fs_path_protocol(
         cls,
-        urlpath: str,
-        storage_options: Optional[Dict[str, Any]] = None
+        urlpath: str | Path,
+        protocol: Optional[str] = None,
+        storage_options: Optional[Dict[str, Any]] = None,
     ) -> Tuple[fsspec.AbstractFileSystem, str, str]:
-        protocol, path = fsspec.core.split_protocol(urlpath)
-        protocol = protocol or "file"
+        _protocol, path = fsspec.core.split_protocol(urlpath)
+        protocol = protocol or _protocol or "file"
+        if os.name == "nt" and protocol in ("file", "local"):
+            # Normalize a Windows path
+            path = path.replace("\\", "/")
         fs = fsspec.filesystem(protocol, **(storage_options or {}))
         return fs, path, protocol
 
