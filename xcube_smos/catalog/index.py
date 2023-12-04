@@ -98,6 +98,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                                               end.month,
                                               end.day)
 
+        # TODO: move into ../timeinfo as format_datetime_compact()
         start_str = start.strftime(COMMON_FILENAME_DATETIME_FORMAT)
         end_str = end.strftime(COMMON_FILENAME_DATETIME_FORMAT)
 

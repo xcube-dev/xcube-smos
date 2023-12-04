@@ -9,6 +9,7 @@ COMMON_NAME_PATTERN = r"(?P<sd>\d{8})T(?P<st>\d{6})_" \
                       r"(?P<ed>\d{8})T(?P<et>\d{6})_" \
                       r"\d{3}_\d{3}_\d{1}"
 
+# TODO: move into ../timeinfo as COMPACT_DATETIME_FORMAT
 COMMON_FILENAME_DATETIME_FORMAT = "%Y%m%d%H%M%S"
 
 ProductTypeLike = Union[str, "ProductType"]
