@@ -80,3 +80,25 @@ class NcKcIndexTest(unittest.TestCase):
                 config
             )
 
+    def test_open_with_env_subst(self):
+        os.environ["TEST_KEY"] = "12345"
+        os.environ["TEST_SECRET"] = "ABCDE"
+        config = {
+            "source_path": "s3://SMOS",
+            "source_storage_options": {
+                "anon": False,
+                "key": "${TEST_KEY}",
+                "secret": "${TEST_SECRET}",
+            }
+        }
+        os.mkdir(index_path)
+        with open(index_config_path, "w") as f:
+            json.dump(config, f)
+        index = NcKcIndex.open(index_path=index_path)
+        self.assertEqual("s3://SMOS", index.source_path)
+        self.assertEqual("s3", index.source_protocol)
+        self.assertEqual({
+            "anon": False,
+            "key": "12345",
+            "secret": "ABCDE",
+        }, index.source_storage_options)

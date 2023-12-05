@@ -24,6 +24,7 @@ import json
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, Iterator, List, \
     Tuple, TypeVar, Type
+import string
 import os
 import warnings
 
@@ -164,7 +165,7 @@ class NcKcIndex:
             storage_options=index_storage_options
         )
         with index_fs.open(cls._index_config_path(index_path), "r") as f:
-            index_config = json.load(f)
+            index_config = _substitute_json(json.load(f))
         return NcKcIndex(
             index_fs,
             index_path,
@@ -348,3 +349,17 @@ def _get_config_param(index_config: Dict[str, Any],
                          f"must be of type {param_type}, "
                          f"but was {type(value)}")
     return value
+
+
+def _substitute_json(value: Any) -> Any:
+    if isinstance(value, str):
+        return _substitute_text(value)
+    if isinstance(value, dict):
+        return {_substitute_text(k): _substitute_json(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_substitute_json(v) for v in value]
+    return value
+
+
+def _substitute_text(text: str) -> str:
+    return string.Template(text).safe_substitute(os.environ)
