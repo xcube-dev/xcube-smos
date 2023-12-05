@@ -33,13 +33,16 @@ from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
 
 
+AFS = fsspec.AbstractFileSystem
+
+
 class NcKcIndex:
     """
     Represents a NetCDF Kerchunk index.
     """
 
     def __init__(self,
-                 index_fs: fsspec.AbstractFileSystem,
+                 index_fs: AFS,
                  index_path: str,
                  index_protocol: str,
                  index_config: Dict[str, Any]):
@@ -77,7 +80,7 @@ class NcKcIndex:
         return protocol or "file"
 
     @cached_property
-    def source_fs(self) -> fsspec.AbstractFileSystem:
+    def source_fs(self) -> AFS:
         return fsspec.filesystem(self.source_protocol,
                                  **self.source_storage_options)
 
@@ -114,17 +117,17 @@ class NcKcIndex:
         if not source_path:
             raise ValueError("Missing source_path")
 
-        index_fs, index_path, _ = cls._get_fs_path_protocol(
+        index_fs, index_base_fs, index_path, _ = _open_index_fs(
             index_path,
+            mode="w",
             protocol=index_protocol,
-            storage_options=index_storage_options
+            storage_options=index_storage_options,
         )
 
         source_storage_options = source_storage_options or {}
-        _, source_path, source_protocol = cls._get_fs_path_protocol(
+        source_path, source_protocol = _normalize_path_protocol(
             source_path,
-            protocol=source_protocol,
-            storage_options=source_storage_options
+            protocol=source_protocol
         )
 
         index_config = dict(
@@ -134,11 +137,12 @@ class NcKcIndex:
             source_storage_options=source_storage_options,
         )
 
-        if replace_existing and index_fs.isdir(index_path):
-            index_fs.rm(index_path, recursive=True)
-        index_fs.mkdirs(index_path)
-        with index_fs.open(cls._index_config_path(index_path), "w") as f:
+        if replace_existing and index_base_fs.isdir(index_path):
+            index_base_fs.rm(index_path, recursive=True)
+        with index_fs.open(INDEX_CONFIG_FILENAME, "w") as f:
             json.dump(index_config, f, indent=2)
+        if hasattr(index_fs, "close"):
+            index_fs.close()
         return cls.open(index_path,
                         index_storage_options=index_storage_options)
 
@@ -159,12 +163,13 @@ class NcKcIndex:
             See Python fsspec package spec for the used index protocol.
         :return: A NetCDF file index.
         """
-        index_fs, index_path, index_protocol = cls._get_fs_path_protocol(
+        index_fs, _, index_path, index_protocol = _open_index_fs(
             index_path,
+            mode="r",
             protocol=index_protocol,
-            storage_options=index_storage_options
+            storage_options=index_storage_options,
         )
-        with index_fs.open(cls._index_config_path(index_path), "r") as f:
+        with index_fs.open(INDEX_CONFIG_FILENAME, "r") as f:
             index_config = _substitute_json(json.load(f))
         return NcKcIndex(
             index_fs,
@@ -274,7 +279,7 @@ class NcKcIndex:
         else:
             nc_source_rel_path = nc_source_path
 
-        nc_index_path = f"{self.index_path}/{nc_source_rel_path}.json"
+        nc_index_path = f"{nc_source_rel_path}.json"
 
         if not force and self.index_fs.exists(nc_index_path):
             print(f"Skipping {nc_source_path}, index exists")
@@ -297,7 +302,7 @@ class NcKcIndex:
         if dry_run:
             return None
 
-        nc_index_dir, _ = nc_index_path.rsplit("/", maxsplit=1)
+        nc_index_dir, _ = _split_parent_dir(nc_index_path)
         try:
             self.index_fs.mkdirs(nc_index_dir, exist_ok=True)
             with self.index_fs.open(nc_index_path, "w") as f:
@@ -309,25 +314,6 @@ class NcKcIndex:
             return problem
 
         return None
-
-    @classmethod
-    def _index_config_path(cls, index_path: str) -> str:
-        return f"{index_path}/{INDEX_CONFIG_FILENAME}"
-
-    @classmethod
-    def _get_fs_path_protocol(
-        cls,
-        urlpath: str | Path,
-        protocol: Optional[str] = None,
-        storage_options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[fsspec.AbstractFileSystem, str, str]:
-        _protocol, path = fsspec.core.split_protocol(urlpath)
-        protocol = protocol or _protocol or "file"
-        if os.name == "nt" and protocol in ("file", "local"):
-            # Normalize a Windows path
-            path = path.replace("\\", "/")
-        fs = fsspec.filesystem(protocol, **(storage_options or {}))
-        return fs, path, protocol
 
 
 T = TypeVar('T')
@@ -363,3 +349,47 @@ def _substitute_json(value: Any) -> Any:
 
 def _substitute_text(text: str) -> str:
     return string.Template(text).safe_substitute(os.environ)
+
+
+def _split_parent_dir(path: str) -> Tuple[str, str]:
+    splits = path.rsplit("/", maxsplit=1)
+    if len(splits) == 1:
+        return "", path
+    return splits[0], splits[1]
+
+
+def _open_index_fs(
+    path: str | Path,
+    mode: str,
+    protocol: Optional[str] = None,
+    storage_options: Optional[Dict[str, Any]] = None
+) -> Tuple[AFS, AFS, str, str]:
+    path, protocol = _normalize_path_protocol(path, protocol)
+    base_fs: AFS = fsspec.filesystem(protocol,
+                                     **(storage_options or {}))
+    if path.endswith(".zip"):
+        if mode == "w":
+            parent_dir, _ = _split_parent_dir(path)
+            base_fs.mkdirs(parent_dir, exist_ok=True)
+        dir_fs = fsspec.filesystem("zip",
+                                   fo=path,
+                                   mode=mode,
+                                   target_protocol=None if protocol == "file" else protocol,
+                                   target_options=None if not storage_options else storage_options)
+    else:
+        if mode == "w":
+            base_fs.makedirs(path, exist_ok=True)
+        dir_fs = fsspec.filesystem("dir", fo=path, fs=base_fs)
+    return dir_fs, base_fs, path, protocol
+
+
+def _normalize_path_protocol(
+    path: str | Path,
+    protocol: Optional[str] = None,
+) -> Tuple[str, str]:
+    _protocol, path = fsspec.core.split_protocol(path)
+    protocol = protocol or _protocol or "file"
+    if os.name == "nt" and protocol in ("file", "local"):
+        # Normalize a Windows path
+        path = path.replace("\\", "/")
+    return path, protocol
