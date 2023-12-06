@@ -9,7 +9,7 @@ Level-2 multi-level datasets.
 ## Index Format
 
 Consider some `<source-path>` that points into a NetCDF file archive.
-Then the path `<source-prefix>/<nc-path>/<nc-name>.nc` point to a
+Then the path `<source-prefix>/<nc-path>/<nc-name>.nc` points to a
 NetCDF file.
 
 ```
