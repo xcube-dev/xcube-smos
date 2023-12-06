@@ -1,3 +1,4 @@
+import json
 import os
 
 import click
@@ -38,8 +39,9 @@ def cli(ctx, debug, traceback):
     ctx.obj['TRACEBACK'] = traceback
 
 
-# TODO: allow for profiles/template, so we can easily configure a
+# Idea: allow for profiles/templates, so we can easily configure a
 #    SMOS index, e.g.: nckcidx create --profile smos-l2
+
 @cli.command()
 @click.pass_context
 @click.option('--index', 'index_path', nargs=1, metavar='<path>',
@@ -149,27 +151,33 @@ def sync(ctx,
               default=DEFAULT_INDEX_NAME,
               help=f'Local index directory path. Must exist.'
                    f' Defaults to "{DEFAULT_INDEX_NAME}".')
+@click.option('--json', 'json_output', is_flag=True,
+              help='Output as JSON.')
 @click.pass_context
-def describe(ctx, index_path):
+def describe(ctx, index_path, json_output):
     """Describe a NetCDF Kerchunk index."""
     from xcube_smos.nckcindex.nckcindex import NcKcIndex
     # click.echo(f"Debug is {'on' if ctx.obj['DEBUG'] else 'off'}")
     index = NcKcIndex.open(index_path=index_path)
-    print(f"Index path: {os.path.abspath(index.index_path)}")
-    print(f"Source path: {index.source_path}")
-    print(f"Source protocol: {index.source_protocol}")
-    if index.source_storage_options:
-        print(f"Source storage options:")
-        for k, v in index.source_storage_options.items():
-            print(f"  {k}: {'*****' if v in ('key', 'secret') else v}")
+    if json_output:
+        print(json.dumps({
+            "index_path": index.index_path,
+            "index_protocol": index.index_protocol,
+            "source_path": index.source_path,
+            "source_protocol": index.source_protocol,
+            "source_storage_options": index.source_storage_options,
+        }, indent=2))
     else:
-        print(f"Source storage options: <none>")
-    # if index.prefixes:
-    #     print("Prefixes:")
-    #     for k, v in index.prefixes.items():
-    #         print(f"  {k}: {v}")
-    # else:
-    #     print("Prefixes: <none>")
+        print(f"Index path: {index.index_path}")
+        print(f"Index protocol: {index.index_protocol}")
+        print(f"Source path: {index.source_path}")
+        print(f"Source protocol: {index.source_protocol}")
+        if index.source_storage_options:
+            print(f"Source storage options:")
+            for k, v in index.source_storage_options.items():
+                print(f"  {k}: {v}")
+        else:
+            print(f"Source storage options: <none>")
 
 
 if __name__ == '__main__':
