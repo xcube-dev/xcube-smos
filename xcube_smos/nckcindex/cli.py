@@ -3,7 +3,6 @@ import os
 
 import click
 
-
 S3_PROTOCOL = "s3"
 FILE_PROTOCOL = "file"
 
@@ -96,7 +95,7 @@ def create(ctx,
             "endpoint_url": s3_endpoint,
         }
         source_path = \
-            f"{source_path}/{s3_bucket}" if source_path and s3_bucket\
+            f"{source_path}/{s3_bucket}" if source_path and s3_bucket \
                 else source_path if source_path \
                 else s3_bucket
         source_storage_options = {k: v for k, v in s3_storage_options.items()
@@ -105,12 +104,12 @@ def create(ctx,
         source_storage_options = {}
     if not source_path:
         raise click.UsageError('Option --source must be given')
-    index = NcKcIndex.create(
-        index_path=index_path,
-        source_path=source_path,
-        source_storage_options=source_storage_options
-    )
-    print(f"Created empty index {os.path.abspath(index.index_path)}")
+    with NcKcIndex.create(
+            index_path=index_path,
+            source_path=source_path,
+            source_storage_options=source_storage_options
+    ) as index:
+        print(f"Created empty index {os.path.abspath(index.index_path)}")
 
 
 @cli.command()
