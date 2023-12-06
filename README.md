@@ -6,6 +6,47 @@ for [xcube](https://xcube.readthedocs.io/), providing experimental support for
 [ESA EE SMOS](https://www.esa.int/Applications/Observing_the_Earth/FutureEO/SMOS)
 Level-2 multi-level datasets.
 
+## Index Format
+
+Consider some `<source-path>` that points into a NetCDF file archive.
+Then the path `<source-prefix>/<nc-path>/<nc-name>.nc` points to a
+NetCDF file.
+
+```
+  <source-path>/
+    <source-prefix>/<nc-path>/<nc-filename>.nc
+```
+
+The `<nc-path>` includes any sub-folders between a `<source-prefix>` and 
+the `<nc-filename>.nc`. Typically, `<nc-path>` is or includes a 
+substructure `<year>/<month>/<day>`. Note that `<nc-path>` may also
+be empty.
+
+The NetCDF Kerchunk Index is a folder (or Zip archive) `<index-path>`
+that has a corresponding structure to `<source-path>`: 
+
+```
+  <index-path>/
+    nckc-config.json
+    <index-prefix>/<nc-path>/<nc-filename>.nc.json
+```
+
+The file `<index-path>/nckc-index.json` contains information 
+about the NetCDF file sources and provides a mapping from an
+`<index-prefix>` to its corresponding `<source-prefix>`:
+
+```json
+{
+  "source_path": "<source-path>",
+  "source_protocol": "file",
+  "source_storage_options": {},
+  "prefixes": {
+    "<index-prefix>": "<source-prefix>"
+  } 
+}
+```
+
+
 ## Installation
 
 xcube-smos consists of two parts: the code itself and the auxiliary data

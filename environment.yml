@@ -6,9 +6,9 @@ dependencies:
   - click
   - boto3
   # Pinned kerchunk deps while under test
-  - h5netcdf =1.1.0
-  - h5py =3.8.0
-  - kerchunk =0.1.2
+  - h5netcdf >=1.1.0,<1.2
+  - h5py >=3.8,<3.9
+  - kerchunk >=0.2,<0.3
   - xcube
   # development
   - pytest

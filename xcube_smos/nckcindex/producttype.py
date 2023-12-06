@@ -1,7 +1,5 @@
 from typing import Union
 
-from xcube.util.assertions import assert_given
-from xcube.util.assertions import assert_true
 
 COMMON_SUB_PATH_PATTERN = "{year}/{month}/{day}"
 
@@ -9,7 +7,6 @@ COMMON_NAME_PATTERN = r"(?P<sd>\d{8})T(?P<st>\d{6})_" \
                       r"(?P<ed>\d{8})T(?P<et>\d{6})_" \
                       r"\d{3}_\d{3}_\d{1}"
 
-COMMON_FILENAME_DATETIME_FORMAT = "%Y%m%d%H%M%S"
 
 ProductTypeLike = Union[str, "ProductType"]
 
@@ -21,9 +18,10 @@ class ProductType:
                  id: str,
                  path_prefix: str,
                  name_prefix: str):
-        assert_given(path_prefix, "path_prefix")
-        assert_true(path_prefix.endswith("/"),
-                    message="path_prefix must end with '/'")
+        if not path_prefix:
+            raise ValueError("path_prefix must be given")
+        if not path_prefix.endswith("/"):
+            raise ValueError("path_prefix must end with '/'")
         self.id = id
         self.path_prefix = path_prefix
         self.path_pattern = path_prefix + COMMON_SUB_PATH_PATTERN

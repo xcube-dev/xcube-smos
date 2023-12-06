@@ -51,11 +51,11 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
         return SmosSimpleCatalog.open_dataset
 
     @staticmethod
-    def open_dataset(dataset_path: str, remote_storage_options: dict) \
+    def open_dataset(dataset_path: str, source_storage_options: dict) \
             -> xr.Dataset:
         return xr.open_dataset(dataset_path,
                                decode_cf=False,
-                               **(remote_storage_options or {}))
+                               **(source_storage_options or {}))
 
     def find_datasets(self,
                       product_type: ProductTypeLike,

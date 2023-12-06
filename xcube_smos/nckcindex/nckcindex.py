@@ -1,129 +1,174 @@
-import json
-import warnings
+# The MIT License (MIT)
+# Copyright (c) 2023 by the xcube development team and contributors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
 from functools import cached_property
+import json
 from pathlib import Path
-from typing import Union, Dict, Any, Optional, Iterator, List, Tuple
+from typing import Union, Dict, Any, Optional, Iterator, List, \
+    Tuple, TypeVar, Type
+import os
+import warnings
 
 import fsspec
-
-from .constants import DEFAULT_BUCKET_NAME
-from .constants import DEFAULT_INDEX_NAME
 from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
-from .producttype import ProductType
 
 
 class NcKcIndex:
     """
     Represents a NetCDF Kerchunk index.
-    Index files are created for NetCDF files in some S3 bucket.
     """
 
     def __init__(self,
                  index_fs: fsspec.AbstractFileSystem,
                  index_path: str,
+                 index_protocol: str,
                  index_config: Dict[str, Any]):
         """
         Private constructor. Use :meth:create() or :meth:open() instead.
 
         :param index_fs: Index filesystem.
         :param index_path: Path to the index directory.
+        :param index_protocol: The protocol used by the index filesystem.
         :param index_config: Optional storage options for accessing the
-            filesystem of *index_urlpath*.
+            filesystem of *index_path*.
             See fsspec for protocol given by *index_urlpath*.
         """
         self.index_fs = index_fs
         self.index_path = index_path
+        self.index_protocol = index_protocol
         self.index_config = index_config
 
-    @cached_property
-    def s3_bucket(self) -> str:
-        return self.index_config["s3_bucket"]
+        self.source_path = _get_config_param(index_config, "source_path")
+        self._source_protocol = _get_config_param(
+            self.index_config,
+            "source_protocol", str, None
+        )
+        self.source_storage_options = _get_config_param(
+            index_config,
+            "source_storage_options", dict,
+            {}
+        )
 
     @cached_property
-    def s3_options(self) -> Dict[str, Any]:
-        return self.index_config["s3_options"] or {}
+    def source_protocol(self) -> str:
+        if self._source_protocol:
+            return self._source_protocol
+        protocol, path = fsspec.core.split_protocol(self.source_path)
+        return protocol or "file"
 
     @cached_property
-    def s3_prefixes(self) -> Dict[str, Any]:
-        return self.index_config["s3_prefixes"] or {}
-
-    @cached_property
-    def s3_endpoint_url(self) -> str:
-        return self.s3_options["endpoint_url"]
-
-    @cached_property
-    def s3_fs(self) -> fsspec.AbstractFileSystem:
-        return fsspec.filesystem("s3", **self.s3_options)
+    def source_fs(self) -> fsspec.AbstractFileSystem:
+        return fsspec.filesystem(self.source_protocol,
+                                 **self.source_storage_options)
 
     @classmethod
     def create(
-            cls,
-            index_urlpath: Union[str, Path] = DEFAULT_INDEX_NAME,
-            index_options: Optional[Dict[str, Any]] = None,
-            s3_bucket: str = DEFAULT_BUCKET_NAME,
-            s3_options: Optional[Dict[str, Any]] = None,
-            replace_existing: bool = False,
+        cls,
+        index_path: Union[str, Path],
+        index_protocol: Optional[str] = None,
+        index_storage_options: Optional[Dict[str, Any]] = None,
+        source_path: Optional[Union[str, Path]] = None,
+        source_protocol: Optional[str] = None,
+        source_storage_options: Optional[Dict[str, Any]] = None,
+        replace_existing: bool = False,
     ) -> "NcKcIndex":
         """
         Create a new NetCDF Kerchunk index.
 
-        :param index_urlpath: Local path or URL for the
-        :param index_options: Optional storage options for accessing the
-            filesystem of *index_urlpath*.
-            See fsspec for protocol given by *index_urlpath*.
-        :param s3_bucket: The source S3 bucket.
-        :param s3_options: Storage options for the S3 filesystem.
-            See fsspec/s3fs.
+        :param index_path: The index path or URL.
+        :param index_protocol: The index protocol.
+            If not provided, it will be derived from *index_path*.
+        :param index_storage_options: Optional storage options for accessing
+            the filesystem of *index_path*.
+            See Python fsspec package spec for the used index protocol.
+        :param source_path: The source path or URL.
+        :param source_protocol: Optional protocol for the source filesystem.
+            If not provided, it will be derived from *source_path*.
+        :param source_storage_options: Storage options for source
+            NetCDF files, e.g., options for an S3 filesystem,
+            See Python fsspec package spec for the used source protocol.
         :param replace_existing: Whether to replace an existing
             NetCDF Kerchunk index.
         :return: A new NetCDF file index.
         """
+        if not source_path:
+            raise ValueError("Missing source_path")
 
-        index_urlpath = str(index_urlpath)
-        s3_options = s3_options or {}
+        index_fs, index_path, _ = cls._get_fs_path_protocol(
+            index_path,
+            protocol=index_protocol,
+            storage_options=index_storage_options
+        )
+
+        source_storage_options = source_storage_options or {}
+        _, source_path, source_protocol = cls._get_fs_path_protocol(
+            source_path,
+            protocol=source_protocol,
+            storage_options=source_storage_options
+        )
 
         index_config = dict(
             version=INDEX_CONFIG_VERSION,
-            s3_bucket=s3_bucket,
-            s3_options=s3_options,
-            s3_prefixes={pt.id: pt.path_prefix
-                         for pt in ProductType.get_all()}
+            source_path=source_path,
+            source_protocol=source_protocol,
+            source_storage_options=source_storage_options,
         )
 
-        index_fs, index_path, _ = cls._get_fs_path_protocol(
-            index_urlpath,
-            storage_options=index_options
-        )
         if replace_existing and index_fs.isdir(index_path):
             index_fs.rm(index_path, recursive=True)
         index_fs.mkdirs(index_path)
         with index_fs.open(cls._index_config_path(index_path), "w") as f:
             json.dump(index_config, f, indent=2)
-        return cls.open(index_urlpath, index_options=index_options)
+        return cls.open(index_path,
+                        index_storage_options=index_storage_options)
 
     @classmethod
-    def open(cls,
-             index_urlpath: Union[str, Path] = DEFAULT_INDEX_NAME,
-             index_options: Optional[Dict[str, Any]] = None) -> "NcKcIndex":
-        """Open the given index at *index_urlpath*.
+    def open(
+        cls,
+        index_path: Union[str, Path],
+        index_protocol: Optional[str] = None,
+        index_storage_options: Optional[Dict[str, Any]] = None
+    ) -> "NcKcIndex":
+        """Open the given index at *index_path*.
 
-        :param index_urlpath: Local file path or URL.
-        :param index_options: Optional storage options for the
-            filesystem of *index_urlpath*.
-            See fsspec for protocol given by *index_urlpath*.
+        :param index_path: The index path or URL.
+        :param index_protocol: The index protocol.
+            If not provided, it will be derived from *index_path*.
+        :param index_storage_options: Optional storage options for accessing
+            the filesystem of *index_path*.
+            See Python fsspec package spec for the used index protocol.
         :return: A NetCDF file index.
         """
-        index_fs, index_path, _ = cls._get_fs_path_protocol(
-            index_urlpath,
-            storage_options=index_options
+        index_fs, index_path, index_protocol = cls._get_fs_path_protocol(
+            index_path,
+            protocol=index_protocol,
+            storage_options=index_storage_options
         )
         with index_fs.open(cls._index_config_path(index_path), "r") as f:
             index_config = json.load(f)
-        # TODO: validate index_config contents
         return NcKcIndex(
             index_fs,
             index_path,
+            index_protocol,
             index_config
         )
 
@@ -161,11 +206,12 @@ class NcKcIndex:
                     problems.append(problem)
         else:
             # TODO: setup mult-threaded/-process (Dask) executor with
-            #   num_workers and submit workload in blocks.
+            #   num_workers and submit workload in blocks. [#12]
             warnings.warn(f'num_workers={num_workers}:'
                           f' parallel processing not implemented yet.')
-            for nc_file_block in self.get_nc_file_blocks(prefix=prefix,
-                                                         block_size=block_size):
+            for nc_file_block in self.get_nc_file_blocks(
+                    prefix=prefix, block_size=block_size
+            ):
                 for nc_file in nc_file_block:
                     problem = self.index_nc_file(
                         nc_file, force=force, dry_run=dry_run
@@ -176,87 +222,24 @@ class NcKcIndex:
                         problems.append(problem)
         return num_files, problems
 
-    def index_nc_file(self,
-                      nc_path: str,
-                      force: bool = False,
-                      dry_run: bool = False) -> Optional[str]:
-        """
-        Index a NetCDF file given by *nc_path* in S3.
-
-        :param nc_path: NetCDF file S3 path relative to bucket.
-        :param force: Do not skip existing indexes.
-        :param dry_run: Do not write any indexes. Useful for testing.
-        :return: None, if the NetCDF file has been successfully indexed.
-            Otherwise, a message indicating the problem.
-        """
-        import kerchunk.hdf
-
-        nc_index_path = f"{self.index_path}/{nc_path}.json"
-
-        if not force and self.index_fs.exists(nc_index_path):
-            print(f"Skipping {nc_path}, index exists")
-            return None
-
-        s3_url = f"s3://{self.s3_bucket}/{nc_path}"
-
-        print(f"Indexing {s3_url}")
-
-        try:
-            with self.s3_fs.open(s3_url) as f:
-                chunks = kerchunk.hdf.SingleHdf5ToZarr(
-                    f, s3_url, inline_threshold=100
-                )
-                chunks_object = chunks.translate()
-        except OSError as e:
-            problem = f"Error creating index {s3_url}: {e}"
-            print(problem)
-            return problem
-
-        if dry_run:
-            return None
-
-        nc_index_dir, _ = nc_index_path.rsplit("/", maxsplit=1)
-        try:
-            self.index_fs.mkdirs(nc_index_dir, exist_ok=True)
-            with self.index_fs.open(nc_index_path, "w") as f:
-                json.dump(chunks_object, f)
-        except OSError as e:
-            problem = f"Error writing index {s3_url}: {e}"
-            print(problem)
-            return problem
-
-        return None
-
-    @classmethod
-    def _index_config_path(cls, index_path: str) -> str:
-        return f"{index_path}/{INDEX_CONFIG_FILENAME}"
-
-    @classmethod
-    def _get_fs_path_protocol(
-            cls,
-            urlpath: str,
-            storage_options: Optional[Dict[str, Any]] = None
-    ) -> Tuple[fsspec.AbstractFileSystem, str, str]:
-        protocol, path = fsspec.core.split_protocol(urlpath)
-        protocol = protocol or "file"
-        fs = fsspec.filesystem(protocol, **(storage_options or {}))
-        return fs, path, protocol
-
     def get_nc_files(self,
                      prefix: Optional[str] = None) -> Iterator[str]:
-        from .s3scanner import S3Scanner
-        s3_bucket = self.index_config["s3_bucket"]
-        s3_options = self.index_config["s3_options"]
-        s3_scanner = S3Scanner(**s3_options)
-        if prefix is not None:
-            yield from s3_scanner.get_keys(s3_bucket,
-                                           prefix=prefix,
-                                           suffix=".nc")
-        else:
-            for pt in ProductType.get_all():
-                yield from s3_scanner.get_keys(s3_bucket,
-                                               prefix=pt.path_prefix,
-                                               suffix=".nc")
+
+        source_fs = self.source_fs
+        source_path = self.source_path
+
+        if prefix:
+            source_path += "/" + prefix
+
+        def handle_error(e: OSError):
+            print(f"Error scanning source {source_path}:"
+                  f" {e.__class__.__name__}: {e}")
+
+        for path, _, files in source_fs.walk(source_path,
+                                             on_error=handle_error):
+            for file in files:
+                if file.endswith(".nc"):
+                    yield path + "/" + file
 
     def get_nc_file_blocks(self,
                            prefix: Optional[str] = None,
@@ -269,3 +252,99 @@ class NcKcIndex:
                 block = []
         if block:
             yield block
+
+    def index_nc_file(self,
+                      nc_source_path: str,
+                      force: bool = False,
+                      dry_run: bool = False) -> Optional[str]:
+        """
+        Index a NetCDF file given by *nc_path* in S3.
+
+        :param nc_source_path: NetCDF source file path.
+        :param force: Do not skip existing indexes.
+        :param dry_run: Do not write any indexes. Useful for testing.
+        :return: None, if the NetCDF file has been successfully indexed.
+            Otherwise, a message indicating the problem.
+        """
+        import kerchunk.hdf
+
+        if nc_source_path.startswith(self.source_path + "/"):
+            nc_source_rel_path = nc_source_path[(len(self.source_path) + 1):]
+        else:
+            nc_source_rel_path = nc_source_path
+
+        nc_index_path = f"{self.index_path}/{nc_source_rel_path}.json"
+
+        if not force and self.index_fs.exists(nc_index_path):
+            print(f"Skipping {nc_source_path}, index exists")
+            return None
+
+        print(f"Indexing {nc_source_path}")
+
+        try:
+            with self.source_fs.open(nc_source_path, mode="rb") as f:
+                chunks = kerchunk.hdf.SingleHdf5ToZarr(
+                    f, nc_source_path, inline_threshold=100
+                )
+                chunks_object = chunks.translate()
+        except OSError as e:
+            problem = f"Error indexing {nc_source_path}:" \
+                      f" {e.__class__.__name__}: {e}"
+            print(problem)
+            return problem
+
+        if dry_run:
+            return None
+
+        nc_index_dir, _ = nc_index_path.rsplit("/", maxsplit=1)
+        try:
+            self.index_fs.mkdirs(nc_index_dir, exist_ok=True)
+            with self.index_fs.open(nc_index_path, "w") as f:
+                json.dump(chunks_object, f)
+        except OSError as e:
+            problem = f"Error writing index {nc_index_path}:" \
+                      f" {e.__class__.__name__}: {e}"
+            print(problem)
+            return problem
+
+        return None
+
+    @classmethod
+    def _index_config_path(cls, index_path: str) -> str:
+        return f"{index_path}/{INDEX_CONFIG_FILENAME}"
+
+    @classmethod
+    def _get_fs_path_protocol(
+        cls,
+        urlpath: str | Path,
+        protocol: Optional[str] = None,
+        storage_options: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[fsspec.AbstractFileSystem, str, str]:
+        _protocol, path = fsspec.core.split_protocol(urlpath)
+        protocol = protocol or _protocol or "file"
+        if os.name == "nt" and protocol in ("file", "local"):
+            # Normalize a Windows path
+            path = path.replace("\\", "/")
+        fs = fsspec.filesystem(protocol, **(storage_options or {}))
+        return fs, path, protocol
+
+
+T = TypeVar('T')
+_UNDEFINED = "_UNDEFINED"
+
+
+def _get_config_param(index_config: Dict[str, Any],
+                      param_name: str,
+                      param_type: Type[T] = str,
+                      default_value: Any = _UNDEFINED) -> T:
+    if param_name not in index_config:
+        if default_value == _UNDEFINED:
+            raise ValueError(f"Missing configuration "
+                             f"parameter '{param_name}'")
+        return default_value
+    value = index_config.get(param_name)
+    if not isinstance(value, param_type):
+        raise ValueError(f"Configuration parameter '{param_name}' "
+                         f"must be of type {param_type}, "
+                         f"but was {type(value)}")
+    return value

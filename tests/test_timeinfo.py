@@ -3,9 +3,11 @@ import unittest
 import numpy as np
 import numpy.testing
 import pytest
+import pandas as pd
 import xarray as xr
 
 from xcube_smos.timeinfo import parse_smos_time_ranges
+from xcube_smos.timeinfo import to_compact_time
 
 
 class TimeInfoTest(unittest.TestCase):
@@ -47,3 +49,14 @@ class TimeInfoTest(unittest.TestCase):
                            match="missing attribute"
                                  " 'FH:Validity_Period:Validity_Start'"):
             parse_smos_time_ranges(l2_products)
+
+    def test_to_compact_time(self):
+        self.assertEqual("20231204094511",
+                         to_compact_time("20231204094511"))
+        self.assertEqual("20231204094511",
+                         to_compact_time("2023-12-04T09:45:11"))
+        self.assertEqual("20231204094511",
+                         to_compact_time("2023-12-04 09:45:11"))
+        self.assertEqual("20231204094511",
+                         to_compact_time(
+                             pd.to_datetime("2023-12-04 09:45:11")))
