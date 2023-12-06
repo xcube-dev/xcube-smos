@@ -20,11 +20,13 @@
 # DEALINGS IN THE SOFTWARE.
 
 import json
+import sys
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, Iterator, List, \
     Tuple, TypeVar, Type
-import string
 import os
+import string
+import traceback
 import warnings
 
 import fsspec
@@ -95,8 +97,8 @@ class NcKcIndex:
             # noinspection PyBroadException
             try:
                 fs.close()
-            except BaseException:
-                pass
+            except BaseException as e:
+                traceback.print_exception(e, file=sys.stderr)
 
     @classmethod
     def create(

@@ -175,18 +175,17 @@ class NcKcIndexZipTest(unittest.TestCase):
         self.assertEqual(5, sync_count)
         self.assertEqual([], problems)
         with zipfile.ZipFile(index_zip_path) as zf:
-            self.assertEqual({"SM", INDEX_CONFIG_FILENAME},
-                             set(zf.namelist()))
-            # self.assertEqual([
-            #     f"SM_OPER_MIR_SMUDP2_{dt}_700_001_1.nc.json"
-            #     for dt in (
-            #         '20230401T150613_20230401T155931',
-            #         '20230401T155619_20230401T164933',
-            #         '20230401T173625_20230401T182938',
-            #         '20230401T191629_20230401T200942',
-            #         '20230401T205632_20230401T214947'
-            #     )
-            # ], zf.listdir(index_path + "/SM"))
+            self.assertEqual(
+                {
+                    INDEX_CONFIG_FILENAME,
+                    'SM/SM_OPER_MIR_SMUDP2_20230401T173625_20230401T182938_700_001_1.nc.json',
+                    'SM/SM_OPER_MIR_SMUDP2_20230401T205632_20230401T214947_700_001_1.nc.json',
+                    'SM/SM_OPER_MIR_SMUDP2_20230401T155619_20230401T164933_700_001_1.nc.json',
+                    'SM/SM_OPER_MIR_SMUDP2_20230401T150613_20230401T155931_700_001_1.nc.json',
+                    'SM/SM_OPER_MIR_SMUDP2_20230401T191629_20230401T200942_700_001_1.nc.json',
+                },
+                set(zf.namelist())
+            )
 
     def assert_local_index_ok(self, index):
         self.assertEqual(source_path, index.source_path)
