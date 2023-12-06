@@ -43,7 +43,7 @@ class NcKcIndexDirTest(unittest.TestCase):
                               source_path=source_path,
                               replace=True) as index:
             self.assert_local_index_ok(index)
-        with pytest.raises(OSError, match=f"Directory exists: *."):
+        with pytest.raises(OSError, match=f"Index exists: *."):
             NcKcIndex.create(index_path=index_path,
                              source_path=source_path,
                              replace=False)
@@ -59,7 +59,7 @@ class NcKcIndexDirTest(unittest.TestCase):
     # noinspection PyMethodMayBeStatic
     def test_open_not_found(self):
         with pytest.raises(FileNotFoundError,
-                           match=f"Directory not found: *."):
+                           match=f"Index not found: *."):
             NcKcIndex.open(index_path=index_path)
 
     def test_sync_dry_run(self):

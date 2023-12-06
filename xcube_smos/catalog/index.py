@@ -43,19 +43,13 @@ class SmosIndexCatalog(AbstractSmosCatalog):
     """A SMOS L2 dataset catalog that uses a Kerchunk index (NcKcIndex).
 
     :param index_path: Path or URL to the root directory
-    :param index_storage_options: Storage options to access *index_urlpath*.
     """
 
-    def __init__(self,
-                 index_path: Optional[Union[str, Path]] = None,
-                 index_storage_options: Optional[Dict[str, Any]] = None):
+    def __init__(self, index_path: Optional[Union[str, Path]] = None):
         index_path = index_path or os.environ.get(INDEX_ENV_VAR_NAME)
         assert_given(index_path, name='index_path')
         index_path = os.path.expanduser(str(index_path))
-        self._nc_kc_index = NcKcIndex.open(
-            index_path=index_path,
-            index_storage_options=index_storage_options
-        )
+        self._nc_kc_index = NcKcIndex.open(index_path=index_path)
 
     @property
     def dataset_opener(self) -> DatasetOpener:
@@ -155,24 +149,24 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         path_pattern = product_type.path_pattern
         name_pattern = product_type.name_pattern
 
-        path = self._nc_kc_index.index_path + "/" + path_pattern.format(
+        prefix = path_pattern.format(
             year=year,
             month=f'0{month}' if month < 10 else month,
             day=f'0{day}' if day < 10 else day
-        )
+        ) + "/"
 
-        result = []
-        for item in self._nc_kc_index.index_fs.listdir(path, detail=True):
-            # display(item)
-            if item["type"] == "directory":
-                name = item["name"][len(path) + 1:]
-                m = re.match(name_pattern, name)
-                if m is not None:
-                    start = m.group("sd") + m.group("st")
-                    end = m.group("ed") + m.group("et")
-                    result.append((path + "/" + name, start, end))
+        items = []
+        for item in self._nc_kc_index.index_store.list(prefix=prefix):
+            parent_and_filename = item.rsplit("/", 1)
+            filename = parent_and_filename[1] \
+                if len(parent_and_filename) == 2 else item
+            m = re.match(name_pattern, filename)
+            if m is not None:
+                start = m.group("sd") + m.group("st")
+                end = m.group("ed") + m.group("et")
+                items.append((item, start, end))
 
-        return sorted(result, key=lambda item: item[1])
+        return sorted(items)
 
     @staticmethod
     def _normalize_time_range(time_range):
