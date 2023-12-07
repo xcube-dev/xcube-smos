@@ -10,9 +10,14 @@ from dask.distributed import print
 
 from xcube.core.gridmapping import GridMapping
 from xcube.core.mldataset import LazyMultiLevelDataset
+from xcube.core.mldataset import MultiLevelDataset
 from xcube.core.zarrstore import GenericArray
 from xcube.core.zarrstore import GenericZarrStore
-from .dgg import SmosDiscreteGlobalGrid
+from .dgg import MAX_WIDTH
+from .dgg import MAX_HEIGHT
+from .dgg import MIN_PIXEL_SIZE
+from .dgg import new_dgg as new_static_dgg
+from .dggbase import SmosDiscreteGlobalGrid
 from ..utils import LruCache
 from ..utils import NotSerializable
 
@@ -60,11 +65,14 @@ DATASETS = {
 
 
 def new_dgg(urlpath: str):
-    """Load a DGG that is not chunked"""
+    """Load a DGG"""
     print("Loading new DGG instance", flush=True, file=sys.stderr)
-    return SmosDiscreteGlobalGrid(urlpath,
-                                  level0=1,
-                                  compute=True)
+    return new_static_dgg()
+    # Load a DGG that is not chunked
+    # return SmosDiscreteGlobalGrid(urlpath,
+    #                               level0=1,
+    #                               compute=True)
+
 
 
 class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
@@ -80,7 +88,7 @@ class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
     """
 
     def __init__(self,
-                 dgg: SmosDiscreteGlobalGrid,
+                 dgg: MultiLevelDataset,
                  dataset_id: str,
                  time_bounds: np.array,
                  time_step_loader: "SmosTimeStepLoader"):
@@ -99,7 +107,10 @@ class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
     def _get_dataset_lazily(self,
                             level: int,
                             parameters: Dict[str, Any]) -> xr.Dataset:
-        width, height, spatial_res = self.dgg.get_level_geom(level)
+        scale = 1 << level
+        width = MAX_WIDTH // scale
+        height = MAX_HEIGHT // scale
+        spatial_res = MIN_PIXEL_SIZE * scale
 
         # Load prototype product (cached)
         l2_product = self.time_step_loader.load_l2_product(0)
@@ -200,7 +211,7 @@ class SmosTimeStepLoader:
     """
 
     def __init__(self,
-                 dgg: SmosDiscreteGlobalGrid,
+                 dgg: MultiLevelDataset,
                  dataset_paths: List[str],
                  dataset_opener: Callable,
                  storage_options: Optional[Dict[str, Any]],
@@ -276,7 +287,7 @@ class SmosTimeStepLoader:
 class SmosL2Product:
 
     def __init__(self,
-                 dgg: SmosDiscreteGlobalGrid,
+                 dgg: MultiLevelDataset,
                  l2_dataset: xr.Dataset):
 
         grid_point_id = l2_dataset.Grid_Point_ID.values

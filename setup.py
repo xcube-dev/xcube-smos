@@ -25,7 +25,7 @@ from setuptools import setup, find_packages
 
 requirements = []
 
-packages = find_packages(exclude=["test", "test.*"])
+packages = find_packages(exclude=["tests", "tests.*", "testdata"])
 
 # Same effect as "from cate import version", but avoids importing cate:
 version = None
@@ -41,6 +41,10 @@ setup(
     license='MIT',
     author='xcube Development Team',
     packages=packages,
+    package_data={
+        'xcube_smos.mldataset': ['smos-dgg.levels/**']
+    },
+    include_package_data=True,
     entry_points={
         'console_scripts': [
             'nckcidx = xcube_smos.nckcindex.cli:cli',

@@ -25,7 +25,7 @@ from xcube.util.jsonschema import JsonDateSchema
 from xcube.util.jsonschema import JsonNumberSchema
 from xcube.util.jsonschema import JsonObjectSchema
 from xcube.util.jsonschema import JsonStringSchema
-from xcube_smos.mldataset.dgg import SmosDiscreteGlobalGrid
+from xcube_smos.mldataset import dgg
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
@@ -61,8 +61,8 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
             title='Bounding box [x1,y1, x2,y2] in geographical coordinates'
         ),
         spatial_res=JsonNumberSchema(
-            enum=[(1 << level) * SmosDiscreteGlobalGrid.MIN_PIXEL_SIZE
-                  for level in range(SmosDiscreteGlobalGrid.MAX_NUM_LEVELS)],
+            enum=[(1 << level) * dgg.MIN_PIXEL_SIZE
+                  for level in range(dgg.NUM_LEVELS)],
             title='Spatial resolution in decimal degrees.',
         ),
         time_range=JsonArraySchema(

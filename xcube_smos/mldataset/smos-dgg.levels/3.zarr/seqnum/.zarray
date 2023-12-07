@@ -1,12 +1,9 @@
 {
-    "chunks": [
-        504,
-        512
-    ],
+    "chunks": null,
     "compressor": {
         "blocksize": 0,
         "clevel": 5,
-        "cname": "zstd",
+        "cname": "zlib",
         "id": "blosc",
         "shuffle": 1
     },

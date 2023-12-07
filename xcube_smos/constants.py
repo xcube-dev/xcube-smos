@@ -22,7 +22,3 @@
 SMOS_DATA_STORE_ID = "smos"
 
 INDEX_ENV_VAR_NAME = "XCUBE_SMOS_INDEX_PATH"
-
-DGG_ENV_VAR_NAME = "XCUBE_SMOS_DGG_PATH"
-
-DEFAULT_SMOS_DGG_PATH = "~/.snap/auxdata/smos-dgg/grid-tiles"

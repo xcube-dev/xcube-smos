@@ -44,13 +44,13 @@
         },
         "seqnum/.zarray": {
             "chunks": [
-                504,
-                512
+                2016,
+                4096
             ],
             "compressor": {
                 "blocksize": 0,
                 "clevel": 5,
-                "cname": "zstd",
+                "cname": "zlib",
                 "id": "blosc",
                 "shuffle": 1
             },

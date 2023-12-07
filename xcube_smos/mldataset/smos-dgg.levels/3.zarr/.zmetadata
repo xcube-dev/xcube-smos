@@ -45,12 +45,12 @@
         "seqnum/.zarray": {
             "chunks": [
                 504,
-                512
+                1024
             ],
             "compressor": {
                 "blocksize": 0,
                 "clevel": 5,
-                "cname": "zstd",
+                "cname": "zlib",
                 "id": "blosc",
                 "shuffle": 1
             },

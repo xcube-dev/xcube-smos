@@ -19,7 +19,6 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os
 from functools import cached_property
 from typing import Iterator, Any, Tuple, Container, Union, Dict, Optional
 
@@ -37,8 +36,9 @@ from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import AbstractSmosCatalog
 from .catalog import SmosIndexCatalog
-from .constants import DEFAULT_SMOS_DGG_PATH
-from .constants import DGG_ENV_VAR_NAME
+from .mldataset.dgg import MAX_HEIGHT
+from .mldataset.dgg import MIN_PIXEL_SIZE
+from .mldataset.dgg import new_dgg
 from .mldataset.l2cube import SmosL2Cube
 from .mldataset.l2cube import SmosTimeStepLoader
 from .mldataset.l2cube import new_dgg
@@ -65,12 +65,6 @@ DEFAULT_OPENER_ID = DATASET_OPENER_ID
 class SmosDataStore(NotSerializable, DataStore):
     """Data store for SMOS L2C data cubes.
 
-    :param dgg_urlpath: Path or URL to the DGG as a SNAP image pyramid.
-        If not given, the value of the environment variable named
-        "XCUBE_SMOS_DGG_PATH" is used.
-        If this isn't given as well, *path* defaults to
-        "~/.snap/auxdata/smos-dgg/grid-tiles", which is installed
-        by the SNAP SMOS-Box plugin.
     :param index_urlpath: Path or URL to the SMOS Kerchunk index
     :param index_options: Storage options for accessing *index_urlpath*.
     :param catalog: Catalog (mock) instance used for testing only.
@@ -78,20 +72,16 @@ class SmosDataStore(NotSerializable, DataStore):
     """
 
     def __init__(self,
-                 dgg_urlpath: Optional[str] = None,
                  index_urlpath: Optional[str] = None,
                  index_options: Optional[Dict[str, Any]] = None,
                  catalog: Optional[AbstractSmosCatalog] = None):
-        self._dgg_urlpath = (dgg_urlpath
-                             or os.environ.get(DGG_ENV_VAR_NAME)
-                             or DEFAULT_SMOS_DGG_PATH)
         self._index_urlpath = index_urlpath
         self._index_options = index_options
         self._catalog = catalog
 
     @cached_property
-    def dgg(self):
-        return new_dgg(self._dgg_urlpath)
+    def dgg(self) -> MultiLevelDataset:
+        return new_dgg()
 
     @classmethod
     def get_data_store_params_schema(cls) -> JsonObjectSchema:
@@ -162,10 +152,10 @@ class SmosDataStore(NotSerializable, DataStore):
         #   Implementation note: It should be possible to provide
         #   all/more required metadata statically from the DGG and
         #   other sources such as the SMOS Kerchunk index.
-        lat_max = self.dgg.MAX_HEIGHT * self.dgg.MIN_PIXEL_SIZE / 2
+        lat_max = MAX_HEIGHT * MIN_PIXEL_SIZE / 2
         metadata = dict(
             bbox=[-180., -lat_max, 180., lat_max],
-            spatial_res=(1 << self.dgg.level0) * self.dgg.MIN_PIXEL_SIZE,
+            spatial_res=MIN_PIXEL_SIZE,
             time_range=["2010-01-01", None],  # TODO (forman): adjust start!
         )
         if data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE):
@@ -189,8 +179,7 @@ class SmosDataStore(NotSerializable, DataStore):
     def catalog(self) -> AbstractSmosCatalog:
         if self._catalog is not None:
             return self._catalog
-        return SmosIndexCatalog(index_path=self._index_urlpath,
-                                index_storage_options=self._index_options)
+        return SmosIndexCatalog(index_path=self._index_urlpath)
 
     def open_data(self,
                   data_id: str,
