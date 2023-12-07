@@ -41,7 +41,6 @@ from .mldataset.newdgg import MIN_PIXEL_SIZE
 from .mldataset.newdgg import new_dgg
 from .mldataset.l2cube import SmosL2Cube
 from .mldataset.l2cube import SmosTimeStepLoader
-from .mldataset.l2cube import new_dgg
 from .schema import OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
 from .timeinfo import parse_time_ranges

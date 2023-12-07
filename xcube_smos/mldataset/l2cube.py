@@ -64,15 +64,10 @@ DATASETS = {
 }
 
 
-def new_dgg(urlpath: str):
-    """Load a DGG"""
+def new_dgg():
+    """Load a DGG that is not chunked"""
     print("Loading new DGG instance", flush=True, file=sys.stderr)
     return new_static_dgg()
-    # Load a DGG that is not chunked
-    # return SmosDiscreteGlobalGrid(urlpath,
-    #                               level0=1,
-    #                               compute=True)
-
 
 
 class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
@@ -240,17 +235,14 @@ class SmosTimeStepLoader:
         del state['l2_product_cache']
         dgg = state.pop('dgg')
 
-        state["dgg_urlpath"] = dgg.urlpath
-
         return state
 
     def __setstate__(self, state: Dict[str, Any]):
         print(f"Deserializing {self.class_name}", flush=True, file=sys.stderr)
 
-        dgg_urlpath = state.pop('dgg_urlpath')
         self.__dict__.update(state)
 
-        self.dgg = new_dgg(dgg_urlpath)
+        self.dgg = new_dgg()
         self.l2_product_cache = self.new_l2_product_cache()
 
     @property
