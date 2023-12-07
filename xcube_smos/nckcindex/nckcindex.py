@@ -148,7 +148,7 @@ class NcKcIndex:
         """Open the given index at *index_path*.
 
         :param index_path: The index path or URL.
-        :param mode: Open mode, must be either "w" or "r".
+        :param mode: Open mode, must be either "w", "a", or "r".
             Defaults to "r".
         :return: A NetCDF file index.
         """
