@@ -19,18 +19,23 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from functools import cached_property
 import json
+import os
+import string
+import sys
+import traceback
+import warnings
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, Iterator, List, \
     Tuple, TypeVar, Type
-import string
-import os
-import warnings
 
 import fsspec
+
 from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
+from .indexstore import IndexStore
+
+AFS = fsspec.AbstractFileSystem
 
 
 class NcKcIndex:
@@ -39,92 +44,88 @@ class NcKcIndex:
     """
 
     def __init__(self,
-                 index_fs: fsspec.AbstractFileSystem,
-                 index_path: str,
-                 index_protocol: str,
+                 index_store: IndexStore,
                  index_config: Dict[str, Any]):
         """
         Private constructor. Use :meth:create() or :meth:open() instead.
 
-        :param index_fs: Index filesystem.
-        :param index_path: Path to the index directory.
-        :param index_protocol: The protocol used by the index filesystem.
+        :param index_store: The index store.
         :param index_config: Optional storage options for accessing the
             filesystem of *index_path*.
             See fsspec for protocol given by *index_urlpath*.
         """
-        self.index_fs = index_fs
-        self.index_path = index_path
-        self.index_protocol = index_protocol
+        self.index_store = index_store
         self.index_config = index_config
 
         self.source_path = _get_config_param(index_config, "source_path")
-        self._source_protocol = _get_config_param(
-            self.index_config,
-            "source_protocol", str, None
+        self.source_protocol = _get_config_param(
+            index_config,
+            "source_protocol", str,
+            fsspec.core.split_protocol(self.source_path)[0] or "file"
         )
         self.source_storage_options = _get_config_param(
             index_config,
             "source_storage_options", dict,
             {}
         )
+        self.source_fs = fsspec.filesystem(self.source_protocol,
+                                           **self.source_storage_options)
+        self.is_closed = False
 
-    @cached_property
-    def source_protocol(self) -> str:
-        if self._source_protocol:
-            return self._source_protocol
-        protocol, path = fsspec.core.split_protocol(self.source_path)
-        return protocol or "file"
+    def __enter__(self):
+        return self
 
-    @cached_property
-    def source_fs(self) -> fsspec.AbstractFileSystem:
-        return fsspec.filesystem(self.source_protocol,
-                                 **self.source_storage_options)
+    def __exit__(self, *args):
+        self.close()
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if not self.is_closed:
+            self.index_store.close()
+            self.close_fs(self.source_fs)
+            self.is_closed = True
+
+    @classmethod
+    def close_fs(cls, fs: AFS):
+        if hasattr(fs, "close"):
+            # noinspection PyBroadException
+            try:
+                fs.close()
+            except BaseException as e:
+                traceback.print_exception(e, file=sys.stderr)
 
     @classmethod
     def create(
-        cls,
-        index_path: Union[str, Path],
-        index_protocol: Optional[str] = None,
-        index_storage_options: Optional[Dict[str, Any]] = None,
-        source_path: Optional[Union[str, Path]] = None,
-        source_protocol: Optional[str] = None,
-        source_storage_options: Optional[Dict[str, Any]] = None,
-        replace_existing: bool = False,
+            cls,
+            index_path: Union[str, Path],
+            source_path: Optional[Union[str, Path]] = None,
+            source_protocol: Optional[str] = None,
+            source_storage_options: Optional[Dict[str, Any]] = None,
+            replace: bool = False,
     ) -> "NcKcIndex":
         """
         Create a new NetCDF Kerchunk index.
 
         :param index_path: The index path or URL.
-        :param index_protocol: The index protocol.
-            If not provided, it will be derived from *index_path*.
-        :param index_storage_options: Optional storage options for accessing
-            the filesystem of *index_path*.
-            See Python fsspec package spec for the used index protocol.
         :param source_path: The source path or URL.
         :param source_protocol: Optional protocol for the source filesystem.
             If not provided, it will be derived from *source_path*.
         :param source_storage_options: Storage options for source
             NetCDF files, e.g., options for an S3 filesystem,
             See Python fsspec package spec for the used source protocol.
-        :param replace_existing: Whether to replace an existing
+        :param replace: Whether to replace an existing
             NetCDF Kerchunk index.
         :return: A new NetCDF file index.
         """
         if not source_path:
             raise ValueError("Missing source_path")
 
-        index_fs, index_path, _ = cls._get_fs_path_protocol(
-            index_path,
-            protocol=index_protocol,
-            storage_options=index_storage_options
-        )
-
         source_storage_options = source_storage_options or {}
-        _, source_path, source_protocol = cls._get_fs_path_protocol(
+        source_path, source_protocol = _normalize_path_protocol(
             source_path,
-            protocol=source_protocol,
-            storage_options=source_storage_options
+            protocol=source_protocol
         )
 
         index_config = dict(
@@ -134,44 +135,36 @@ class NcKcIndex:
             source_storage_options=source_storage_options,
         )
 
-        if replace_existing and index_fs.isdir(index_path):
-            index_fs.rm(index_path, recursive=True)
-        index_fs.mkdirs(index_path)
-        with index_fs.open(cls._index_config_path(index_path), "w") as f:
-            json.dump(index_config, f, indent=2)
-        return cls.open(index_path,
-                        index_storage_options=index_storage_options)
+        index_store = IndexStore.new(index_path, mode="x", replace=replace)
+        index_store.write(INDEX_CONFIG_FILENAME,
+                          json.dumps(index_config, indent=2))
+        index_store.close()
+
+        return cls.open(index_path, mode="a")
 
     @classmethod
-    def open(
-        cls,
-        index_path: Union[str, Path],
-        index_protocol: Optional[str] = None,
-        index_storage_options: Optional[Dict[str, Any]] = None
-    ) -> "NcKcIndex":
+    def open(cls, index_path: Union[str, Path], mode: str = "r") \
+            -> "NcKcIndex":
         """Open the given index at *index_path*.
 
         :param index_path: The index path or URL.
-        :param index_protocol: The index protocol.
-            If not provided, it will be derived from *index_path*.
-        :param index_storage_options: Optional storage options for accessing
-            the filesystem of *index_path*.
-            See Python fsspec package spec for the used index protocol.
+        :param mode: Open mode, must be either "w", "a", or "r".
+            Defaults to "r".
         :return: A NetCDF file index.
         """
-        index_fs, index_path, index_protocol = cls._get_fs_path_protocol(
-            index_path,
-            protocol=index_protocol,
-            storage_options=index_storage_options
-        )
-        with index_fs.open(cls._index_config_path(index_path), "r") as f:
+        if mode not in ("r", "w", "a"):
+            raise ValueError("Invalid mode, must be either 'r', 'w', or 'a'")
+
+        # Open with "r" mode, so we can read configuration
+        index_store = IndexStore.new(index_path, mode="r")
+        with index_store.open(INDEX_CONFIG_FILENAME, "r") as f:
             index_config = _substitute_json(json.load(f))
-        return NcKcIndex(
-            index_fs,
-            index_path,
-            index_protocol,
-            index_config
-        )
+
+        if mode != "r":
+            # Reopen using write mode
+            index_store = IndexStore.new(index_path, mode=mode)
+
+        return NcKcIndex(index_store, index_config)
 
     def sync(self,
              prefix: Optional[str] = None,
@@ -274,9 +267,9 @@ class NcKcIndex:
         else:
             nc_source_rel_path = nc_source_path
 
-        nc_index_path = f"{self.index_path}/{nc_source_rel_path}.json"
+        nc_index_path = f"{nc_source_rel_path}.json"
 
-        if not force and self.index_fs.exists(nc_index_path):
+        if not force and nc_index_path in self.index_store:
             print(f"Skipping {nc_source_path}, index exists")
             return None
 
@@ -297,11 +290,9 @@ class NcKcIndex:
         if dry_run:
             return None
 
-        nc_index_dir, _ = nc_index_path.rsplit("/", maxsplit=1)
+        nc_index_dir, _ = _split_parent_dir(nc_index_path)
         try:
-            self.index_fs.mkdirs(nc_index_dir, exist_ok=True)
-            with self.index_fs.open(nc_index_path, "w") as f:
-                json.dump(chunks_object, f)
+            self.index_store.write(nc_index_path, chunks_object)
         except OSError as e:
             problem = f"Error writing index {nc_index_path}:" \
                       f" {e.__class__.__name__}: {e}"
@@ -309,25 +300,6 @@ class NcKcIndex:
             return problem
 
         return None
-
-    @classmethod
-    def _index_config_path(cls, index_path: str) -> str:
-        return f"{index_path}/{INDEX_CONFIG_FILENAME}"
-
-    @classmethod
-    def _get_fs_path_protocol(
-        cls,
-        urlpath: str | Path,
-        protocol: Optional[str] = None,
-        storage_options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[fsspec.AbstractFileSystem, str, str]:
-        _protocol, path = fsspec.core.split_protocol(urlpath)
-        protocol = protocol or _protocol or "file"
-        if os.name == "nt" and protocol in ("file", "local"):
-            # Normalize a Windows path
-            path = path.replace("\\", "/")
-        fs = fsspec.filesystem(protocol, **(storage_options or {}))
-        return fs, path, protocol
 
 
 T = TypeVar('T')
@@ -351,11 +323,31 @@ def _get_config_param(index_config: Dict[str, Any],
     return value
 
 
+def _normalize_path_protocol(
+        path: str | Path,
+        protocol: Optional[str] = None,
+) -> Tuple[str, str]:
+    _protocol, path = fsspec.core.split_protocol(path)
+    protocol = protocol or _protocol or "file"
+    if os.name == "nt" and protocol in ("file", "local"):
+        # Normalize a Windows path
+        path = path.replace("\\", "/")
+    return path, protocol
+
+
+def _split_parent_dir(path: str) -> Tuple[str, str]:
+    splits = path.rsplit("/", maxsplit=1)
+    if len(splits) == 1:
+        return "", path
+    return splits[0], splits[1]
+
+
 def _substitute_json(value: Any) -> Any:
     if isinstance(value, str):
         return _substitute_text(value)
     if isinstance(value, dict):
-        return {_substitute_text(k): _substitute_json(v) for k, v in value.items()}
+        return {_substitute_text(k): _substitute_json(v)
+                for k, v in value.items()}
     if isinstance(value, list):
         return [_substitute_json(v) for v in value]
     return value

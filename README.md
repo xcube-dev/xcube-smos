@@ -9,42 +9,40 @@ Level-2 multi-level datasets.
 ## Index Format
 
 Consider some `<source-path>` that points into a NetCDF file archive.
-Then the path `<source-prefix>/<nc-path>/<nc-name>.nc` points to a
-NetCDF file.
+Then the path `<source-path>/<nc-path>/<nc-filename>.nc` points to a
+NetCDF file in the archive, where `<nc-path>` includes any sub-folders 
+between a `<source-path>` and the `<nc-filename>.nc`. 
+Typically, `<nc-path>` is or includes a substructure `<year>/<month>/<day>`. 
+Note that `<nc-path>` may also be empty.
 
-```
-  <source-path>/
-    <source-prefix>/<nc-path>/<nc-filename>.nc
-```
-
-The `<nc-path>` includes any sub-folders between a `<source-prefix>` and 
-the `<nc-filename>.nc`. Typically, `<nc-path>` is or includes a 
-substructure `<year>/<month>/<day>`. Note that `<nc-path>` may also
-be empty.
-
-The NetCDF Kerchunk Index is a folder (or Zip archive) `<index-path>`
-that has a corresponding structure to `<source-path>`: 
+The NetCDF Kerchunk Index at `<index-path>` takes the following form: 
 
 ```
   <index-path>/
     nckc-config.json
-    <index-prefix>/<nc-path>/<nc-filename>.nc.json
+    <nc-path>/<nc-filename>.nc.json
 ```
 
+where `<index-path>` points to a local directory or Zip archive.
+Zip archive filenames must use the extension `.zip`.
 The file `<index-path>/nckc-index.json` contains information 
-about the NetCDF file sources and provides a mapping from an
-`<index-prefix>` to its corresponding `<source-prefix>`:
+about the NetCDF file sources, for example:
 
 ```json
 {
-  "source_path": "<source-path>",
-  "source_protocol": "file",
-  "source_storage_options": {},
-  "prefixes": {
-    "<index-prefix>": "<source-prefix>"
-  } 
+  "source_path": "EODATA",
+  "source_protocol": "s3",
+  "source_storage_options": {
+    "endpoint_url": "https://s3.creodias.com",
+    "key": "${CREODIAS_S3_KEY}",
+    "secret": "${CREODIAS_S3_SECRET}"
+  }
 }
 ```
+
+where the value of `source_path` corresponds to `<source-path>` above.
+Textual values that contain the pattern `${NAME}` will be interpolated 
+by environment variables.
 
 
 ## Installation

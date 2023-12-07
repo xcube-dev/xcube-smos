@@ -21,4 +21,5 @@
 
 from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
+from .indexstore import IndexStore
 from .nckcindex import NcKcIndex
