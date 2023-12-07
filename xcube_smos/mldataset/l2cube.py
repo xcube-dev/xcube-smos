@@ -13,11 +13,11 @@ from xcube.core.mldataset import LazyMultiLevelDataset
 from xcube.core.mldataset import MultiLevelDataset
 from xcube.core.zarrstore import GenericArray
 from xcube.core.zarrstore import GenericZarrStore
-from .dgg import MAX_WIDTH
-from .dgg import MAX_HEIGHT
-from .dgg import MIN_PIXEL_SIZE
-from .dgg import new_dgg as new_static_dgg
-from .dggbase import SmosDiscreteGlobalGrid
+from .newdgg import MAX_WIDTH
+from .newdgg import MAX_HEIGHT
+from .newdgg import MIN_PIXEL_SIZE
+from .newdgg import new_dgg as new_static_dgg
+from .dgg import SmosDiscreteGlobalGrid
 from ..utils import LruCache
 from ..utils import NotSerializable
 

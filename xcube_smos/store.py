@@ -36,9 +36,9 @@ from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import AbstractSmosCatalog
 from .catalog import SmosIndexCatalog
-from .mldataset.dgg import MAX_HEIGHT
-from .mldataset.dgg import MIN_PIXEL_SIZE
-from .mldataset.dgg import new_dgg
+from .mldataset.newdgg import MAX_HEIGHT
+from .mldataset.newdgg import MIN_PIXEL_SIZE
+from .mldataset.newdgg import new_dgg
 from .mldataset.l2cube import SmosL2Cube
 from .mldataset.l2cube import SmosTimeStepLoader
 from .mldataset.l2cube import new_dgg

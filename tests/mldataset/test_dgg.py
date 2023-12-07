@@ -1,49 +1,86 @@
+# The MIT License (MIT)
+# Copyright (c) 2023 by the xcube development team and contributors
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+import os.path
 import unittest
-from math import ceil
-from pathlib import Path
-import numpy as np
-import xarray as xr
 
-from xcube.core.mldataset import MultiLevelDataset
-from xcube_smos.mldataset.dgg import NUM_LEVELS
-from xcube_smos.mldataset.dgg import MAX_WIDTH
-from xcube_smos.mldataset.dgg import MAX_HEIGHT
-from xcube_smos.mldataset.dgg import new_dgg
-from xcube_smos.mldataset.dgg import get_package_path
+from xcube_smos.mldataset.dgg import SmosDiscreteGlobalGrid
+
+DGG_PATH = os.path.expanduser("~/.snap/auxdata/smos-dgg/grid-tiles")
 
 
-class FooTest(unittest.TestCase):
-    def test_new_dgg_ok(self):
-        dgg = new_dgg()
-        self.assertIsInstance(dgg, MultiLevelDataset)
-        self.assertEqual(NUM_LEVELS, dgg.num_levels)
-        self.assertIsInstance(dgg.resolutions, (list, tuple))
-        self.assertEqual(NUM_LEVELS, len(dgg.resolutions))
+@unittest.skipUnless(os.path.isdir(DGG_PATH),
+                     f"cannot find {DGG_PATH}")
+class SmosDiscreteGlobalGridTest(unittest.TestCase):
+    def test_default(self):
+        dgg = SmosDiscreteGlobalGrid(DGG_PATH)
 
-        for i in range(0, dgg.num_levels):
-            scale = 1 << i
-            expected_w = MAX_WIDTH // scale
-            expected_h = MAX_HEIGHT // scale
+        self.assertEqual(7, dgg.num_levels)
 
-            ds = dgg.get_dataset(i)
-            self.assertIsInstance(ds, xr.Dataset)
-            self.assertEqual({'lat': expected_h, 'lon': expected_w}, ds.dims)
-            self.assertIn("seqnum", ds)
-            self.assertIsInstance(ds.seqnum, xr.DataArray)
-            self.assertEqual(np.dtype("uint32"), ds.seqnum.dtype)
-            self.assertEqual(('lat', 'lon'), ds.seqnum.dims)
-            self.assertEqual((expected_h, expected_w), ds.seqnum.shape)
-            self.assertEqual(((expected_h,), (expected_w,)), ds.seqnum.chunks)
+        ds0 = dgg.get_dataset(0)
+        self.assertIn("seqnum", ds0)
+        self.assertEqual((8064, 16384), ds0.seqnum.shape)
+        self.assertEqual((16 * (504,), 32 * (512,)), ds0.seqnum.chunks)
 
-    def test_new_dgg_creates_new_instances(self):
-        dgg1 = new_dgg()
-        dgg2 = new_dgg()
-        self.assertIsInstance(dgg1, MultiLevelDataset)
-        self.assertIsInstance(dgg2, MultiLevelDataset)
-        self.assertIsNot(dgg1, dgg2)
+        ds4 = dgg.get_dataset(4)
+        self.assertIn("seqnum", ds4)
+        self.assertEqual((504, 1024), ds4.seqnum.shape)
+        self.assertEqual(((504,), (512, 512)), ds4.seqnum.chunks)
 
-    def test_get_package_path(self):
-        expected_path = (Path(__file__).parent / ".." / ".." /
-                         "xcube_smos" / "mldataset"
-                         ).absolute().resolve()
-        self.assertEqual(expected_path, get_package_path())
+    def test_load(self):
+        dgg = SmosDiscreteGlobalGrid(DGG_PATH, compute=True)
+
+        self.assertEqual(7, dgg.num_levels)
+
+        ds0 = dgg.get_dataset(0)
+        self.assertIn("seqnum", ds0)
+        self.assertEqual((8064, 16384), ds0.seqnum.shape)
+        self.assertEqual(None, ds0.seqnum.chunks)
+
+        ds4 = dgg.get_dataset(4)
+        self.assertIn("seqnum", ds4)
+        self.assertEqual((504, 1024), ds4.seqnum.shape)
+        self.assertEqual(None, ds4.seqnum.chunks)
+
+        ds6 = dgg.get_dataset(6)
+        self.assertIn("seqnum", ds6)
+        self.assertEqual((126, 256), ds6.seqnum.shape)
+        self.assertEqual(None, ds6.seqnum.chunks)
+
+    def test_load_and_level0(self):
+        dgg = SmosDiscreteGlobalGrid(DGG_PATH, compute=True, level0=1)
+
+        self.assertEqual(6, dgg.num_levels)
+
+        ds0 = dgg.get_dataset(0)
+        self.assertIn("seqnum", ds0)
+        self.assertEqual((4032, 8192), ds0.seqnum.shape)
+        self.assertEqual(None, ds0.seqnum.chunks)
+
+        ds4 = dgg.get_dataset(3)
+        self.assertIn("seqnum", ds4)
+        self.assertEqual((504, 1024), ds4.seqnum.shape)
+        self.assertEqual(None, ds4.seqnum.chunks)
+
+        ds5 = dgg.get_dataset(5)
+        self.assertIn("seqnum", ds5)
+        self.assertEqual((126, 256), ds5.seqnum.shape)
+        self.assertEqual(None, ds5.seqnum.chunks)
