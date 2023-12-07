@@ -1,6 +1,6 @@
 ## Version 0.2.0 (in development)
 
-* The NetCDF Kerchunk index can now also be Zip archive. 
+* The NetCDF Kerchunk index can now also be a Zip archive. 
   To use a Zip archive, pass an index path to the `nckcidx` CLI
   or to the `NcKcIndex`class whose filename has a `.zip`
   extension. [#8]

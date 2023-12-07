@@ -53,6 +53,11 @@ class IndexStore(ABC):
         """List the files in this store.
         The method will return relative paths to files only.
         The separator character is always a forward slash "/".
+        If *prefix* is given, it is used to filter files
+        that start with the given prefix string.
+
+        :param prefix: Optional prefix for filtering the returned files.
+        :return: The list of files in this store.
         """
 
     @abstractmethod
