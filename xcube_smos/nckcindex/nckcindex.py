@@ -20,16 +20,17 @@
 # DEALINGS IN THE SOFTWARE.
 
 import json
+import os
+import string
 import sys
+import traceback
+import warnings
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, Iterator, List, \
     Tuple, TypeVar, Type
-import os
-import string
-import traceback
-import warnings
 
 import fsspec
+
 from .constants import INDEX_CONFIG_FILENAME
 from .constants import INDEX_CONFIG_VERSION
 from .indexstore import IndexStore
@@ -345,8 +346,8 @@ def _substitute_json(value: Any) -> Any:
     if isinstance(value, str):
         return _substitute_text(value)
     if isinstance(value, dict):
-        return {_substitute_text(k): _substitute_json(v) for k, v in
-                value.items()}
+        return {_substitute_text(k): _substitute_json(v)
+                for k, v in value.items()}
     if isinstance(value, list):
         return [_substitute_json(v) for v in value]
     return value
