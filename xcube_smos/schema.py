@@ -30,15 +30,15 @@ from xcube_smos.mldataset.newdgg import NUM_LEVELS
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
-        dgg_urlpath=JsonStringSchema(
+        index_path=JsonStringSchema(
             min_length=1,
-            title='Path or URL to the local SMOS Discrete Global Grid.',
+            title='Path or URL to the SMOS NetCDF Kerchunk index.',
         ),
-        index_urlpath=JsonStringSchema(
-            min_length=1,
-            title='Path or URL to a local SMOS NetCDF Kerchunk index.',
+        index_protocol=JsonStringSchema(
+            min_length=2,
+            title='Protocol name for the SMOS NetCDF Kerchunk index.',
         ),
-        index_options=JsonObjectSchema(
+        index_storage_options=JsonObjectSchema(
             additional_properties=True,
             title='Storage options for the SMOS NetCDF Kerchunk index.',
             description='See fsspec documentation for specific filesystems.'

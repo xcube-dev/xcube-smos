@@ -64,18 +64,23 @@ DEFAULT_OPENER_ID = DATASET_OPENER_ID
 class SmosDataStore(NotSerializable, DataStore):
     """Data store for SMOS L2C data cubes.
 
-    :param index_urlpath: Path or URL to the SMOS Kerchunk index
-    :param index_options: Storage options for accessing *index_urlpath*.
+    :param index_path: Path or URL to the SMOS Kerchunk index
+    :param index_protocol: Optional filesystem protocol for accessing
+        *index_path*. Overwrites the protocol parsed from *index_path*,
+        if any.
+    :param index_storage_options: Storage options for accessing *index_path*.
     :param catalog: Catalog (mock) instance used for testing only.
         If given, *index_urlpath* and *index_options* are ignored.
     """
 
     def __init__(self,
-                 index_urlpath: Optional[str] = None,
-                 index_options: Optional[Dict[str, Any]] = None,
+                 index_path: Optional[str] = None,
+                 index_protocol: Optional[str] = None,
+                 index_storage_options: Optional[Dict[str, Any]] = None,
                  catalog: Optional[AbstractSmosCatalog] = None):
-        self._index_urlpath = index_urlpath
-        self._index_options = index_options
+        self._index_path = index_path
+        self._index_protocol = index_protocol
+        self._index_storage_options = index_storage_options
         self._catalog = catalog
 
     @cached_property
@@ -178,7 +183,7 @@ class SmosDataStore(NotSerializable, DataStore):
     def catalog(self) -> AbstractSmosCatalog:
         if self._catalog is not None:
             return self._catalog
-        return SmosIndexCatalog(index_path=self._index_urlpath)
+        return SmosIndexCatalog(index_path=self._index_path)
 
     def open_data(self,
                   data_id: str,
@@ -190,7 +195,7 @@ class SmosDataStore(NotSerializable, DataStore):
         opener_id = self._assert_valid_opener_id(opener_id)
         data_type = DataType.normalize(opener_id.split(":")[0])
 
-        time_range = open_params["time_range"]   # required
+        time_range = open_params["time_range"]  # required
         l2_product_cache_size = open_params.get("l2_product_cache_size", 0)
 
         # TODO (forman): respect other parameter from open_params here
@@ -257,4 +262,4 @@ class SmosDataStore(NotSerializable, DataStore):
     def _is_valid_data_type(cls, data_type: Optional[DataTypeLike]) -> bool:
         data_type = cls._normalize_data_type(data_type)
         return data_type.is_sub_type_of(DATASET_TYPE) or \
-               data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE)
+            data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE)

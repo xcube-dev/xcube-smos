@@ -13,15 +13,15 @@ class SmosSchemaTest(unittest.TestCase):
             JsonObjectSchema
         )
         self.assertIn(
-            'dgg_urlpath',
+            'index_path',
             STORE_PARAMS_SCHEMA.properties
         )
         self.assertIn(
-            'index_urlpath',
+            'index_protocol',
             STORE_PARAMS_SCHEMA.properties
         )
         self.assertIn(
-            'index_options',
+            'index_storage_options',
             STORE_PARAMS_SCHEMA.properties
         )
 
