@@ -12,7 +12,7 @@ from xcube_smos.mldataset.newdgg import new_dgg
 from xcube_smos.mldataset.newdgg import get_package_path
 
 
-class FooTest(unittest.TestCase):
+class NewDggTest(unittest.TestCase):
     def test_new_dgg_ok(self):
         dgg = new_dgg()
         self.assertIsInstance(dgg, MultiLevelDataset)
