@@ -1,6 +1,5 @@
 # Various data files
 xcube-server.yaml
-notebooks/smos.zarr
 
 # IDEs
 /.idea/
@@ -115,15 +114,3 @@ ENV/
 # mypy
 .mypy_cache/
 
-
-# Test data
-*.nc/
-
-# Test notebooks used for development
-scripts
-examples/gen/cmd_files
-
-# Dask
-mydask.png
-
-.cfgs
