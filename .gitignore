@@ -1,3 +1,7 @@
+# Various data files
+xcube-server.yaml
+notebooks/smos.zarr
+
 # IDEs
 /.idea/
 /.vscode/
