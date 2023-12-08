@@ -10,7 +10,9 @@ from xcube.core.store import new_fs_data_store
 from .dgg import SmosDiscreteGlobalGrid
 
 
-NUM_LEVELS = SmosDiscreteGlobalGrid.MAX_NUM_LEVELS - 1
+# We don't use the first and the last level
+NUM_LEVELS = SmosDiscreteGlobalGrid.MAX_NUM_LEVELS - 2
+# Because we skip original level 0, resolution decreases by factor 2
 MAX_WIDTH = SmosDiscreteGlobalGrid.MAX_WIDTH // 2
 MAX_HEIGHT = SmosDiscreteGlobalGrid.MAX_HEIGHT // 2
 MIN_PIXEL_SIZE = SmosDiscreteGlobalGrid.MIN_PIXEL_SIZE * 2
