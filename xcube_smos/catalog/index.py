@@ -56,23 +56,38 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         return SmosIndexCatalog.open_dataset
 
     @staticmethod
-    def open_dataset(dataset_path: str, source_storage_options: dict) \
+    def open_dataset(path: str,
+                     protocol: Optional[str] = None,
+                     storage_options: Optional[dict] = None) \
             -> xr.Dataset:
-        index_filename = dataset_path.rsplit("/", maxsplit=1)[-1]
-        index_json_path = f"{dataset_path}/{index_filename}.nc.json"
         return xr.open_dataset(
             "reference://",
             engine="zarr",
             backend_kwargs={
                 "storage_options": {
-                    "fo": index_json_path,
-                    "remote_protocol": "s3",
-                    "remote_options": source_storage_options or {}
+                    "fo": path,
+                    "remote_protocol": protocol,
+                    "remote_options": storage_options
                 },
                 "consolidated": False
             },
             decode_cf=False  # IMPORTANT!
         )
+
+    def resolve_path(self, path: str) -> str:
+        index_path = self._nc_kc_index.index_path
+        index_protocol = "file"
+        # TODO: use this instead, once have NcKcIndex.index_protocol
+        # index_protocol = self._nc_kc_index.index_protocol
+        index_url = f"{index_protocol}://{index_path}"
+        if index_path.endswith(".zip"):
+            return f'zip://{path}::{index_url}'
+        else:
+            return f'{index_url}/{path}'
+
+    @property
+    def source_protocol(self) -> Optional[str]:
+        return self._nc_kc_index.source_protocol
 
     @property
     def source_storage_options(self) -> Optional[Dict[str, Any]]:

@@ -1,5 +1,4 @@
 import unittest
-from pathlib import Path
 
 import dask.array as da
 import jsonschema
@@ -10,24 +9,11 @@ import xarray as xr
 from xcube.core.store import DatasetDescriptor
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
-from xcube_smos.catalog import AbstractSmosCatalog
-from xcube_smos.catalog import SmosSimpleCatalog
+
+from tests.catalog.test_simple import new_simple_catalog
 from xcube_smos.schema import OPEN_PARAMS_SCHEMA
 from xcube_smos.schema import STORE_PARAMS_SCHEMA
 from xcube_smos.store import SmosDataStore
-
-
-def new_test_catalog() -> AbstractSmosCatalog:
-    path = Path(__file__).parent / ".." / "testdata" / "SM"
-    smos_l2_sm_paths = [
-        str(path / name)
-        for name in path.resolve().iterdir()
-        if name.suffix == ".nc"
-    ]
-    return SmosSimpleCatalog(
-        smos_l2_sm_paths=smos_l2_sm_paths,
-        smos_l2_os_paths=[]
-    )
 
 
 class SmosDataStoreTest(unittest.TestCase):
@@ -249,7 +235,7 @@ class SmosDataStoreTest(unittest.TestCase):
                             time_period="2D")
 
     def test_open_data(self):
-        store = SmosDataStore(catalog=new_test_catalog())
+        store = SmosDataStore(catalog=new_simple_catalog())
 
         dataset = store.open_data('SMOS-L2C-SM',
                                   time_range=("2022-05-05", "2022-05-07"))
@@ -307,7 +293,7 @@ class SmosDistributedDataStoreTest(unittest.TestCase):
         self._client.close()
 
     def test_open_data(self):
-        store = SmosDataStore(catalog=new_test_catalog())
+        store = SmosDataStore(catalog=new_simple_catalog())
 
         dataset = store.open_data('SMOS-L2C-SM',
                                   time_range=("2022-05-05", "2022-05-07"))

@@ -1,33 +1,31 @@
 import os
 import unittest
+from pathlib import Path
 import xarray as xr
 
-from xcube_smos.constants import INDEX_ENV_VAR_NAME
-from xcube_smos.catalog import SmosIndexCatalog
-
-index_path = os.environ.get(INDEX_ENV_VAR_NAME)
-
-if not index_path:
-    reason = f"env var {INDEX_ENV_VAR_NAME!r} not set {index_path}"
-else:
-    reason = f"index {index_path} not found"
+from xcube_smos.catalog import SmosSimpleCatalog
 
 
-@unittest.skipUnless(index_path and os.path.exists(index_path), reason)
-class SmosIndexCatalogTest(unittest.TestCase):
+def new_simple_catalog() -> SmosSimpleCatalog:
+    path = Path(__file__).parent / ".." / ".." / "testdata" / "SM"
+    smos_l2_sm_paths = [
+        str(path / name)
+        for name in path.resolve().iterdir()
+        if name.suffix == ".nc"
+    ]
+    return SmosSimpleCatalog(
+        smos_l2_sm_paths=smos_l2_sm_paths,
+        smos_l2_os_paths=[]
+    )
+
+
+class SmosSimpleCatalogTest(unittest.TestCase):
 
     def test_1_find_datasets(self):
-        catalog = SmosIndexCatalog(index_path)
-
-        files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-03"))
-        self.assert_files_ok(files, "SMOS/L2SM/MIR_SMUDP2/")
-
-        files = catalog.find_datasets("OS", ("2021-05-01", "2021-05-03"))
-        self.assert_files_ok(files, "SMOS/L2OS/MIR_OSUDP2/")
-
-    def assert_files_ok(self, files, expected_prefix: str):
+        catalog = new_simple_catalog()
+        files = catalog.find_datasets("SM", (None, None))
         self.assertIsInstance(files, list)
-        self.assertTrue(len(files) >= 20)
+        self.assertEqual(5, len(files))
         for file in files:
             self.assertIsInstance(file, tuple)
             self.assertEqual(3, len(file))
@@ -35,13 +33,14 @@ class SmosIndexCatalogTest(unittest.TestCase):
             self.assertIsInstance(path, str)
             self.assertIsInstance(start, str)
             self.assertIsInstance(end, str)
-            self.assertEqual(expected_prefix, path[:len(expected_prefix)])
+            self.assertIn(os.path.join("SM", "SM_OPER_MIR_SMUDP2_"), path)
+            self.assertTrue(path.endswith("_700_001_1.nc"))
             self.assertEqual(14, len(start))
             self.assertEqual(14, len(end))
 
     def test_2_dataset_opener(self):
-        catalog = SmosIndexCatalog(index_path)
-        files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
+        catalog = new_simple_catalog()
+        files = catalog.find_datasets("SM", (None, None))
         path, _, _ = files[0]
 
         path = catalog.resolve_path(path)
@@ -58,4 +57,3 @@ class SmosIndexCatalogTest(unittest.TestCase):
         self.assertIn("Grid_Point_ID", ds)
         self.assertIn("Soil_Moisture", ds)
         self.assertIn("Surface_Temperature", ds)
-

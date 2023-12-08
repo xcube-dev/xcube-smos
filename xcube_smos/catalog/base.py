@@ -27,7 +27,16 @@ import xarray as xr
 from ..nckcindex.producttype import ProductTypeLike
 from ..utils import NotSerializable
 
-DatasetOpener = Callable[[str, Optional[Dict[str, Any]]], xr.Dataset]
+DatasetOpener = Callable[
+    [
+        str,
+        {
+            "protocol": Optional[str],
+            "storage_options": Optional[Dict[str, Any]],
+        }
+    ],
+    xr.Dataset
+]
 
 
 class AbstractSmosCatalog(NotSerializable, abc.ABC):
@@ -43,11 +52,14 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
         """Get a function that opens a dataset. The function
         must have the signature:::
 
-            open(dataset_path: str, remote_storage_options: dict)
+            open_dataset(path: str,
+                         protocol: str = None,
+                         storage_options: dict = None) -> xr.Dataset
 
         and must return a xarray dataset. The data set path is one
-        of the returned paths from :meth:find_datasets() and
-        *remote_storage_options* are the catalog's remote storage options.
+        of the returned paths from :meth:find_datasets(). The optional
+        *protocol* and *storage_options* kwargs specify access to the
+        underlying filesystem.
 
         It is important that the dataset is opened using `decode_cf=False`
         if xarray is used.
@@ -55,9 +67,19 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
         and other variables from integers into floating point.
         """
 
+    # noinspection PyMethodMayBeStatic
+    def resolve_path(self, path: str) -> str:
+        """Resolve the given path returned by ``find_datasets``"""
+        return path
+
+    @property
+    def source_protocol(self) -> Optional[str]:
+        """Get protocol of the source filesystem."""
+        return None
+
     @property
     def source_storage_options(self) -> Optional[Dict[str, Any]]:
-        """Get options for the remote data storage."""
+        """Get storage options for the source filesystem."""
         return None
 
     @abc.abstractmethod

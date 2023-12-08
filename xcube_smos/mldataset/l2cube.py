@@ -16,7 +16,7 @@ from xcube.core.zarrstore import GenericZarrStore
 from .newdgg import MAX_WIDTH
 from .newdgg import MAX_HEIGHT
 from .newdgg import MIN_PIXEL_SIZE
-from .newdgg import new_dgg as new_static_dgg
+from .newdgg import new_dgg
 from .dgg import SmosDiscreteGlobalGrid
 from ..utils import LruCache
 from ..utils import NotSerializable
@@ -62,12 +62,6 @@ DATASETS = {
         "X_swath",
     }
 }
-
-
-def new_dgg():
-    """Load a DGG that is not chunked"""
-    print("Loading new DGG instance", flush=True, file=sys.stderr)
-    return new_static_dgg()
 
 
 class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
@@ -196,24 +190,30 @@ class SmosTimeStepLoader:
     Instances must be serializable because the :meth:load_time_step
     is executed on dask workers.
 
-    For serialization, only the DDG's URL/path is serialized.
-    When deserialized, a new DGG is opened from DDG's URL/path.
+    For serialization, we exclude the DGG.
+    When deserialized, we load a new DGG.
 
     :param dgg: SMOS discrete global grid.
-    :param dataset_paths: SMOS L2 dataset paths (from catalog).
     :param dataset_opener: Function that can open one of *dataset_paths*.
-    :param storage_options: Extra storage options passed to *dataset_opener*.
+    :param dataset_paths: SMOS L2 dataset paths (from catalog).
+    :param protocol: Dataset filesystem protocol
+        passed to *dataset_opener*.
+    :param storage_options: Dataset filesystem storage options
+        passed to *dataset_opener*.
+    :param l2_product_cache_size: Product cache size for L2 products.
     """
 
     def __init__(self,
                  dgg: MultiLevelDataset,
-                 dataset_paths: List[str],
                  dataset_opener: Callable,
+                 dataset_paths: List[str],
+                 protocol: Optional[str],
                  storage_options: Optional[Dict[str, Any]],
                  l2_product_cache_size: int):
         self.dgg = dgg
         self.dataset_paths = dataset_paths
         self.dataset_opener = dataset_opener
+        self.protocol = protocol
         self.storage_options = storage_options
         self.l2_product_cache_size = l2_product_cache_size
         self.l2_product_cache = self.new_l2_product_cache()
@@ -233,7 +233,7 @@ class SmosTimeStepLoader:
 
         state = self.__dict__.copy()
         del state['l2_product_cache']
-        dgg = state.pop('dgg')
+        del state['dgg']
 
         return state
 
@@ -268,7 +268,9 @@ class SmosTimeStepLoader:
         if l2_product is not None:
             return l2_product
         dataset_path = self.dataset_paths[time_idx]
-        l2_dataset = self.dataset_opener(dataset_path, self.storage_options)
+        l2_dataset = self.dataset_opener(dataset_path,
+                                         protocol=self.protocol,
+                                         storage_options=self.storage_options)
         l2_dataset = l2_dataset.chunk()  # Wrap numpy arrays into dask arrays
         print(f'Opening L2 product for time_idx={time_idx}', flush=True)
         l2_product = SmosL2Product(self.dgg, l2_dataset)
@@ -278,9 +280,7 @@ class SmosTimeStepLoader:
 
 class SmosL2Product:
 
-    def __init__(self,
-                 dgg: MultiLevelDataset,
-                 l2_dataset: xr.Dataset):
+    def __init__(self, dgg: MultiLevelDataset, l2_dataset: xr.Dataset):
 
         grid_point_id = l2_dataset.Grid_Point_ID.values
         l2_seqnum = SmosDiscreteGlobalGrid.grid_point_id_to_seqnum(

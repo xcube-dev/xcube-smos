@@ -207,8 +207,9 @@ class SmosDataStore(NotSerializable, DataStore):
 
         time_step_loader = SmosTimeStepLoader(
             self.dgg,
-            dataset_paths,
             self.catalog.dataset_opener,
+            list(map(self.catalog.resolve_path, dataset_paths)),
+            self.catalog.source_protocol,
             self.catalog.source_storage_options,
             l2_product_cache_size
         )
