@@ -18,12 +18,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
+import json
 import os
 import re
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, Tuple, List
 
+import fsspec
 import pandas as pd
 import xarray as xr
 
@@ -60,12 +61,14 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                      protocol: Optional[str] = None,
                      storage_options: Optional[dict] = None) \
             -> xr.Dataset:
+        with fsspec.open(path) as f:
+            refs = json.load(f)
         return xr.open_dataset(
             "reference://",
             engine="zarr",
             backend_kwargs={
                 "storage_options": {
-                    "fo": path,
+                    "fo": refs,
                     "remote_protocol": protocol,
                     "remote_options": storage_options
                 },
