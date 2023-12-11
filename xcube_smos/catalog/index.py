@@ -61,6 +61,8 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                      protocol: Optional[str] = None,
                      storage_options: Optional[dict] = None) \
             -> xr.Dataset:
+        # Preload reference JSON
+        # See https://github.com/fsspec/filesystem_spec/issues/1455
         with fsspec.open(path) as f:
             refs = json.load(f)
         return xr.open_dataset(
@@ -74,7 +76,11 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                 },
                 "consolidated": False
             },
-            decode_cf=False  # IMPORTANT!
+            # decode_cf=False is important!
+            # Otherwise, fill-values will be replaced by NaN,
+            # which will convert variable "seqnum" from dtype uint32 to
+            # dtype float64.
+            decode_cf=False
         )
 
     def resolve_path(self, path: str) -> str:

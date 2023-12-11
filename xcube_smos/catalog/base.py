@@ -64,7 +64,8 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
         It is important that the dataset is opened using `decode_cf=False`
         if xarray is used.
         Otherwise, a given _FillValue attribute will turn Grid_Point_ID
-        and other variables from integers into floating point.
+        and other variables from integers into floating point, because
+        they use the `_FillValue` attribute.
         """
 
     # noinspection PyMethodMayBeStatic
