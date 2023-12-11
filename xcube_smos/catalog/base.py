@@ -27,15 +27,30 @@ import xarray as xr
 from ..nckcindex.producttype import ProductTypeLike
 from ..utils import NotSerializable
 
+
+DatasetRecord = Tuple[
+    str,  # relative path
+    str,  # start date/time in compact format
+    str   # end date/time in compact format
+]
+
 DatasetOpener = Callable[
     [
-        str,
+        str,  # dataset_path
         {
             "protocol": Optional[str],
             "storage_options": Optional[Dict[str, Any]],
         }
     ],
     xr.Dataset
+]
+
+DatasetPredicate = Callable[
+    [
+        DatasetRecord,  # dataset (path, start, end)
+        Dict[str, Any]  # dataset global attributes
+    ],
+    bool
 ]
 
 
@@ -86,12 +101,14 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
     @abc.abstractmethod
     def find_datasets(self,
                       product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]]) \
-            -> List[Tuple[str, str, str]]:
+                      time_range: Tuple[Optional[str], Optional[str]],
+                      predicate: Optional[DatasetPredicate] = None) \
+            -> List[DatasetRecord]:
         """Find SMOS L2 datasets in the given *time_range*.
 
         :param product_type: SMOS product type
         :param time_range: Time range (from, to) ISO format, UTC
+        :param predicate: An optional dataset filter function
         :return: List of tuples of the form (dataset_path, start, stop), where
             start and stop represent the observation time range
             using "compact" datetime format, e.g., "20230503103546".

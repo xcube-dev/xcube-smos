@@ -18,6 +18,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
 import json
 import os
 import re
@@ -33,8 +34,8 @@ from ..constants import INDEX_ENV_VAR_NAME
 from ..nckcindex.nckcindex import NcKcIndex
 from ..nckcindex.producttype import ProductType
 from ..nckcindex.producttype import ProductTypeLike
-from xcube_smos.timeinfo import to_compact_time
-from .base import AbstractSmosCatalog
+from ..timeinfo import to_compact_time
+from .base import AbstractSmosCatalog, DatasetPredicate, DatasetRecord
 from .base import DatasetOpener
 
 _ONE_DAY = pd.Timedelta(1, unit="days")
@@ -63,8 +64,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
             -> xr.Dataset:
         # Preload reference JSON
         # See https://github.com/fsspec/filesystem_spec/issues/1455
-        with fsspec.open(path) as f:
-            refs = json.load(f)
+        refs = SmosIndexCatalog.load_refs(path)
         return xr.open_dataset(
             "reference://",
             engine="zarr",
@@ -82,6 +82,12 @@ class SmosIndexCatalog(AbstractSmosCatalog):
             # dtype float64.
             decode_cf=False
         )
+
+    @staticmethod
+    def load_refs(path):
+        with fsspec.open(path) as f:
+            refs = json.load(f)
+        return refs
 
     def resolve_path(self, path: str) -> str:
         index_path = self._nc_kc_index.index_path
@@ -104,19 +110,22 @@ class SmosIndexCatalog(AbstractSmosCatalog):
 
     def find_datasets(self,
                       product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]]) \
-            -> List[Tuple[str, str, str]]:
+                      time_range: Tuple[Optional[str], Optional[str]],
+                      predicate: Optional[DatasetPredicate] = None) \
+            -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
         start, end = self._normalize_time_range(time_range)
 
         start_times = self._find_files_for_date(product_type,
                                                 start.year,
                                                 start.month,
-                                                start.day)
+                                                start.day,
+                                                predicate)
         end_times = self._find_files_for_date(product_type,
                                               end.year,
                                               end.month,
-                                              end.day)
+                                              end.day,
+                                              predicate)
 
         start_str = to_compact_time(start)
         end_str = to_compact_time(end)
@@ -154,7 +163,8 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                     self._find_files_for_date(product_type,
                                               time.year,
                                               time.month,
-                                              time.day)
+                                              time.day,
+                                              predicate)
                 )
                 time += _ONE_DAY
 
@@ -168,7 +178,9 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                              product_type: ProductTypeLike,
                              year: int,
                              month: int,
-                             day: int) -> List[Tuple[str, str, str]]:
+                             day: int,
+                             predicate: Optional[DatasetPredicate]) \
+            -> List[Tuple[str, str, str]]:
         product_type = ProductType.normalize(product_type)
         path_pattern = product_type.path_pattern
         name_pattern = product_type.name_pattern
@@ -179,7 +191,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
             day=f'0{day}' if day < 10 else day
         ) + "/"
 
-        items = []
+        records = []
         for item in self._nc_kc_index.index_store.list(prefix=prefix):
             parent_and_filename = item.rsplit("/", 1)
             filename = parent_and_filename[1] \
@@ -188,9 +200,39 @@ class SmosIndexCatalog(AbstractSmosCatalog):
             if m is not None:
                 start = m.group("sd") + m.group("st")
                 end = m.group("ed") + m.group("et")
-                items.append((item, start, end))
 
-        return sorted(items)
+                record = item, start, end
+                if predicate is None \
+                        or self._filter_record(record, predicate):
+                    records.append(record)
+
+        return sorted(records)
+
+    def _filter_record(self,
+                       record: Tuple[str, str, str],
+                       predicate: DatasetPredicate) -> bool:
+        path = self.resolve_path(record[0])
+        try:
+            refs_dict = SmosIndexCatalog.load_refs(path)
+        except OSError as e:
+            # Warn
+            return False
+        if not isinstance(refs_dict, dict):
+            return False
+        refs = refs_dict.get("refs")
+        if not isinstance(refs, dict):
+            return False
+        attrs_json = refs.get(".zattrs")
+        if not isinstance(attrs_json, str):
+            return False
+        try:
+            attrs = json.loads(attrs_json)
+        except ValueError as e:
+            # Warn
+            return False
+        if not isinstance(attrs, dict):
+            return False
+        return predicate(record, attrs)
 
     @staticmethod
     def _normalize_time_range(time_range):

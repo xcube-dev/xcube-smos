@@ -27,9 +27,9 @@ from typing import Tuple, Optional, List
 
 import xarray as xr
 
-from xcube_smos.nckcindex.producttype import ProductType
-from xcube_smos.nckcindex.producttype import ProductTypeLike
-from .base import AbstractSmosCatalog
+from ..nckcindex.producttype import ProductType
+from ..nckcindex.producttype import ProductTypeLike
+from .base import AbstractSmosCatalog, DatasetPredicate, DatasetRecord
 from .base import DatasetOpener
 
 
@@ -60,8 +60,9 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
 
     def find_datasets(self,
                       product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]]) \
-            -> List[Tuple[str, str, str]]:
+                      time_range: Tuple[Optional[str], Optional[str]],
+                      predicate: Optional[DatasetPredicate] = None) \
+            -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
         if product_type.id == "SM":
             paths = self.smos_l2_sm_paths
@@ -79,5 +80,12 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
                 continue
             start = m.group("sd") + m.group("st")
             end = m.group("ed") + m.group("et")
-            result.append((path, start, end))
+            record = path, start, end
+            if not predicate:
+                result.append(record)
+            else:
+                with xr.open_dataset(path) as ds:
+                    if predicate(record, ds.attrs):
+                        result.append(record)
+
         return result
