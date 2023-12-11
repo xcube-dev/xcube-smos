@@ -1,5 +1,8 @@
 ## Version 0.2.0 (in development)
 
+* The SMOS auxiliary dataset _Discrete Global Grid_ (DGG)
+  has been made package data in `xcube_smos/mldataset/smos-dgg.levels`.
+  Hence, the store parameter `dgg_urlpath` has been removed. [#9]
 * The NetCDF Kerchunk index can now also be a Zip archive. 
   To use a Zip archive, pass an index path to the `nckcidx` CLI
   or to the `NcKcIndex`class whose filename has a `.zip`
