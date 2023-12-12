@@ -91,11 +91,12 @@ class SmosDirectCatalogTest(unittest.TestCase):
             self.assertEqual(14, len(start))
             self.assertEqual(14, len(end))
 
-    def test_2_dataset_opener(self):
+    def test_2_dataset_opener_no_cache(self):
         catalog = SmosDirectCatalog(
             source_path="EODATA",
             source_protocol="s3",
-            source_storage_options=s3_storage_options
+            source_storage_options=s3_storage_options,
+            cache_path=None,
         )
 
         files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))

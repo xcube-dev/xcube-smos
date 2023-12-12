@@ -58,7 +58,8 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         self._source_path = source_path
         self._source_protocol = source_protocol
         self._source_storage_options = source_storage_options or {}
-        self._cache_path = cache_path
+        self._cache_path = os.path.expanduser(cache_path) \
+            if cache_path else None
 
     @cached_property
     def source_fs(self) -> fsspec.AbstractFileSystem:
@@ -195,6 +196,7 @@ def open_dataset(source_file: str,
     if not cache_path:
         local_file = tempfile.TemporaryFile(prefix="xcube-smos-",
                                             suffix=".nc").name
+        local_file = os.path.expanduser(local_file)
         remote_fs.get(source_file, local_file)
     else:
         local_file = f"{cache_path}/{source_file}"
