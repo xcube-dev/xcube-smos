@@ -1,10 +1,9 @@
 import os
 import unittest
-from pathlib import Path
 from typing import Tuple, Union
+import tempfile
 
 import numpy as np
-import pytest
 import xarray as xr
 
 from xcube_smos.catalog import SmosDirectCatalog
@@ -119,15 +118,14 @@ class SmosDirectCatalogTest(unittest.TestCase):
         self.assertIn("Soil_Moisture_DQX", ds)
         self.assertEqual(np.dtype("float32"), ds.Soil_Moisture_DQX.dtype)
 
-    def test_2_dataset_opener_with_cache(self, tmp_path: Path):
-        cache_dir = tmp_path / "_nc_cache"
-        cache_dir.mkdir()
+    def test_2_dataset_opener_with_cache(self):
+        cache_dir = tempfile.TemporaryDirectory().name
 
         catalog = SmosDirectCatalog(
             source_path="EODATA",
             source_protocol="s3",
             source_storage_options=s3_storage_options,
-            cache_path=str(cache_dir)
+            cache_path=cache_dir
         )
 
         files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
