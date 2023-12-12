@@ -111,9 +111,9 @@ class SmosDirectCatalogTest(unittest.TestCase):
 
         self.assertIsInstance(ds, xr.Dataset)
         self.assertIn("Grid_Point_ID", ds)
-        self.assertIn(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
+        self.assertEqual(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
         self.assertIn("Soil_Moisture", ds)
-        self.assertIn(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
+        self.assertEqual(np.dtype("uint32"), ds.Soil_Moisture.dtype)
         self.assertIn("Soil_Moisture_DQX", ds)
-        self.assertIn(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
+        self.assertEqual(np.dtype("uint32"), ds.Soil_Moisture_DQX.dtype)
 

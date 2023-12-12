@@ -235,7 +235,7 @@ class SmosDataStoreTest(unittest.TestCase):
                             time_period="2D")
 
     def test_open_data(self):
-        store = SmosDataStore(catalog=new_simple_catalog())
+        store = SmosDataStore(_catalog=new_simple_catalog())
 
         dataset = store.open_data('SMOS-L2C-SM',
                                   time_range=("2022-05-05", "2022-05-07"))
@@ -293,7 +293,7 @@ class SmosDistributedDataStoreTest(unittest.TestCase):
         self._client.close()
 
     def test_open_data(self):
-        store = SmosDataStore(catalog=new_simple_catalog())
+        store = SmosDataStore(_catalog=new_simple_catalog())
 
         dataset = store.open_data('SMOS-L2C-SM',
                                   time_range=("2022-05-05", "2022-05-07"))

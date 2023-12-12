@@ -35,7 +35,7 @@ from xcube.core.store import MULTI_LEVEL_DATASET_TYPE
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import AbstractSmosCatalog
-from .catalog import SmosIndexCatalog
+from .catalog import SmosDirectCatalog
 from .mldataset.newdgg import MAX_HEIGHT
 from .mldataset.newdgg import MIN_PIXEL_SIZE
 from .mldataset.newdgg import new_dgg
@@ -64,24 +64,32 @@ DEFAULT_OPENER_ID = DATASET_OPENER_ID
 class SmosDataStore(NotSerializable, DataStore):
     """Data store for SMOS L2C data cubes.
 
-    :param index_path: Path or URL to the SMOS Kerchunk index
-    :param index_protocol: Optional filesystem protocol for accessing
+    :param source_path: Path or URL to the SMOS Kerchunk index
+    :param source_protocol: Optional filesystem protocol for accessing
         *index_path*. Overwrites the protocol parsed from *index_path*,
         if any.
-    :param index_storage_options: Storage options for accessing *index_path*.
-    :param catalog: Catalog (mock) instance used for testing only.
-        If given, *index_urlpath* and *index_options* are ignored.
+    :param source_storage_options: Storage options for accessing *index_path*.
+    :param _catalog: Catalog (mock) instance used for testing only.
+        If given, all other arguments are ignored.
     """
 
     def __init__(self,
-                 index_path: Optional[str] = None,
-                 index_protocol: Optional[str] = None,
-                 index_storage_options: Optional[Dict[str, Any]] = None,
-                 catalog: Optional[AbstractSmosCatalog] = None):
-        self._index_path = index_path
-        self._index_protocol = index_protocol
-        self._index_storage_options = index_storage_options
-        self._catalog = catalog
+                 source_path: Optional[str] = None,
+                 source_protocol: Optional[str] = None,
+                 source_storage_options: Optional[Dict[str, Any]] = None,
+                 use_cache: bool = False,
+                 cache_path: Optional[str] = None,
+                 _catalog: Optional[AbstractSmosCatalog] = None):
+        if _catalog is None:
+            self.catalog = SmosDirectCatalog(
+                source_path=source_path,
+                source_protocol=source_protocol,
+                source_storage_options=source_storage_options,
+                use_cache=use_cache,
+                cache_path=cache_path,
+            )
+        else:
+            self.catalog = _catalog
 
     @cached_property
     def dgg(self) -> MultiLevelDataset:
@@ -178,12 +186,6 @@ class SmosDataStore(NotSerializable, DataStore):
             self._assert_valid_data_id(data_id)
         self._assert_valid_opener_id(opener_id)
         return OPEN_PARAMS_SCHEMA
-
-    @cached_property
-    def catalog(self) -> AbstractSmosCatalog:
-        if self._catalog is not None:
-            return self._catalog
-        return SmosIndexCatalog(index_path=self._index_path)
 
     def open_data(self,
                   data_id: str,

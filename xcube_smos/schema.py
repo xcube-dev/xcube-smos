@@ -30,18 +30,24 @@ from xcube_smos.mldataset.newdgg import NUM_LEVELS
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
-        index_path=JsonStringSchema(
+        source_path=JsonStringSchema(
             min_length=1,
-            title='Path or URL to the SMOS NetCDF Kerchunk index.',
+            title='Path or URL into SMOS archive filesystem.',
+            examples=["EODATA"]
         ),
-        index_protocol=JsonStringSchema(
+        source_protocol=JsonStringSchema(
             min_length=2,
-            title='Protocol name for the SMOS NetCDF Kerchunk index.',
+            title='Protocol name for the SMOS archive filesystem.',
+            examples=["s3", "file"]
         ),
-        index_storage_options=JsonObjectSchema(
+        source_storage_options=JsonObjectSchema(
             additional_properties=True,
             title='Storage options for the SMOS NetCDF Kerchunk index.',
-            description='See fsspec documentation for specific filesystems.'
+            description='See fsspec documentation for specific filesystems.',
+            examples=[dict(endpoint_url="https://s3.cloudferro.com",
+                           anon=False,
+                           key="******",
+                           secret="******")]
         ),
     ),
     additional_properties=False
