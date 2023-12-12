@@ -1,8 +1,10 @@
 import os
 import unittest
+from pathlib import Path
 from typing import Tuple, Union
 
 import numpy as np
+import pytest
 import xarray as xr
 
 from xcube_smos.catalog import SmosDirectCatalog
@@ -113,7 +115,37 @@ class SmosDirectCatalogTest(unittest.TestCase):
         self.assertIn("Grid_Point_ID", ds)
         self.assertEqual(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
         self.assertIn("Soil_Moisture", ds)
-        self.assertEqual(np.dtype("uint32"), ds.Soil_Moisture.dtype)
+        self.assertEqual(np.dtype("float32"), ds.Soil_Moisture.dtype)
         self.assertIn("Soil_Moisture_DQX", ds)
-        self.assertEqual(np.dtype("uint32"), ds.Soil_Moisture_DQX.dtype)
+        self.assertEqual(np.dtype("float32"), ds.Soil_Moisture_DQX.dtype)
 
+    def test_2_dataset_opener_with_cache(self, tmp_path: Path):
+        cache_dir = tmp_path / "_nc_cache"
+        cache_dir.mkdir()
+
+        catalog = SmosDirectCatalog(
+            source_path="EODATA",
+            source_protocol="s3",
+            source_storage_options=s3_storage_options,
+            cache_path=str(cache_dir)
+        )
+
+        files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
+        path, _, _ = files[0]
+
+        path = catalog.resolve_path(path)
+        open_dataset_kwargs = catalog.get_dataset_opener_kwargs()
+        open_dataset = catalog.get_dataset_opener()
+
+        self.assertTrue(callable(open_dataset))
+
+        ds = open_dataset(path,
+                          **open_dataset_kwargs)
+
+        self.assertIsInstance(ds, xr.Dataset)
+        self.assertIn("Grid_Point_ID", ds)
+        self.assertEqual(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
+        self.assertIn("Soil_Moisture", ds)
+        self.assertEqual(np.dtype("float32"), ds.Soil_Moisture.dtype)
+        self.assertIn("Soil_Moisture_DQX", ds)
+        self.assertEqual(np.dtype("float32"), ds.Soil_Moisture_DQX.dtype)

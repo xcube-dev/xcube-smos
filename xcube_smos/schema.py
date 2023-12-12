@@ -49,6 +49,12 @@ STORE_PARAMS_SCHEMA = JsonObjectSchema(
                            key="******",
                            secret="******")]
         ),
+        cache_path=JsonStringSchema(
+            min_length=1,
+            title='Path to local cache directory. '
+                  'Must be given, if file caching is desired.',
+            examples=["~/.smos-nc-cache"]
+        ),
     ),
     additional_properties=False
 )

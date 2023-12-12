@@ -49,7 +49,6 @@ class SmosDirectCatalog(AbstractSmosCatalog):
                  source_path: Optional[Union[str, Path]] = None,
                  source_protocol: Optional[str] = None,
                  source_storage_options: Optional[Dict[str, Any]] = None,
-                 use_cache: bool = False,
                  cache_path: Optional[str] = None):
         source_path = source_path or "EODATA"
         source_path = os.path.expanduser(str(source_path))
@@ -59,8 +58,7 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         self._source_path = source_path
         self._source_protocol = source_protocol
         self._source_storage_options = source_storage_options or {}
-        self._cache_path = (cache_path or ".smos-nc-cache") \
-            if use_cache else None
+        self._cache_path = cache_path
 
     @cached_property
     def source_fs(self) -> fsspec.AbstractFileSystem:

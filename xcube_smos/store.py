@@ -69,6 +69,8 @@ class SmosDataStore(NotSerializable, DataStore):
         *index_path*. Overwrites the protocol parsed from *index_path*,
         if any.
     :param source_storage_options: Storage options for accessing *index_path*.
+    :param cache_path: Path to local cache directory.
+        Must be given, if file caching is desired.
     :param _catalog: Catalog (mock) instance used for testing only.
         If given, all other arguments are ignored.
     """
@@ -77,7 +79,6 @@ class SmosDataStore(NotSerializable, DataStore):
                  source_path: Optional[str] = None,
                  source_protocol: Optional[str] = None,
                  source_storage_options: Optional[Dict[str, Any]] = None,
-                 use_cache: bool = False,
                  cache_path: Optional[str] = None,
                  _catalog: Optional[AbstractSmosCatalog] = None):
         if _catalog is None:
@@ -85,7 +86,6 @@ class SmosDataStore(NotSerializable, DataStore):
                 source_path=source_path,
                 source_protocol=source_protocol,
                 source_storage_options=source_storage_options,
-                use_cache=use_cache,
                 cache_path=cache_path,
             )
         else:
