@@ -19,10 +19,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os
-import re
+import atexit
 from functools import cached_property
+import os
 from pathlib import Path
+import re
+import shutil
 import tempfile
 from typing import Union, Dict, Any, Optional, Tuple, List, Set
 
@@ -50,11 +52,11 @@ class SmosDirectCatalog(AbstractSmosCatalog):
                  source_protocol: Optional[str] = None,
                  source_storage_options: Optional[Dict[str, Any]] = None,
                  cache_path: Optional[str] = None):
-        source_path = source_path or "EODATA"
-        source_path = os.path.expanduser(str(source_path))
+        source_path = str(source_path or "EODATA")
         _protocol, source_path = fsspec.core.split_protocol(source_path)
         source_protocol = source_protocol or _protocol or "file"
-        source_protocol = source_protocol or "s3"
+        if source_protocol == "file":
+            source_path = os.path.expanduser(source_path)
         self._source_path = source_path
         self._source_protocol = source_protocol
         self._source_storage_options = source_storage_options or {}
@@ -186,6 +188,35 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         return start, end
 
 
+class TempNcDir:
+    def __init__(self):
+        self._dir = tempfile.mkdtemp(prefix="xcube-smos-")
+
+    def __del__(self):
+        self.close()
+
+    def new_file(self) -> str:
+        return tempfile.mktemp(suffix=".nc", dir=self._dir)
+
+    def close(self):
+        shutil.rmtree(self._dir, ignore_errors=True)
+
+    _instance = None
+
+    @staticmethod
+    def get_instance() -> 'TempNcDir':
+        if TempNcDir._instance is None:
+            TempNcDir._instance = TempNcDir()
+            atexit.register(TempNcDir.dispose_instance)
+        return TempNcDir._instance
+
+    @staticmethod
+    def dispose_instance():
+        if TempNcDir._instance is not None:
+            TempNcDir._instance.close()
+            TempNcDir._instance = None
+
+
 def open_dataset(source_file: str,
                  source_protocol: str = None,
                  source_storage_options: Dict[str, Any] = None,
@@ -194,9 +225,7 @@ def open_dataset(source_file: str,
     remote_fs = fsspec.filesystem(source_protocol,
                                   **source_storage_options)
     if not cache_path:
-        local_file = tempfile.TemporaryFile(prefix="xcube-smos-",
-                                            suffix=".nc").name
-        local_file = os.path.expanduser(local_file)
+        local_file = TempNcDir.get_instance().new_file()
         remote_fs.get(source_file, local_file)
     else:
         local_file = f"{cache_path}/{source_file}"
