@@ -51,7 +51,8 @@ class SmosDirectCatalog(AbstractSmosCatalog):
                  source_path: Optional[Union[str, Path]] = None,
                  source_protocol: Optional[str] = None,
                  source_storage_options: Optional[Dict[str, Any]] = None,
-                 cache_path: Optional[str] = None):
+                 cache_path: Optional[str] = None,
+                 open_dataset_kwargs: Optional[Dict[str, Any]] = None):
         source_path = str(source_path or "EODATA")
         _protocol, source_path = fsspec.core.split_protocol(source_path)
         source_protocol = source_protocol or _protocol or "file"
@@ -62,6 +63,7 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         self._source_storage_options = source_storage_options or {}
         self._cache_path = os.path.expanduser(cache_path) \
             if cache_path else None
+        self._open_dataset_kwargs = open_dataset_kwargs or {}
 
     @cached_property
     def source_fs(self) -> fsspec.AbstractFileSystem:
@@ -71,7 +73,8 @@ class SmosDirectCatalog(AbstractSmosCatalog):
     def get_dataset_opener_kwargs(self) -> DatasetOpener:
         return dict(source_protocol=self._source_protocol,
                     source_storage_options=self._source_storage_options,
-                    cache_path=self._cache_path)
+                    cache_path=self._cache_path,
+                    xarray_kwargs=self._open_dataset_kwargs)
 
     def get_dataset_opener(self) -> DatasetOpener:
         return open_dataset
@@ -220,8 +223,13 @@ class TempNcDir:
 def open_dataset(source_file: str,
                  source_protocol: str = None,
                  source_storage_options: Dict[str, Any] = None,
-                 cache_path: Optional[str] = None) \
+                 cache_path: Optional[str] = None,
+                 xarray_kwargs: Dict[str, Any] = None) \
         -> xr.Dataset:
+
+    open_dataset_kwargs = dict(xarray_kwargs or {})
+    open_dataset_kwargs.update(decode_cf=False, chunks={})
+
     remote_fs = fsspec.filesystem(source_protocol,
                                   **source_storage_options)
     if not cache_path:
@@ -240,8 +248,7 @@ def open_dataset(source_file: str,
             os.makedirs(os.path.dirname(local_file), exist_ok=True)
             temp_file = local_file + ".temp"
             remote_fs.get(source_file, temp_file)
-            with xr.open_dataset(temp_file, decode_cf=False,
-                                 chunks={}) as ds:
+            with xr.open_dataset(temp_file, **open_dataset_kwargs) as ds:
                 dataset = include_vars(ds, var_names)
                 dataset.attrs = {k[len(key_prefix):]: v
                                  for k, v in dataset.attrs.items()
@@ -249,7 +256,7 @@ def open_dataset(source_file: str,
                 dataset.to_netcdf(local_file)
             os.remove(temp_file)
 
-    return xr.open_dataset(local_file, decode_cf=False, chunks={})
+    return xr.open_dataset(local_file, **open_dataset_kwargs)
 
 
 def include_vars(ds: xr.Dataset, var_names: Set[str]) -> xr.Dataset:
