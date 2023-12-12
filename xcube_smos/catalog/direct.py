@@ -52,7 +52,7 @@ class SmosDirectCatalog(AbstractSmosCatalog):
                  source_protocol: Optional[str] = None,
                  source_storage_options: Optional[Dict[str, Any]] = None,
                  cache_path: Optional[str] = None,
-                 open_dataset_kwargs: Optional[Dict[str, Any]] = None):
+                 xarray_kwargs: Dict[str, Any] = None):
         source_path = str(source_path or "EODATA")
         _protocol, source_path = fsspec.core.split_protocol(source_path)
         source_protocol = source_protocol or _protocol or "file"
@@ -63,7 +63,7 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         self._source_storage_options = source_storage_options or {}
         self._cache_path = os.path.expanduser(cache_path) \
             if cache_path else None
-        self._open_dataset_kwargs = open_dataset_kwargs or {}
+        self._xarray_kwargs = xarray_kwargs or {}
 
     @cached_property
     def source_fs(self) -> fsspec.AbstractFileSystem:
@@ -74,7 +74,7 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         return dict(source_protocol=self._source_protocol,
                     source_storage_options=self._source_storage_options,
                     cache_path=self._cache_path,
-                    xarray_kwargs=self._open_dataset_kwargs)
+                    xarray_kwargs=self._xarray_kwargs)
 
     def get_dataset_opener(self) -> DatasetOpener:
         return open_dataset

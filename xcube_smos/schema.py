@@ -55,6 +55,12 @@ STORE_PARAMS_SCHEMA = JsonObjectSchema(
                   'Must be given, if file caching is desired.',
             examples=["~/.smos-nc-cache"]
         ),
+        xarray_kwargs=JsonObjectSchema(
+            additional_properties=True,
+            title='Extra keyword arguments accepted by xarray.open_dataset.',
+            description='See xarray documentation for allowed keywords.',
+            examples=[dict(engine="netcdf4")]
+        ),
     ),
     additional_properties=False
 )

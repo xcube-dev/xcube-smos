@@ -71,6 +71,8 @@ class SmosDataStore(NotSerializable, DataStore):
     :param source_storage_options: Storage options for accessing *index_path*.
     :param cache_path: Path to local cache directory.
         Must be given, if file caching is desired.
+    :param xarray_kwargs: Extra keyword arguments accepted by
+        ``xarray.open_dataset``.
     :param _catalog: Catalog (mock) instance used for testing only.
         If given, all other arguments are ignored.
     """
@@ -80,6 +82,7 @@ class SmosDataStore(NotSerializable, DataStore):
                  source_protocol: Optional[str] = None,
                  source_storage_options: Optional[Dict[str, Any]] = None,
                  cache_path: Optional[str] = None,
+                 xarray_kwargs: Optional[Dict[str, Any]] = None,
                  _catalog: Optional[AbstractSmosCatalog] = None):
         if _catalog is None:
             self.catalog = SmosDirectCatalog(
@@ -87,6 +90,7 @@ class SmosDataStore(NotSerializable, DataStore):
                 source_protocol=source_protocol,
                 source_storage_options=source_storage_options,
                 cache_path=cache_path,
+                xarray_kwargs=xarray_kwargs
             )
         else:
             self.catalog = _catalog
