@@ -20,14 +20,32 @@ class SmosIndexCatalogTest(unittest.TestCase):
         catalog = SmosIndexCatalog(index_path)
 
         files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-03"))
-        self.assert_files_ok(files, "SMOS/L2SM/MIR_SMUDP2/")
+        self.assert_files_ok(files, "SMOS/L2SM/MIR_SMUDP2/", (20, 30))
 
         files = catalog.find_datasets("OS", ("2021-05-01", "2021-05-03"))
-        self.assert_files_ok(files, "SMOS/L2OS/MIR_OSUDP2/")
+        self.assert_files_ok(files, "SMOS/L2OS/MIR_OSUDP2/", (20, 30))
 
-    def assert_files_ok(self, files, expected_prefix: str):
+    def test_1_find_datasets_on_day_without_data(self):
+        catalog = SmosIndexCatalog(index_path)
+
+        files = catalog.find_datasets("SM", ("2022-10-21", "2022-10-21"))
+        self.assert_files_ok(files, "SMOS/L2SM/MIR_SMUDP2/", 0)
+
+        files = catalog.find_datasets("SM", ("2023-01-01", "2023-01-03"))
+        self.assert_files_ok(files, "SMOS/L2SM/MIR_SMUDP2/", 0)
+
+        files = catalog.find_datasets("SM", ("2023-01-01", "2023-01-05"))
+        self.assert_files_ok(files, "SMOS/L2SM/MIR_SMUDP2/", 12)
+
+    def assert_files_ok(self,
+                        files, expected_prefix: str,
+                        expected_count_range: int | tuple[int, int]):
         self.assertIsInstance(files, list)
-        self.assertTrue(len(files) >= 20)
+        if isinstance(expected_count_range, int):
+            self.assertEqual(expected_count_range, len(files))
+        else:
+            self.assertGreaterEqual(len(files), expected_count_range[0])
+            self.assertLessEqual(len(files), expected_count_range[1])
         for file in files:
             self.assertIsInstance(file, tuple)
             self.assertEqual(3, len(file))
@@ -58,4 +76,3 @@ class SmosIndexCatalogTest(unittest.TestCase):
         self.assertIn("Grid_Point_ID", ds)
         self.assertIn("Soil_Moisture", ds)
         self.assertIn("Surface_Temperature", ds)
-
