@@ -20,6 +20,8 @@ from .newdgg import new_dgg
 from .dgg import SmosDiscreteGlobalGrid
 from ..utils import LruCache
 from ..utils import NotSerializable
+from ..constants import OS_VAR_NAMES
+from ..constants import SM_VAR_NAMES
 
 # Cube visualisation:
 #   - chunks: spatial DGG chunking, time=1
@@ -36,31 +38,8 @@ from ..utils import NotSerializable
 #   - don't cache l2 var data, used only temporarily
 
 DATASETS = {
-    "SMOS-L2C-OS": {
-        "Mean_acq_time",
-        "SSS_corr",
-        "Sigma_SSS_corr",
-        "SSS_anom",
-        "Sigma_SSS_anom",
-        "Dg_chi2_corr",
-        "Dg_quality_SSS_corr",
-        "Dg_quality_SSS_anom",
-        "Coast_distance",
-        "Dg_RFI_X",
-        "Dg_RFI_Y",
-        "X_swath",
-    },
-    "SMOS-L2C-SM": {
-        "Mean_acq_time",
-        "Soil_Moisture",
-        "Soil_Moisture_DQX",
-        "Chi_2",
-        "Chi_2_P",
-        "N_RFI_X",
-        "N_RFI_Y",
-        "RFI_Prob",
-        "X_swath",
-    }
+    "SMOS-L2C-OS": OS_VAR_NAMES,
+    "SMOS-L2C-SM": SM_VAR_NAMES
 }
 
 
@@ -206,15 +185,13 @@ class SmosTimeStepLoader:
     def __init__(self,
                  dgg: MultiLevelDataset,
                  dataset_opener: Callable,
+                 dataset_opener_kwargs: Dict[str, Any],
                  dataset_paths: List[str],
-                 protocol: Optional[str],
-                 storage_options: Optional[Dict[str, Any]],
                  l2_product_cache_size: int):
         self.dgg = dgg
         self.dataset_paths = dataset_paths
         self.dataset_opener = dataset_opener
-        self.protocol = protocol
-        self.storage_options = storage_options
+        self.dataset_opener_kwargs = dataset_opener_kwargs or {}
         self.l2_product_cache_size = l2_product_cache_size
         self.l2_product_cache = self.new_l2_product_cache()
 
@@ -269,8 +246,7 @@ class SmosTimeStepLoader:
             return l2_product
         dataset_path = self.dataset_paths[time_idx]
         l2_dataset = self.dataset_opener(dataset_path,
-                                         protocol=self.protocol,
-                                         storage_options=self.storage_options)
+                                         **self.dataset_opener_kwargs)
         l2_dataset = l2_dataset.chunk()  # Wrap numpy arrays into dask arrays
         print(f'Opening L2 product for time_idx={time_idx}', flush=True)
         l2_product = SmosL2Product(self.dgg, l2_dataset)

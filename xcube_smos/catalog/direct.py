@@ -19,19 +19,19 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import json
 import os
 import re
+from functools import cached_property
 from pathlib import Path
-from typing import Union, Dict, Any, Optional, Tuple, List
+import tempfile
+from typing import Union, Dict, Any, Optional, Tuple, List, Set
 
 import fsspec
 import pandas as pd
 import xarray as xr
 
-from xcube.util.assertions import assert_given
-from ..constants import INDEX_ENV_VAR_NAME
-from ..nckcindex.nckcindex import NcKcIndex
+from ..constants import OS_VAR_NAMES
+from ..constants import SM_VAR_NAMES
 from ..nckcindex.producttype import ProductType
 from ..nckcindex.producttype import ProductTypeLike
 from ..timeinfo import to_compact_time
@@ -41,75 +41,39 @@ from .base import DatasetOpener
 _ONE_DAY = pd.Timedelta(1, unit="days")
 
 
-class SmosIndexCatalog(AbstractSmosCatalog):
-    """A SMOS L2 dataset catalog that uses a Kerchunk index (NcKcIndex).
-
-    :param index_path: Path or URL to the root directory
+class SmosDirectCatalog(AbstractSmosCatalog):
+    """A SMOS L2 dataset catalog that directly accesses the source filesystem.
     """
 
-    def __init__(self, index_path: Optional[Union[str, Path]] = None):
-        index_path = index_path or os.environ.get(INDEX_ENV_VAR_NAME)
-        assert_given(index_path, name='index_path')
-        index_path = os.path.expanduser(str(index_path))
-        self._nc_kc_index = NcKcIndex.open(index_path=index_path)
+    def __init__(self,
+                 source_path: Optional[Union[str, Path]] = None,
+                 source_protocol: Optional[str] = None,
+                 source_storage_options: Optional[Dict[str, Any]] = None,
+                 use_cache: bool = False,
+                 cache_path: Optional[str] = None):
+        source_path = source_path or "EODATA"
+        source_path = os.path.expanduser(str(source_path))
+        _protocol, source_path = fsspec.core.split_protocol(source_path)
+        source_protocol = source_protocol or _protocol or "file"
+        source_protocol = source_protocol or "s3"
+        self._source_path = source_path
+        self._source_protocol = source_protocol
+        self._source_storage_options = source_storage_options or {}
+        self._cache_path = (cache_path or ".smos-nc-cache") \
+            if use_cache else None
 
-    @property
-    def source_protocol(self) -> Optional[str]:
-        return self._nc_kc_index.source_protocol
-
-    @property
-    def source_storage_options(self) -> Optional[Dict[str, Any]]:
-        return self._nc_kc_index.source_storage_options
+    @cached_property
+    def source_fs(self) -> fsspec.AbstractFileSystem:
+        return fsspec.filesystem(self._source_protocol,
+                                 **self._source_storage_options)
 
     def get_dataset_opener_kwargs(self) -> DatasetOpener:
-        return dict(protocol=self.source_protocol,
-                    storage_options=self.source_storage_options)
+        return dict(source_protocol=self._source_protocol,
+                    source_storage_options=self._source_storage_options,
+                    cache_path=self._cache_path)
 
     def get_dataset_opener(self) -> DatasetOpener:
-        return SmosIndexCatalog.open_dataset
-
-    @staticmethod
-    def open_dataset(path: str,
-                     protocol: Optional[str] = None,
-                     storage_options: Optional[dict] = None) \
-            -> xr.Dataset:
-        # Preload reference JSON
-        # See https://github.com/fsspec/filesystem_spec/issues/1455
-        refs = SmosIndexCatalog.load_refs(path)
-        return xr.open_dataset(
-            "reference://",
-            engine="zarr",
-            backend_kwargs={
-                "storage_options": {
-                    "fo": refs,
-                    "remote_protocol": protocol,
-                    "remote_options": storage_options
-                },
-                "consolidated": False
-            },
-            # decode_cf=False is important!
-            # Otherwise, fill-values will be replaced by NaN,
-            # which will convert variable "seqnum" from dtype uint32 to
-            # dtype float64.
-            decode_cf=False
-        )
-
-    @staticmethod
-    def load_refs(path):
-        with fsspec.open(path) as f:
-            refs = json.load(f)
-        return refs
-
-    def resolve_path(self, path: str) -> str:
-        index_path = self._nc_kc_index.index_path
-        index_protocol = "file"
-        # TODO: use this instead, once have NcKcIndex.index_protocol
-        # index_protocol = self._nc_kc_index.index_protocol
-        index_url = f"{index_protocol}://{index_path}"
-        if index_path.endswith(".zip"):
-            return f'zip://{path}::{index_url}'
-        else:
-            return f'{index_url}/{path}'
+        return open_dataset
 
     def find_datasets(self,
                       product_type: ProductTypeLike,
@@ -192,50 +156,25 @@ class SmosIndexCatalog(AbstractSmosCatalog):
             year=year,
             month=f'0{month}' if month < 10 else month,
             day=f'0{day}' if day < 10 else day
-        ) + "/"
+        )
+
+        source_path = f"{self._source_path}/{prefix}"
 
         records = []
-        for item in self._nc_kc_index.index_store.list(prefix=prefix):
-            parent_and_filename = item.rsplit("/", 1)
-            filename = parent_and_filename[1] \
-                if len(parent_and_filename) == 2 else item
-            m = re.match(name_pattern, filename)
-            if m is not None:
-                start = m.group("sd") + m.group("st")
-                end = m.group("ed") + m.group("et")
+        for root, _, files in self.source_fs.walk(source_path):
+            for file in files:
+                parent_and_filename = file.rsplit("/", 1)
+                filename = parent_and_filename[1] \
+                    if len(parent_and_filename) == 2 else file
+                m = re.match(name_pattern, filename)
+                if m is not None:
+                    start = m.group("sd") + m.group("st")
+                    end = m.group("ed") + m.group("et")
 
-                record = item, start, end
-                if predicate is None \
-                        or self._filter_record(record, predicate):
+                    record = f"{root}/{file}", start, end
                     records.append(record)
 
         return sorted(records)
-
-    def _filter_record(self,
-                       record: Tuple[str, str, str],
-                       predicate: DatasetPredicate) -> bool:
-        path = self.resolve_path(record[0])
-        try:
-            refs_dict = SmosIndexCatalog.load_refs(path)
-        except OSError as e:
-            # Warn
-            return False
-        if not isinstance(refs_dict, dict):
-            return False
-        refs = refs_dict.get("refs")
-        if not isinstance(refs, dict):
-            return False
-        attrs_json = refs.get(".zattrs")
-        if not isinstance(attrs_json, str):
-            return False
-        try:
-            attrs = json.loads(attrs_json)
-        except ValueError as e:
-            # Warn
-            return False
-        if not isinstance(attrs, dict):
-            return False
-        return predicate(record, attrs)
 
     @staticmethod
     def _normalize_time_range(time_range):
@@ -246,3 +185,45 @@ class SmosIndexCatalog(AbstractSmosCatalog):
             end = "2050-01-01 00:00:00"
         start, end = pd.to_datetime((start, end))
         return start, end
+
+
+def open_dataset(source_file: str,
+                 source_protocol: str = None,
+                 source_storage_options: Dict[str, Any] = None,
+                 cache_path: Optional[str] = None) \
+        -> xr.Dataset:
+    remote_fs = fsspec.filesystem(source_protocol,
+                                  **source_storage_options)
+    if not cache_path:
+        local_file = tempfile.TemporaryFile(prefix="xcube-smos-",
+                                            suffix=".nc").name
+        remote_fs.get(source_file, local_file)
+    else:
+        local_file = f"{cache_path}/{source_file}"
+        if not os.path.isfile(local_file):
+            key_prefix = "VH:SPH:MI:TI:"
+            if "/SMOS/L2OS/" in source_file:
+                var_names = OS_VAR_NAMES
+            elif "/SMOS/L2SM/" in source_file:
+                var_names = SM_VAR_NAMES
+            else:
+                var_names = None
+            os.makedirs(os.path.dirname(local_file), exist_ok=True)
+            temp_file = local_file + ".temp"
+            remote_fs.get(source_file, temp_file)
+            with xr.open_dataset(temp_file, decode_cf=False,
+                                 chunks={}) as ds:
+                dataset = include_vars(ds, var_names)
+                dataset.attrs = {k[len(key_prefix):]: v
+                                 for k, v in dataset.attrs.items()
+                                 if k.startswith(key_prefix)}
+                dataset.to_netcdf(local_file)
+            os.remove(temp_file)
+
+    return xr.open_dataset(local_file, decode_cf=False, chunks={})
+
+
+def include_vars(ds: xr.Dataset, var_names: Set[str]) -> xr.Dataset:
+    return ds.drop_vars([v for v in ds.data_vars
+                         if var_names is None
+                         or not (v in var_names or v == "Grid_Point_ID")])

@@ -46,16 +46,11 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
         self.smos_l2_sm_paths = smos_l2_sm_paths or []
         self.smos_l2_os_paths = smos_l2_os_paths or []
 
-    @property
-    def dataset_opener(self) -> DatasetOpener:
+    def get_dataset_opener(self) -> DatasetOpener:
         return SmosSimpleCatalog.open_dataset
 
-    # noinspection PyUnusedLocal
     @staticmethod
-    def open_dataset(dataset_path: str,
-                     protocol: Optional[str] = None,
-                     storage_options: Optional[dict] = None) \
-            -> xr.Dataset:
+    def open_dataset(dataset_path: str) -> xr.Dataset:
         return xr.open_dataset(dataset_path, decode_cf=False)
 
     def find_datasets(self,

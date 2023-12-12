@@ -77,13 +77,11 @@ class SmosSimpleCatalogTest(unittest.TestCase):
         path, _, _ = files[0]
 
         path = catalog.resolve_path(path)
-        open_dataset = catalog.dataset_opener
+        open_dataset = catalog.get_dataset_opener()
 
         self.assertTrue(callable(open_dataset))
 
-        ds = open_dataset(path,
-                          protocol=catalog.source_protocol,
-                          storage_options=catalog.source_storage_options)
+        ds = open_dataset(path)
 
         self.assertIsInstance(ds, xr.Dataset)
         self.assertIn("Altitude", ds)

@@ -27,11 +27,10 @@ import xarray as xr
 from ..nckcindex.producttype import ProductTypeLike
 from ..utils import NotSerializable
 
-
 DatasetRecord = Tuple[
     str,  # relative path
     str,  # start date/time in compact format
-    str   # end date/time in compact format
+    str  # end date/time in compact format
 ]
 
 DatasetOpener = Callable[
@@ -61,9 +60,14 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
     open a found dataset.
     """
 
-    @property
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
+    def get_dataset_opener_kwargs(self) -> Dict[str, Any]:
+        """Get keyword arguments passed to the function returned by
+        ``get_dataset_opener()``."""
+        return {}
+
     @abc.abstractmethod
-    def dataset_opener(self) -> DatasetOpener:
+    def get_dataset_opener(self) -> DatasetOpener:
         """Get a function that opens a dataset. The function
         must have the signature:::
 
@@ -87,16 +91,6 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
     def resolve_path(self, path: str) -> str:
         """Resolve the given path returned by ``find_datasets``"""
         return path
-
-    @property
-    def source_protocol(self) -> Optional[str]:
-        """Get protocol of the source filesystem."""
-        return None
-
-    @property
-    def source_storage_options(self) -> Optional[Dict[str, Any]]:
-        """Get storage options for the source filesystem."""
-        return None
 
     @abc.abstractmethod
     def find_datasets(self,

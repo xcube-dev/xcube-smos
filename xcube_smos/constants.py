@@ -22,3 +22,30 @@
 SMOS_DATA_STORE_ID = "smos"
 
 INDEX_ENV_VAR_NAME = "XCUBE_SMOS_INDEX_PATH"
+
+OS_VAR_NAMES = {
+    "Mean_acq_time",
+    "SSS_corr",
+    "Sigma_SSS_corr",
+    "SSS_anom",
+    "Sigma_SSS_anom",
+    "Dg_chi2_corr",
+    "Dg_quality_SSS_corr",
+    "Dg_quality_SSS_anom",
+    "Coast_distance",
+    "Dg_RFI_X",
+    "Dg_RFI_Y",
+    "X_swath",
+}
+
+SM_VAR_NAMES = {
+    "Mean_acq_time",
+    "Soil_Moisture",
+    "Soil_Moisture_DQX",
+    "Chi_2",
+    "Chi_2_P",
+    "N_RFI_X",
+    "N_RFI_Y",
+    "RFI_Prob",
+    "X_swath",
+}

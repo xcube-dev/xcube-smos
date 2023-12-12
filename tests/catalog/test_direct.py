@@ -2,31 +2,39 @@ import os
 import unittest
 from typing import Tuple, Union
 
+import numpy as np
 import xarray as xr
 
-from xcube_smos.catalog.base import DatasetRecord
-from xcube_smos.constants import INDEX_ENV_VAR_NAME
-from xcube_smos.catalog import SmosIndexCatalog
+from xcube_smos.catalog import SmosDirectCatalog
 
-index_path = os.environ.get(INDEX_ENV_VAR_NAME)
+s3_storage_options = None
+if "CREODIAS_S3_KEY" in os.environ \
+        and "CREODIAS_S3_SECRET" in os.environ:
+    s3_storage_options = dict(
+        endpoint_url="https://s3.cloudferro.com",
+        anon=False,
+        key=os.environ["CREODIAS_S3_KEY"],
+        secret=os.environ["CREODIAS_S3_SECRET"]
+    )
 
-if not index_path:
-    reason = f"env var {INDEX_ENV_VAR_NAME!r} not set {index_path}"
-else:
-    reason = f"index {index_path} not found"
+reason = "Set env vars CREODIAS_S3_KEY and CREODIAS_S3_SECRET to enable test"
 
 
-@unittest.skipUnless(index_path and os.path.exists(index_path), reason)
-class SmosIndexCatalogTest(unittest.TestCase):
+@unittest.skipUnless(s3_storage_options is not None, reason)
+class SmosDirectCatalogTest(unittest.TestCase):
 
     def test_1_find_datasets(self):
-        catalog = SmosIndexCatalog(index_path)
+        catalog = SmosDirectCatalog(
+            source_path="EODATA",
+            source_protocol="s3",
+            source_storage_options=s3_storage_options
+        )
 
         files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-03"))
-        self.assert_files_ok(files, "SMOS/L2SM/MIR_SMUDP2/", (25, 30))
+        self.assert_files_ok(files, "EODATA/SMOS/L2SM/MIR_SMUDP2/", (25, 30))
 
         files = catalog.find_datasets("OS", ("2021-05-01", "2021-05-03"))
-        self.assert_files_ok(files, "SMOS/L2OS/MIR_OSUDP2/", (25, 30))
+        self.assert_files_ok(files, "EODATA/SMOS/L2OS/MIR_OSUDP2/", (25, 30))
 
     # def test_1_find_datasets_ascending(self):
     #     catalog = SmosIndexCatalog(index_path)
@@ -83,21 +91,29 @@ class SmosIndexCatalogTest(unittest.TestCase):
             self.assertEqual(14, len(end))
 
     def test_2_dataset_opener(self):
-        catalog = SmosIndexCatalog(index_path)
+        catalog = SmosDirectCatalog(
+            source_path="EODATA",
+            source_protocol="s3",
+            source_storage_options=s3_storage_options
+        )
+
         files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
         path, _, _ = files[0]
 
         path = catalog.resolve_path(path)
+        open_dataset_kwargs = catalog.get_dataset_opener_kwargs()
         open_dataset = catalog.get_dataset_opener()
 
         self.assertTrue(callable(open_dataset))
 
         ds = open_dataset(path,
-                          protocol=catalog.source_protocol,
-                          storage_options=catalog.source_storage_options)
+                          **open_dataset_kwargs)
 
         self.assertIsInstance(ds, xr.Dataset)
-        self.assertIn("Altitude", ds)
         self.assertIn("Grid_Point_ID", ds)
+        self.assertIn(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
         self.assertIn("Soil_Moisture", ds)
-        self.assertIn("Surface_Temperature", ds)
+        self.assertIn(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
+        self.assertIn("Soil_Moisture_DQX", ds)
+        self.assertIn(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
+
