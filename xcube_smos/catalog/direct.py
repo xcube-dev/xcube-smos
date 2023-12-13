@@ -145,7 +145,7 @@ def open_dataset(source_file: str,
                                   **source_storage_options)
     if not cache_path:
         if open_dataset_kwargs.get("engine") == "h5netcdf":
-            fp = remote_fs.open(source_file, "r+b")
+            fp = remote_fs.open(source_file, "rb")
             ds = xr.open_dataset(fp, **open_dataset_kwargs)
         else:
             local_file = TempNcDir.get_instance().new_file()
