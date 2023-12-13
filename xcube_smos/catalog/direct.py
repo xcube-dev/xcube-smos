@@ -23,24 +23,21 @@ import atexit
 from functools import cached_property
 import os
 from pathlib import Path
-import re
 import shutil
 import tempfile
-from typing import Union, Dict, Any, Optional, Tuple, List, Set
+from typing import Union, Dict, Any, Optional, Tuple, List, Set, Iterable
 
 import fsspec
-import pandas as pd
 import xarray as xr
 
 from ..constants import OS_VAR_NAMES
 from ..constants import SM_VAR_NAMES
-from xcube_smos.catalog.producttype import ProductType
-from xcube_smos.catalog.producttype import ProductTypeLike
-from ..timeinfo import to_compact_time
-from .base import AbstractSmosCatalog, DatasetPredicate, DatasetRecord
-from .base import DatasetOpener
-
-_ONE_DAY = pd.Timedelta(1, unit="days")
+from .base import AbstractSmosCatalog
+from .producttype import ProductType
+from .producttype import ProductTypeLike
+from .types import DatasetOpener
+from .types import DatasetRecord
+from .types import AcceptRecord
 
 
 class SmosDirectCatalog(AbstractSmosCatalog):
@@ -82,113 +79,21 @@ class SmosDirectCatalog(AbstractSmosCatalog):
     def find_datasets(self,
                       product_type: ProductTypeLike,
                       time_range: Tuple[Optional[str], Optional[str]],
-                      predicate: Optional[DatasetPredicate] = None) \
+                      accept_record: Optional[AcceptRecord] = None) \
             -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
-        start, end = self._normalize_time_range(time_range)
-
-        start_times = self._find_files_for_date(product_type,
-                                                start.year,
-                                                start.month,
-                                                start.day,
-                                                predicate)
-        end_times = self._find_files_for_date(product_type,
-                                              end.year,
-                                              end.month,
-                                              end.day,
-                                              predicate)
-
-        start_str = to_compact_time(start)
-        end_str = to_compact_time(end)
-
-        start_index = -1
-        for index, (_, _, start_end_str) in enumerate(start_times):
-            if start_end_str >= start_str:
-                start_index = index
-                break
-
-        end_index = -1
-        for index, (_, end_start_str, _) in enumerate(end_times):
-            if end_start_str >= end_str:
-                end_index = index
-                break
-
-        start_names = []
-        if start_index >= 0:
-            start_names.extend(start_times[start_index:])
-
-        # Add everything between start + start.day and end - end.day
-
-        start_p1d = pd.Timestamp(year=start.year,
-                                 month=start.month,
-                                 day=start.day) + _ONE_DAY
-        end_m1d = pd.Timestamp(year=end.year,
-                               month=end.month,
-                               day=end.day) - _ONE_DAY
-
-        in_between_names = []
-        if end_m1d > start_p1d:
-            time = start_p1d
-            while time <= end_m1d:
-                in_between_names.extend(
-                    self._find_files_for_date(product_type,
-                                              time.year,
-                                              time.month,
-                                              time.day,
-                                              predicate)
-                )
-                time += _ONE_DAY
-
-        end_names = []
-        if end_index >= 0:
-            end_names.extend(end_times[:end_index])
-
-        return start_names + in_between_names + end_names
-
-    def _find_files_for_date(self,
-                             product_type: ProductTypeLike,
-                             year: int,
-                             month: int,
-                             day: int,
-                             predicate: Optional[DatasetPredicate]) \
-            -> List[Tuple[str, str, str]]:
-        product_type = ProductType.normalize(product_type)
-        path_pattern = product_type.path_pattern
-        name_pattern = product_type.name_pattern
-
-        prefix = path_pattern.format(
-            year=year,
-            month=f'0{month}' if month < 10 else month,
-            day=f'0{day}' if day < 10 else day
+        return product_type.find_files_for_time_range(
+            time_range,
+            self._get_files_for_path,
+            accept_record=accept_record
         )
 
-        source_path = f"{self._source_path}/{prefix}"
-
-        records = []
+    def _get_files_for_path(self, path: str) -> Iterable[str]:
+        source_path = self._source_path + "/" + path
         for root, _, files in self.source_fs.walk(source_path):
             for file in files:
-                parent_and_filename = file.rsplit("/", 1)
-                filename = parent_and_filename[1] \
-                    if len(parent_and_filename) == 2 else file
-                m = re.match(name_pattern, filename)
-                if m is not None:
-                    start = m.group("sd") + m.group("st")
-                    end = m.group("ed") + m.group("et")
-
-                    record = f"{root}/{file}", start, end
-                    records.append(record)
-
-        return sorted(records)
-
-    @staticmethod
-    def _normalize_time_range(time_range):
-        start, end = time_range
-        if start is None:
-            start = "2000-01-01 00:00:00"
-        if end is None:
-            end = "2050-01-01 00:00:00"
-        start, end = pd.to_datetime((start, end))
-        return start, end
+                if file:
+                    yield root + "/" + file
 
 
 class TempNcDir:
@@ -226,7 +131,6 @@ def open_dataset(source_file: str,
                  cache_path: Optional[str] = None,
                  xarray_kwargs: Dict[str, Any] = None) \
         -> xr.Dataset:
-
     open_dataset_kwargs = dict(xarray_kwargs or {})
     open_dataset_kwargs.update(decode_cf=False, chunks={})
 

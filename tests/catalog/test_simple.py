@@ -3,8 +3,8 @@ import unittest
 from pathlib import Path
 import xarray as xr
 
-from xcube_smos.catalog import SmosSimpleCatalog
 from xcube_smos.catalog.base import DatasetRecord
+from .simple import SmosSimpleCatalog
 
 
 def new_simple_catalog() -> SmosSimpleCatalog:
@@ -44,13 +44,14 @@ class SmosSimpleCatalogTest(unittest.TestCase):
 
         key = "VH:SPH:MI:TI:Ascending_Flag"
 
-        def filter_ascending(record: DatasetRecord, attrs: dict) -> bool:
+        def filter_ascending(record: DatasetRecord) -> bool:
+            attrs = catalog.get_dataset_attrs(record[0])
             print(f"filter_ascending: {key} = {attrs.get(key)}")
             return attrs.get(key) == "A"
 
         ascending_files = catalog.find_datasets(
             "SM", (None, None),
-            predicate=filter_ascending
+            accept_record=filter_ascending
         )
         self.assertIsInstance(ascending_files, list)
         self.assertEqual(1, len(ascending_files))
@@ -60,13 +61,14 @@ class SmosSimpleCatalogTest(unittest.TestCase):
 
         key = "VH:SPH:MI:TI:Ascending_Flag"
 
-        def filter_descending(record: DatasetRecord, attrs: dict) -> bool:
+        def filter_descending(record: DatasetRecord) -> bool:
+            attrs = catalog.get_dataset_attrs(record[0])
             print(f"filter_descending: {key} = {attrs.get(key)}")
             return attrs.get(key) == "D"
 
         descending_files = catalog.find_datasets(
             "SM", (None, None),
-            predicate=filter_descending
+            accept_record=filter_descending
         )
         self.assertIsInstance(descending_files, list)
         self.assertEqual(4, len(descending_files))

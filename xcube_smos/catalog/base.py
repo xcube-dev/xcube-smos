@@ -20,37 +20,13 @@
 # DEALINGS IN THE SOFTWARE.
 
 import abc
-from typing import Dict, Any, Optional, Tuple, List, Callable
-
-import xarray as xr
+from typing import Dict, Any, Optional, Tuple, List
 
 from xcube_smos.catalog.producttype import ProductTypeLike
 from ..utils import NotSerializable
-
-DatasetRecord = Tuple[
-    str,  # relative path
-    str,  # start date/time in compact format
-    str  # end date/time in compact format
-]
-
-DatasetOpener = Callable[
-    [
-        str,  # dataset_path
-        {
-            "protocol": Optional[str],
-            "storage_options": Optional[Dict[str, Any]],
-        }
-    ],
-    xr.Dataset
-]
-
-DatasetPredicate = Callable[
-    [
-        DatasetRecord,  # dataset (path, start, end)
-        Dict[str, Any]  # dataset global attributes
-    ],
-    bool
-]
+from .types import DatasetOpener
+from .types import DatasetRecord
+from .types import AcceptRecord
 
 
 class AbstractSmosCatalog(NotSerializable, abc.ABC):
@@ -59,6 +35,12 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
     A catalog is used to find datasets and provides the means to
     open a found dataset.
     """
+
+    def get_dataset_attrs(self, path: str) -> Optional[Dict[str, Any]]:
+        open_dataset = self.get_dataset_opener()
+        with open_dataset(path,
+                          **(self.get_dataset_opener_kwargs() or {})) as ds:
+            return dict(ds.attrs)
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def get_dataset_opener_kwargs(self) -> Dict[str, Any]:
@@ -96,13 +78,13 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
     def find_datasets(self,
                       product_type: ProductTypeLike,
                       time_range: Tuple[Optional[str], Optional[str]],
-                      predicate: Optional[DatasetPredicate] = None) \
+                      accept_record: Optional[AcceptRecord] = None) \
             -> List[DatasetRecord]:
         """Find SMOS L2 datasets in the given *time_range*.
 
         :param product_type: SMOS product type
         :param time_range: Time range (from, to) ISO format, UTC
-        :param predicate: An optional dataset filter function
+        :param accept_record: An optional dataset filter function
         :return: List of tuples of the form (dataset_path, start, stop), where
             start and stop represent the observation time range
             using "compact" datetime format, e.g., "20230503103546".

@@ -27,12 +27,12 @@ from typing import Tuple, Optional, List
 
 import xarray as xr
 
-from .base import AbstractSmosCatalog
-from .base import DatasetPredicate
-from .base import DatasetRecord
-from .base import DatasetOpener
-from .producttype import ProductType
-from .producttype import ProductTypeLike
+from xcube_smos.catalog.base import AbstractSmosCatalog
+from xcube_smos.catalog.types import AcceptRecord
+from xcube_smos.catalog.types import DatasetRecord
+from xcube_smos.catalog.types import DatasetOpener
+from xcube_smos.catalog.producttype import ProductType
+from xcube_smos.catalog.producttype import ProductTypeLike
 
 
 class SmosSimpleCatalog(AbstractSmosCatalog):
@@ -60,7 +60,7 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
     def find_datasets(self,
                       product_type: ProductTypeLike,
                       time_range: Tuple[Optional[str], Optional[str]],
-                      predicate: Optional[DatasetPredicate] = None) \
+                      accept_record: Optional[AcceptRecord] = None) \
             -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
         if product_type.type_id == "SM":
@@ -80,11 +80,7 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
             start = m.group("sd") + m.group("st")
             end = m.group("ed") + m.group("et")
             record = path, start, end
-            if not predicate:
+            if accept_record is None or accept_record(record):
                 result.append(record)
-            else:
-                with xr.open_dataset(path) as ds:
-                    if predicate(record, ds.attrs):
-                        result.append(record)
 
         return result

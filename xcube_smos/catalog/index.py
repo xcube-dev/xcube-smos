@@ -21,22 +21,23 @@
 
 import json
 import os
-import re
 from pathlib import Path
-from typing import Union, Dict, Any, Optional, Tuple, List
+from typing import Union, Dict, Any, Optional, Tuple, List, Iterable
 
 import fsspec
 import pandas as pd
 import xarray as xr
 
 from xcube.util.assertions import assert_given
+
 from ..constants import INDEX_ENV_VAR_NAME
 from ..nckcindex.nckcindex import NcKcIndex
-from xcube_smos.catalog.producttype import ProductType
-from xcube_smos.catalog.producttype import ProductTypeLike
-from ..timeinfo import to_compact_time
-from .base import AbstractSmosCatalog, DatasetPredicate, DatasetRecord
-from .base import DatasetOpener
+from .base import AbstractSmosCatalog
+from .producttype import ProductType
+from .producttype import ProductTypeLike
+from .types import AcceptRecord
+from .types import DatasetOpener
+from .types import DatasetRecord
 
 _ONE_DAY = pd.Timedelta(1, unit="days")
 
@@ -70,10 +71,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
 
     def resolve_path(self, path: str) -> str:
         index_path = self._nc_kc_index.index_path
-        index_protocol = "file"
-        # TODO: use this instead, once have NcKcIndex.index_protocol
-        # index_protocol = self._nc_kc_index.index_protocol
-        index_url = f"{index_protocol}://{index_path}"
+        index_url = f"file://{index_path}"
         if index_path.endswith(".zip"):
             return f'zip://{path}::{index_url}'
         else:
@@ -82,138 +80,43 @@ class SmosIndexCatalog(AbstractSmosCatalog):
     def find_datasets(self,
                       product_type: ProductTypeLike,
                       time_range: Tuple[Optional[str], Optional[str]],
-                      predicate: Optional[DatasetPredicate] = None) \
+                      accept_record: Optional[AcceptRecord] = None) \
             -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
-        start, end = self._normalize_time_range(time_range)
+        return product_type.find_files_for_time_range(
+            time_range,
+            self._get_files_for_path,
+            accept_record=accept_record
+        )
 
-        start_times = self._find_files_for_date(product_type,
-                                                start.year,
-                                                start.month,
-                                                start.day,
-                                                predicate)
-        end_times = self._find_files_for_date(product_type,
-                                              end.year,
-                                              end.month,
-                                              end.day,
-                                              predicate)
+    def _get_files_for_path(self, source_path: str) -> Iterable[str]:
+        index_store = self._nc_kc_index.index_store
+        for item in index_store.list(prefix=source_path + "/"):
+            yield item
 
-        start_str = to_compact_time(start)
-        end_str = to_compact_time(end)
-
-        start_index = -1
-        for index, (_, _, start_end_str) in enumerate(start_times):
-            if start_end_str >= start_str:
-                start_index = index
-                break
-
-        end_index = -1
-        for index, (_, end_start_str, _) in enumerate(end_times):
-            if end_start_str >= end_str:
-                end_index = index
-                break
-
-        start_names = []
-        if start_index >= 0:
-            start_names.extend(start_times[start_index:])
-
-        # Add everything between start + start.day and end - end.day
-
-        start_p1d = pd.Timestamp(year=start.year,
-                                 month=start.month,
-                                 day=start.day) + _ONE_DAY
-        end_m1d = pd.Timestamp(year=end.year,
-                               month=end.month,
-                               day=end.day) - _ONE_DAY
-
-        in_between_names = []
-        if end_m1d > start_p1d:
-            time = start_p1d
-            while time <= end_m1d:
-                in_between_names.extend(
-                    self._find_files_for_date(product_type,
-                                              time.year,
-                                              time.month,
-                                              time.day,
-                                              predicate)
-                )
-                time += _ONE_DAY
-
-        end_names = []
-        if end_index >= 0:
-            end_names.extend(end_times[:end_index])
-
-        return start_names + in_between_names + end_names
-
-    def _find_files_for_date(self,
-                             product_type: ProductTypeLike,
-                             year: int,
-                             month: int,
-                             day: int,
-                             predicate: Optional[DatasetPredicate]) \
-            -> List[Tuple[str, str, str]]:
-        product_type = ProductType.normalize(product_type)
-        path_pattern = product_type.path_pattern
-        name_pattern = product_type.name_pattern
-
-        prefix = path_pattern.format(
-            year=year,
-            month=f'0{month}' if month < 10 else month,
-            day=f'0{day}' if day < 10 else day
-        ) + "/"
-
-        records = []
-        for item in self._nc_kc_index.index_store.list(prefix=prefix):
-            parent_and_filename = item.rsplit("/", 1)
-            filename = parent_and_filename[1] \
-                if len(parent_and_filename) == 2 else item
-            m = re.match(name_pattern, filename)
-            if m is not None:
-                start = m.group("sd") + m.group("st")
-                end = m.group("ed") + m.group("et")
-
-                record = item, start, end
-                if predicate is None \
-                        or self._filter_record(record, predicate):
-                    records.append(record)
-
-        return sorted(records)
-
-    def _filter_record(self,
-                       record: Tuple[str, str, str],
-                       predicate: DatasetPredicate) -> bool:
-        path = self.resolve_path(record[0])
+    def get_dataset_attrs(self, path: str) -> Optional[Dict[str, Any]]:
+        path = self.resolve_path(path)
         try:
             refs_dict = load_json(path)
-        except OSError as e:
+        except OSError:
             # Warn
-            return False
+            return None
         if not isinstance(refs_dict, dict):
-            return False
+            return None
         refs = refs_dict.get("refs")
         if not isinstance(refs, dict):
-            return False
+            return None
         attrs_json = refs.get(".zattrs")
         if not isinstance(attrs_json, str):
-            return False
+            return None
         try:
             attrs = json.loads(attrs_json)
-        except ValueError as e:
+        except ValueError:
             # Warn
-            return False
+            return None
         if not isinstance(attrs, dict):
-            return False
-        return predicate(record, attrs)
-
-    @staticmethod
-    def _normalize_time_range(time_range):
-        start, end = time_range
-        if start is None:
-            start = "2000-01-01 00:00:00"
-        if end is None:
-            end = "2050-01-01 00:00:00"
-        start, end = pd.to_datetime((start, end))
-        return start, end
+            return None
+        return attrs
 
 
 def open_dataset(path: str,
