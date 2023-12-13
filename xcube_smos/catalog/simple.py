@@ -63,7 +63,7 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
                       predicate: Optional[DatasetPredicate] = None) \
             -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
-        if product_type.id == "SM":
+        if product_type.type_id == "SM":
             paths = self.smos_l2_sm_paths
         else:
             paths = self.smos_l2_os_paths
