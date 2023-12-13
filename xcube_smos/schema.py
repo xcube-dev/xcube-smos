@@ -25,19 +25,20 @@ from xcube.util.jsonschema import JsonDateSchema
 from xcube.util.jsonschema import JsonNumberSchema
 from xcube.util.jsonschema import JsonObjectSchema
 from xcube.util.jsonschema import JsonStringSchema
-from xcube_smos.mldataset.dgg import SmosDiscreteGlobalGrid
+from xcube_smos.mldataset.newdgg import MIN_PIXEL_SIZE
+from xcube_smos.mldataset.newdgg import NUM_LEVELS
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
-        dgg_urlpath=JsonStringSchema(
+        index_path=JsonStringSchema(
             min_length=1,
-            title='Path or URL to the local SMOS Discrete Global Grid.',
+            title='Path or URL to the SMOS NetCDF Kerchunk index.',
         ),
-        index_urlpath=JsonStringSchema(
-            min_length=1,
-            title='Path or URL to a local SMOS NetCDF Kerchunk index.',
+        index_protocol=JsonStringSchema(
+            min_length=2,
+            title='Protocol name for the SMOS NetCDF Kerchunk index.',
         ),
-        index_options=JsonObjectSchema(
+        index_storage_options=JsonObjectSchema(
             additional_properties=True,
             title='Storage options for the SMOS NetCDF Kerchunk index.',
             description='See fsspec documentation for specific filesystems.'
@@ -61,8 +62,8 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
             title='Bounding box [x1,y1, x2,y2] in geographical coordinates'
         ),
         spatial_res=JsonNumberSchema(
-            enum=[(1 << level) * SmosDiscreteGlobalGrid.MIN_PIXEL_SIZE
-                  for level in range(SmosDiscreteGlobalGrid.MAX_NUM_LEVELS)],
+            enum=[(1 << level) * MIN_PIXEL_SIZE
+                  for level in range(NUM_LEVELS)],
             title='Spatial resolution in decimal degrees.',
         ),
         time_range=JsonArraySchema(

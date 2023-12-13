@@ -1,9 +1,9 @@
 import os
 import unittest
+import xarray as xr
 
 from xcube_smos.constants import INDEX_ENV_VAR_NAME
 from xcube_smos.catalog import SmosIndexCatalog
-
 
 index_path = os.environ.get(INDEX_ENV_VAR_NAME)
 
@@ -16,13 +16,46 @@ else:
 @unittest.skipUnless(index_path and os.path.exists(index_path), reason)
 class SmosIndexCatalogTest(unittest.TestCase):
 
-    def test_find_files(self):
-        archive = SmosIndexCatalog(index_path)
+    def test_1_find_datasets(self):
+        catalog = SmosIndexCatalog(index_path)
 
-        files = archive.find_datasets("SM", ("2021-05-01", "2021-05-03"))
+        files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-03"))
+        self.assert_files_ok(files, "SMOS/L2SM/MIR_SMUDP2/")
+
+        files = catalog.find_datasets("OS", ("2021-05-01", "2021-05-03"))
+        self.assert_files_ok(files, "SMOS/L2OS/MIR_OSUDP2/")
+
+    def assert_files_ok(self, files, expected_prefix: str):
         self.assertIsInstance(files, list)
         self.assertTrue(len(files) >= 20)
+        for file in files:
+            self.assertIsInstance(file, tuple)
+            self.assertEqual(3, len(file))
+            path, start, end = file
+            self.assertIsInstance(path, str)
+            self.assertIsInstance(start, str)
+            self.assertIsInstance(end, str)
+            self.assertEqual(expected_prefix, path[:len(expected_prefix)])
+            self.assertEqual(14, len(start))
+            self.assertEqual(14, len(end))
 
-        files = archive.find_datasets("OS", ("2021-05-01", "2021-05-03"))
-        self.assertIsInstance(files, list)
-        self.assertTrue(len(files) >= 20)
+    def test_2_dataset_opener(self):
+        catalog = SmosIndexCatalog(index_path)
+        files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
+        path, _, _ = files[0]
+
+        path = catalog.resolve_path(path)
+        open_dataset = catalog.dataset_opener
+
+        self.assertTrue(callable(open_dataset))
+
+        ds = open_dataset(path,
+                          protocol=catalog.source_protocol,
+                          storage_options=catalog.source_storage_options)
+
+        self.assertIsInstance(ds, xr.Dataset)
+        self.assertIn("Altitude", ds)
+        self.assertIn("Grid_Point_ID", ds)
+        self.assertIn("Soil_Moisture", ds)
+        self.assertIn("Surface_Temperature", ds)
+

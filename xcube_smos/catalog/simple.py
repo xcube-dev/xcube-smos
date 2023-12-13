@@ -50,12 +50,13 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
     def dataset_opener(self) -> DatasetOpener:
         return SmosSimpleCatalog.open_dataset
 
+    # noinspection PyUnusedLocal
     @staticmethod
-    def open_dataset(dataset_path: str, source_storage_options: dict) \
+    def open_dataset(dataset_path: str,
+                     protocol: Optional[str] = None,
+                     storage_options: Optional[dict] = None) \
             -> xr.Dataset:
-        return xr.open_dataset(dataset_path,
-                               decode_cf=False,
-                               **(source_storage_options or {}))
+        return xr.open_dataset(dataset_path, decode_cf=False)
 
     def find_datasets(self,
                       product_type: ProductTypeLike,

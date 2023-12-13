@@ -19,7 +19,6 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os
 from functools import cached_property
 from typing import Iterator, Any, Tuple, Container, Union, Dict, Optional
 
@@ -37,11 +36,11 @@ from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import AbstractSmosCatalog
 from .catalog import SmosIndexCatalog
-from .constants import DEFAULT_SMOS_DGG_PATH
-from .constants import DGG_ENV_VAR_NAME
+from .mldataset.newdgg import MAX_HEIGHT
+from .mldataset.newdgg import MIN_PIXEL_SIZE
+from .mldataset.newdgg import new_dgg
 from .mldataset.l2cube import SmosL2Cube
 from .mldataset.l2cube import SmosTimeStepLoader
-from .mldataset.l2cube import new_dgg
 from .schema import OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
 from .timeinfo import parse_time_ranges
@@ -65,33 +64,28 @@ DEFAULT_OPENER_ID = DATASET_OPENER_ID
 class SmosDataStore(NotSerializable, DataStore):
     """Data store for SMOS L2C data cubes.
 
-    :param dgg_urlpath: Path or URL to the DGG as a SNAP image pyramid.
-        If not given, the value of the environment variable named
-        "XCUBE_SMOS_DGG_PATH" is used.
-        If this isn't given as well, *path* defaults to
-        "~/.snap/auxdata/smos-dgg/grid-tiles", which is installed
-        by the SNAP SMOS-Box plugin.
-    :param index_urlpath: Path or URL to the SMOS Kerchunk index
-    :param index_options: Storage options for accessing *index_urlpath*.
+    :param index_path: Path or URL to the SMOS Kerchunk index
+    :param index_protocol: Optional filesystem protocol for accessing
+        *index_path*. Overwrites the protocol parsed from *index_path*,
+        if any.
+    :param index_storage_options: Storage options for accessing *index_path*.
     :param catalog: Catalog (mock) instance used for testing only.
         If given, *index_urlpath* and *index_options* are ignored.
     """
 
     def __init__(self,
-                 dgg_urlpath: Optional[str] = None,
-                 index_urlpath: Optional[str] = None,
-                 index_options: Optional[Dict[str, Any]] = None,
+                 index_path: Optional[str] = None,
+                 index_protocol: Optional[str] = None,
+                 index_storage_options: Optional[Dict[str, Any]] = None,
                  catalog: Optional[AbstractSmosCatalog] = None):
-        self._dgg_urlpath = (dgg_urlpath
-                             or os.environ.get(DGG_ENV_VAR_NAME)
-                             or DEFAULT_SMOS_DGG_PATH)
-        self._index_urlpath = index_urlpath
-        self._index_options = index_options
+        self._index_path = index_path
+        self._index_protocol = index_protocol
+        self._index_storage_options = index_storage_options
         self._catalog = catalog
 
     @cached_property
-    def dgg(self):
-        return new_dgg(self._dgg_urlpath)
+    def dgg(self) -> MultiLevelDataset:
+        return new_dgg()
 
     @classmethod
     def get_data_store_params_schema(cls) -> JsonObjectSchema:
@@ -162,10 +156,10 @@ class SmosDataStore(NotSerializable, DataStore):
         #   Implementation note: It should be possible to provide
         #   all/more required metadata statically from the DGG and
         #   other sources such as the SMOS Kerchunk index.
-        lat_max = self.dgg.MAX_HEIGHT * self.dgg.MIN_PIXEL_SIZE / 2
+        lat_max = MAX_HEIGHT * MIN_PIXEL_SIZE / 2
         metadata = dict(
             bbox=[-180., -lat_max, 180., lat_max],
-            spatial_res=(1 << self.dgg.level0) * self.dgg.MIN_PIXEL_SIZE,
+            spatial_res=MIN_PIXEL_SIZE,
             time_range=["2010-01-01", None],  # TODO (forman): adjust start!
         )
         if data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE):
@@ -189,8 +183,7 @@ class SmosDataStore(NotSerializable, DataStore):
     def catalog(self) -> AbstractSmosCatalog:
         if self._catalog is not None:
             return self._catalog
-        return SmosIndexCatalog(index_path=self._index_urlpath,
-                                index_storage_options=self._index_options)
+        return SmosIndexCatalog(index_path=self._index_path)
 
     def open_data(self,
                   data_id: str,
@@ -202,7 +195,7 @@ class SmosDataStore(NotSerializable, DataStore):
         opener_id = self._assert_valid_opener_id(opener_id)
         data_type = DataType.normalize(opener_id.split(":")[0])
 
-        time_range = open_params["time_range"]   # required
+        time_range = open_params["time_range"]  # required
         l2_product_cache_size = open_params.get("l2_product_cache_size", 0)
 
         # TODO (forman): respect other parameter from open_params here
@@ -214,8 +207,9 @@ class SmosDataStore(NotSerializable, DataStore):
 
         time_step_loader = SmosTimeStepLoader(
             self.dgg,
-            dataset_paths,
             self.catalog.dataset_opener,
+            list(map(self.catalog.resolve_path, dataset_paths)),
+            self.catalog.source_protocol,
             self.catalog.source_storage_options,
             l2_product_cache_size
         )
@@ -269,4 +263,4 @@ class SmosDataStore(NotSerializable, DataStore):
     def _is_valid_data_type(cls, data_type: Optional[DataTypeLike]) -> bool:
         data_type = cls._normalize_data_type(data_type)
         return data_type.is_sub_type_of(DATASET_TYPE) or \
-               data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE)
+            data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE)

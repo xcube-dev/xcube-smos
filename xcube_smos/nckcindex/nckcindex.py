@@ -44,16 +44,18 @@ class NcKcIndex:
     """
 
     def __init__(self,
+                 index_path: str,
                  index_store: IndexStore,
                  index_config: Dict[str, Any]):
         """
         Private constructor. Use :meth:create() or :meth:open() instead.
 
-        :param index_store: The index store.
+        :param index_path: The index path.
         :param index_config: Optional storage options for accessing the
             filesystem of *index_path*.
             See fsspec for protocol given by *index_urlpath*.
         """
+        self.index_path = index_path
         self.index_store = index_store
         self.index_config = index_config
 
@@ -164,7 +166,7 @@ class NcKcIndex:
             # Reopen using write mode
             index_store = IndexStore.new(index_path, mode=mode)
 
-        return NcKcIndex(index_store, index_config)
+        return NcKcIndex(index_path, index_store, index_config)
 
     def sync(self,
              prefix: Optional[str] = None,
