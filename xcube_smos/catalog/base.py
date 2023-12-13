@@ -24,7 +24,7 @@ from typing import Dict, Any, Optional, Tuple, List, Callable
 
 import xarray as xr
 
-from ..nckcindex.producttype import ProductTypeLike
+from xcube_smos.catalog.producttype import ProductTypeLike
 from ..utils import NotSerializable
 
 DatasetRecord = Tuple[

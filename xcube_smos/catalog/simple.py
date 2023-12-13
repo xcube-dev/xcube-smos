@@ -27,10 +27,12 @@ from typing import Tuple, Optional, List
 
 import xarray as xr
 
-from ..nckcindex.producttype import ProductType
-from ..nckcindex.producttype import ProductTypeLike
-from .base import AbstractSmosCatalog, DatasetPredicate, DatasetRecord
+from .base import AbstractSmosCatalog
+from .base import DatasetPredicate
+from .base import DatasetRecord
 from .base import DatasetOpener
+from .producttype import ProductType
+from .producttype import ProductTypeLike
 
 
 class SmosSimpleCatalog(AbstractSmosCatalog):
@@ -51,7 +53,9 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
 
     @staticmethod
     def open_dataset(dataset_path: str) -> xr.Dataset:
-        return xr.open_dataset(dataset_path, decode_cf=False)
+        return xr.open_dataset(dataset_path,
+                               engine="h5netcdf",
+                               decode_cf=False)
 
     def find_datasets(self,
                       product_type: ProductTypeLike,

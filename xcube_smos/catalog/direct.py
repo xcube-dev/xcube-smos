@@ -34,8 +34,8 @@ import xarray as xr
 
 from ..constants import OS_VAR_NAMES
 from ..constants import SM_VAR_NAMES
-from ..nckcindex.producttype import ProductType
-from ..nckcindex.producttype import ProductTypeLike
+from xcube_smos.catalog.producttype import ProductType
+from xcube_smos.catalog.producttype import ProductTypeLike
 from ..timeinfo import to_compact_time
 from .base import AbstractSmosCatalog, DatasetPredicate, DatasetRecord
 from .base import DatasetOpener

@@ -32,8 +32,8 @@ import xarray as xr
 from xcube.util.assertions import assert_given
 from ..constants import INDEX_ENV_VAR_NAME
 from ..nckcindex.nckcindex import NcKcIndex
-from ..nckcindex.producttype import ProductType
-from ..nckcindex.producttype import ProductTypeLike
+from xcube_smos.catalog.producttype import ProductType
+from xcube_smos.catalog.producttype import ProductTypeLike
 from ..timeinfo import to_compact_time
 from .base import AbstractSmosCatalog, DatasetPredicate, DatasetRecord
 from .base import DatasetOpener
@@ -66,39 +66,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                     storage_options=self.source_storage_options)
 
     def get_dataset_opener(self) -> DatasetOpener:
-        return SmosIndexCatalog.open_dataset
-
-    @staticmethod
-    def open_dataset(path: str,
-                     protocol: Optional[str] = None,
-                     storage_options: Optional[dict] = None) \
-            -> xr.Dataset:
-        # Preload reference JSON
-        # See https://github.com/fsspec/filesystem_spec/issues/1455
-        refs = SmosIndexCatalog.load_refs(path)
-        return xr.open_dataset(
-            "reference://",
-            engine="zarr",
-            backend_kwargs={
-                "storage_options": {
-                    "fo": refs,
-                    "remote_protocol": protocol,
-                    "remote_options": storage_options
-                },
-                "consolidated": False
-            },
-            # decode_cf=False is important!
-            # Otherwise, fill-values will be replaced by NaN,
-            # which will convert variable "seqnum" from dtype uint32 to
-            # dtype float64.
-            decode_cf=False
-        )
-
-    @staticmethod
-    def load_refs(path):
-        with fsspec.open(path) as f:
-            refs = json.load(f)
-        return refs
+        return open_dataset
 
     def resolve_path(self, path: str) -> str:
         index_path = self._nc_kc_index.index_path
@@ -216,7 +184,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
                        predicate: DatasetPredicate) -> bool:
         path = self.resolve_path(record[0])
         try:
-            refs_dict = SmosIndexCatalog.load_refs(path)
+            refs_dict = load_json(path)
         except OSError as e:
             # Warn
             return False
@@ -246,3 +214,34 @@ class SmosIndexCatalog(AbstractSmosCatalog):
             end = "2050-01-01 00:00:00"
         start, end = pd.to_datetime((start, end))
         return start, end
+
+
+def open_dataset(path: str,
+                 protocol: Optional[str] = None,
+                 storage_options: Optional[dict] = None) \
+        -> xr.Dataset:
+    # Preload reference JSON
+    # See https://github.com/fsspec/filesystem_spec/issues/1455
+    refs = load_json(path)
+    return xr.open_dataset(
+        "reference://",
+        engine="zarr",
+        backend_kwargs={
+            "storage_options": {
+                "fo": refs,
+                "remote_protocol": protocol,
+                "remote_options": storage_options
+            },
+            "consolidated": False
+        },
+        # decode_cf=False is important!
+        # Otherwise, fill-values will be replaced by NaN,
+        # which will convert variable "seqnum" from dtype uint32 to
+        # dtype float64.
+        decode_cf=False
+    )
+
+
+def load_json(path):
+    with fsspec.open(path) as f:
+        return json.load(f)

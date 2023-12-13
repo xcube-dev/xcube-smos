@@ -55,3 +55,6 @@ OS_PRODUCT_TYPE = ProductType(
     "SMOS/L2OS/MIR_OSUDP2/",
     r"SM_(OPER|REPR)_MIR_OSUDP2_"
 )
+
+ProductType.OS = OS_PRODUCT_TYPE
+ProductType.SM = SM_PRODUCT_TYPE

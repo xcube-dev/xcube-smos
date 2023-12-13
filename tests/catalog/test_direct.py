@@ -3,6 +3,7 @@ import unittest
 from typing import Tuple, Union
 import tempfile
 
+import dask.array
 import numpy as np
 import xarray as xr
 
@@ -97,6 +98,7 @@ class SmosDirectCatalogTest(unittest.TestCase):
             source_protocol="s3",
             source_storage_options=s3_storage_options,
             cache_path=None,
+            xarray_kwargs=dict(engine="netcdf4")
         )
 
         files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
@@ -111,13 +113,7 @@ class SmosDirectCatalogTest(unittest.TestCase):
         ds = open_dataset(path,
                           **open_dataset_kwargs)
 
-        self.assertIsInstance(ds, xr.Dataset)
-        self.assertIn("Grid_Point_ID", ds)
-        self.assertEqual(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
-        self.assertIn("Soil_Moisture", ds)
-        self.assertEqual(np.dtype("float32"), ds.Soil_Moisture.dtype)
-        self.assertIn("Soil_Moisture_DQX", ds)
-        self.assertEqual(np.dtype("float32"), ds.Soil_Moisture_DQX.dtype)
+        self.assert_dataset_ok(ds)
 
     def test_2_dataset_opener_with_cache(self):
         cache_dir = tempfile.TemporaryDirectory().name
@@ -141,6 +137,9 @@ class SmosDirectCatalogTest(unittest.TestCase):
         ds = open_dataset(path,
                           **open_dataset_kwargs)
 
+        self.assert_dataset_ok(ds)
+
+    def assert_dataset_ok(self, ds):
         self.assertIsInstance(ds, xr.Dataset)
         self.assertIn("Grid_Point_ID", ds)
         self.assertEqual(np.dtype("uint32"), ds.Grid_Point_ID.dtype)
@@ -148,3 +147,8 @@ class SmosDirectCatalogTest(unittest.TestCase):
         self.assertEqual(np.dtype("float32"), ds.Soil_Moisture.dtype)
         self.assertIn("Soil_Moisture_DQX", ds)
         self.assertEqual(np.dtype("float32"), ds.Soil_Moisture_DQX.dtype)
+
+        data = ds.Grid_Point_ID.data
+        self.assertIsInstance(data, dask.array.Array)
+        values = ds.Grid_Point_ID.values
+        self.assertIsInstance(values, np.ndarray)
