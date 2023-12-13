@@ -206,16 +206,17 @@ class SmosDataStore(NotSerializable, DataStore):
 
         # TODO (forman): respect other parameter from open_params here
 
-        datasets = self.catalog.find_datasets(product_type, time_range)
-        dataset_paths = [dataset_path for dataset_path, _, _ in datasets]
-        time_ranges = [(start, stop) for _, start, stop in datasets]
+        dataset_records = self.catalog.find_datasets(product_type, time_range)
+        dataset_paths = list(map(self.catalog.resolve_path,
+                                 [path for path, _, _ in dataset_records]))
+        time_ranges = [(start, stop) for _, start, stop in dataset_records]
         time_bounds = parse_time_ranges(time_ranges, is_compact=True)
 
         time_step_loader = SmosTimeStepLoader(
             self.dgg,
             self.catalog.get_dataset_opener(),
             self.catalog.get_dataset_opener_kwargs(),
-            list(map(self.catalog.resolve_path, dataset_paths)),
+            dataset_paths,
             l2_product_cache_size
         )
 

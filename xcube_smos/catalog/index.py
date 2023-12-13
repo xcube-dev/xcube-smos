@@ -94,10 +94,11 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         for item in index_store.list(prefix=source_path + "/"):
             yield item
 
-    def get_dataset_attrs(self, path: str) -> Optional[Dict[str, Any]]:
-        path = self.resolve_path(path)
+    def get_dataset_attrs(self, dataset_path: str) \
+            -> Optional[Dict[str, Any]]:
+        resolved_path = self.resolve_path(dataset_path)
         try:
-            refs_dict = load_json(path)
+            refs_dict = load_json(resolved_path)
         except OSError:
             # Warn
             return None

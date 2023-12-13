@@ -36,11 +36,29 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
     open a found dataset.
     """
 
-    def get_dataset_attrs(self, path: str) -> Optional[Dict[str, Any]]:
+    def get_dataset_attrs(self, dataset_path: str) \
+            -> Optional[Dict[str, Any]]:
+        """Get the global attributes for the dataset given by *dataset_path*.
+
+        The default implementation resolves the given *dataset_path*
+        and returns the attributes of the dataset opened using the function
+        returned by ``get_dataset_opener()``.
+
+        :param dataset_path: Unresolved dataset path as returned by
+            ``find_datasets()``.
+        :return: The dictionary of dataset attributes
+            or ``None``, if they cannot be retrieved.
+        """
+        resolved_path = self.resolve_path(dataset_path)
         open_dataset = self.get_dataset_opener()
-        with open_dataset(path,
-                          **(self.get_dataset_opener_kwargs() or {})) as ds:
-            return dict(ds.attrs)
+        try:
+            with open_dataset(
+                    resolved_path,
+                    **(self.get_dataset_opener_kwargs() or {})
+            ) as ds:
+                return dict(ds.attrs)
+        except OSError:
+            return None
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def get_dataset_opener_kwargs(self) -> Dict[str, Any]:
@@ -53,26 +71,40 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
         """Get a function that opens a dataset. The function
         must have the signature:::
 
-            open_dataset(path: str,
-                         protocol: str = None,
-                         storage_options: dict = None) -> xr.Dataset
+            open_dataset(resolved_path: str,
+                         **kwargs) -> xr.Dataset
 
-        and must return a xarray dataset. The data set path is one
-        of the returned paths from :meth:find_datasets(). The optional
-        *protocol* and *storage_options* kwargs specify access to the
-        underlying filesystem.
+        and must return a xarray dataset.
+
+        The optional *kwargs* must handle the ones contained in the
+        dictionary returned by ``get_open_dataset_kwargs()``.
+
+        The **resolved_path** passed to ``open_dataset`` is a resolved
+        dataset path, that is, a path returned by ``find_datasets()``
+        and transformed by the ``resolve_path()`` method.
 
         It is important that the dataset is opened using `decode_cf=False`
-        if xarray is used.
+        if ``xarray.open_dataset()`` is used to open the dataset.
         Otherwise, a given _FillValue attribute will turn Grid_Point_ID
         and other variables from integers into floating point, because
         they use the `_FillValue` attribute.
+
+        In addition, the returned dataset should contain only chunked arrays,
+        which can be forced by passing ``chunks={}`` to
+        ``xarray.open_dataset()``.
         """
 
     # noinspection PyMethodMayBeStatic
-    def resolve_path(self, path: str) -> str:
-        """Resolve the given path returned by ``find_datasets``"""
-        return path
+    def resolve_path(self, dataset_path: str) -> str:
+        """Resolve the given path returned by ``find_datasets()``.
+
+        :param dataset_path: Unresolved dataset path as returned by
+            ``find_datasets()``.
+        :return: A resolved dataset path that is passed to the
+            (static) ``open_dataset`` function returned by the
+            ``get_dataset_opener()`` method.
+        """
+        return dataset_path
 
     @abc.abstractmethod
     def find_datasets(self,
@@ -84,8 +116,11 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
 
         :param product_type: SMOS product type
         :param time_range: Time range (from, to) ISO format, UTC
-        :param accept_record: An optional dataset filter function
-        :return: List of tuples of the form (dataset_path, start, stop), where
-            start and stop represent the observation time range
-            using "compact" datetime format, e.g., "20230503103546".
+        :param accept_record: An optional dataset filter function,
+            that receives a dataset record.
+        :return: List of dataset records of the form
+            (*dataset_path*, *start*, *stop*), where *dataset_path*
+            is yet unresolved and *start*, *stop* represent the observation
+            time range using "compact" datetime format,
+            e.g., ``"20230503103546"``.
         """
