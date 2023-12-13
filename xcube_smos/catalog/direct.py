@@ -134,36 +134,43 @@ def open_dataset(source_file: str,
     open_dataset_kwargs = dict(xarray_kwargs or {})
     open_dataset_kwargs.update(decode_cf=False, chunks={})
 
+    if "/SMOS/L2OS/" in source_file:
+        var_names = OS_VAR_NAMES
+    elif "/SMOS/L2SM/" in source_file:
+        var_names = SM_VAR_NAMES
+    else:
+        var_names = None
+
     remote_fs = fsspec.filesystem(source_protocol,
                                   **source_storage_options)
     if not cache_path:
-        local_file = TempNcDir.get_instance().new_file()
-        remote_fs.get(source_file, local_file)
+        if open_dataset_kwargs.get("engine") == "h5netcdf":
+            fp = remote_fs.open(source_file, "r+b")
+            ds = xr.open_dataset(fp, **open_dataset_kwargs)
+        else:
+            local_file = TempNcDir.get_instance().new_file()
+            remote_fs.get(source_file, local_file)
+            ds = xr.open_dataset(local_file, **open_dataset_kwargs)
+        return filter_dataset(ds, var_names)
     else:
         local_file = f"{cache_path}/{source_file}"
         if not os.path.isfile(local_file):
-            key_prefix = "VH:SPH:MI:TI:"
-            if "/SMOS/L2OS/" in source_file:
-                var_names = OS_VAR_NAMES
-            elif "/SMOS/L2SM/" in source_file:
-                var_names = SM_VAR_NAMES
-            else:
-                var_names = None
             os.makedirs(os.path.dirname(local_file), exist_ok=True)
             temp_file = local_file + ".temp"
             remote_fs.get(source_file, temp_file)
             with xr.open_dataset(temp_file, **open_dataset_kwargs) as ds:
-                dataset = include_vars(ds, var_names)
-                dataset.attrs = {k[len(key_prefix):]: v
-                                 for k, v in dataset.attrs.items()
-                                 if k.startswith(key_prefix)}
+                dataset = filter_dataset(ds, var_names)
                 dataset.to_netcdf(local_file)
             os.remove(temp_file)
+        return xr.open_dataset(local_file, **open_dataset_kwargs)
 
-    return xr.open_dataset(local_file, **open_dataset_kwargs)
 
-
-def include_vars(ds: xr.Dataset, var_names: Set[str]) -> xr.Dataset:
-    return ds.drop_vars([v for v in ds.data_vars
-                         if var_names is None
-                         or not (v in var_names or v == "Grid_Point_ID")])
+def filter_dataset(ds: xr.Dataset, var_names: Set[str]) -> xr.Dataset:
+    key_prefix = "VH:SPH:MI:TI:"
+    ds = ds.drop_vars([v for v in ds.data_vars
+                       if var_names is None
+                       or not (v in var_names or v == "Grid_Point_ID")])
+    ds.attrs = {k[len(key_prefix):]: v
+                for k, v in ds.attrs.items()
+                if k.startswith(key_prefix)}
+    return ds
