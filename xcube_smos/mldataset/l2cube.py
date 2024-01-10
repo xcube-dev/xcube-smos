@@ -1,3 +1,4 @@
+import logging
 import sys
 import warnings
 from typing import Dict, Any, Callable, List, Optional
@@ -22,6 +23,8 @@ from ..utils import LruCache
 from ..utils import NotSerializable
 from ..constants import OS_VAR_NAMES
 from ..constants import SM_VAR_NAMES
+
+LOG = logging.getLogger("xcube-smos")
 
 # Cube visualisation:
 #   - chunks: spatial DGG chunking, time=1
@@ -174,11 +177,9 @@ class SmosTimeStepLoader:
 
     :param dgg: SMOS discrete global grid.
     :param dataset_opener: Function that can open one of *dataset_paths*.
+    :param dataset_opener_kwargs: Keyword arguments
+        passed to *dataset_opener*.
     :param dataset_paths: SMOS L2 dataset paths (from catalog).
-    :param protocol: Dataset filesystem protocol
-        passed to *dataset_opener*.
-    :param storage_options: Dataset filesystem storage options
-        passed to *dataset_opener*.
     :param l2_product_cache_size: Product cache size for L2 products.
     """
 
@@ -206,7 +207,7 @@ class SmosTimeStepLoader:
         l2_product.dispose()
 
     def __getstate__(self) -> Dict[str, Any]:
-        print(f"Serializing {self.class_name}", flush=True, file=sys.stderr)
+        LOG.debug("Serializing {}", self._class_name)
 
         state = self.__dict__.copy()
         del state['l2_product_cache']
@@ -215,7 +216,7 @@ class SmosTimeStepLoader:
         return state
 
     def __setstate__(self, state: Dict[str, Any]):
-        print(f"Deserializing {self.class_name}", flush=True, file=sys.stderr)
+        LOG.debug("Deserializing {}", self._class_name)
 
         self.__dict__.update(state)
 
@@ -223,7 +224,7 @@ class SmosTimeStepLoader:
         self.l2_product_cache = self.new_l2_product_cache()
 
     @property
-    def class_name(self):
+    def _class_name(self):
         return self.__class__.__name__
 
     def load_time_step(self,
@@ -248,7 +249,8 @@ class SmosTimeStepLoader:
         l2_dataset = self.dataset_opener(dataset_path,
                                          **self.dataset_opener_kwargs)
         l2_dataset = l2_dataset.chunk()  # Wrap numpy arrays into dask arrays
-        print(f'Opening L2 product for time_idx={time_idx}', flush=True)
+        LOG.debug('Opening L2 product %s for time index %d',
+                  dataset_path, time_idx)
         l2_product = SmosL2Product(self.dgg, l2_dataset)
         self.l2_product_cache.put(time_idx, l2_product)
         return l2_product
@@ -339,7 +341,8 @@ class SmosMappedL2Product:
         # but most likely every L2 variable will only be read once, when
         # we write SMOS data cubes. This would look different when
         # visualising dynamic SMOS data cubes. Therefore, we set max_size=0.
-        self.mapped_l2_values_cache = LruCache[Hashable, np.ndarray](max_size=0)
+        self.mapped_l2_values_cache = LruCache[Hashable, np.ndarray](
+            max_size=0)
 
     def dispose(self):
         self.mapped_l2_values_cache.clear()

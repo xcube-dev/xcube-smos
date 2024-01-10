@@ -207,6 +207,9 @@ class SmosDataStore(NotSerializable, DataStore):
         # TODO (forman): respect other parameter from open_params here
 
         dataset_records = self.catalog.find_datasets(product_type, time_range)
+        if not dataset_records:
+            raise ValueError(f"No SMOS datasets of type {product_type!r}"
+                             f" found for time range {time_range!r}")
         dataset_paths = list(map(self.catalog.resolve_path,
                                  [path for path, _, _ in dataset_records]))
         time_ranges = [(start, stop) for _, start, stop in dataset_records]
