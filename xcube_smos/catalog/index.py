@@ -62,7 +62,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
     def source_storage_options(self) -> Optional[Dict[str, Any]]:
         return self._nc_kc_index.source_storage_options
 
-    def get_dataset_opener_kwargs(self) -> DatasetOpener:
+    def get_dataset_opener_kwargs(self) -> Dict[str, Any]:
         return dict(protocol=self.source_protocol,
                     storage_options=self.source_storage_options)
 

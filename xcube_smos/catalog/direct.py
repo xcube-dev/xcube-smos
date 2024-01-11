@@ -67,7 +67,7 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         return fsspec.filesystem(self._source_protocol,
                                  **self._source_storage_options)
 
-    def get_dataset_opener_kwargs(self) -> DatasetOpener:
+    def get_dataset_opener_kwargs(self) -> Dict[str, Any]:
         return dict(source_protocol=self._source_protocol,
                     source_storage_options=self._source_storage_options,
                     cache_path=self._cache_path,
