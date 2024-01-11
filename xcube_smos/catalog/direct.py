@@ -21,6 +21,7 @@
 
 import atexit
 from functools import cached_property
+import logging
 import os
 from pathlib import Path
 import shutil
@@ -38,6 +39,9 @@ from .producttype import ProductTypeLike
 from .types import DatasetOpener
 from .types import DatasetRecord
 from .types import AcceptRecord
+
+
+LOG = logging.getLogger("xcube-smos")
 
 
 class SmosDirectCatalog(AbstractSmosCatalog):
@@ -145,11 +149,14 @@ def open_dataset(source_file: str,
                                   **source_storage_options)
     if not cache_path:
         if open_dataset_kwargs.get("engine") == "h5netcdf":
+            LOG.debug("Opening dataset directly from %s", source_file)
             fp = remote_fs.open(source_file, "rb")
             ds = xr.open_dataset(fp, **open_dataset_kwargs)
         else:
             local_file = TempNcDir.get_instance().new_file()
+            LOG.debug("Downloading %s to %s", source_file, local_file)
             remote_fs.get(source_file, local_file)
+            LOG.debug("Opening dataset from %s", local_file)
             ds = xr.open_dataset(local_file, **open_dataset_kwargs)
         return filter_dataset(ds, var_names)
     else:
@@ -157,11 +164,15 @@ def open_dataset(source_file: str,
         if not os.path.isfile(local_file):
             os.makedirs(os.path.dirname(local_file), exist_ok=True)
             temp_file = local_file + ".temp"
+            LOG.debug("Downloading %s to %s", source_file, temp_file)
             remote_fs.get(source_file, temp_file)
+            LOG.debug("Opening dataset from %s", temp_file)
             with xr.open_dataset(temp_file, **open_dataset_kwargs) as ds:
                 dataset = filter_dataset(ds, var_names)
+                LOG.debug("Writing %s", local_file)
                 dataset.to_netcdf(local_file)
             os.remove(temp_file)
+        LOG.debug("Opening dataset from %s", local_file)
         return xr.open_dataset(local_file, **open_dataset_kwargs)
 
 
