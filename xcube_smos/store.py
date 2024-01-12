@@ -56,16 +56,17 @@ _DATASETS = {
     }
 }
 
-DATASET_OPENER_ID = 'dataset:zarr:smos'
-ML_DATASET_OPENER_ID = 'mldataset:zarr:smos'
-
-DEFAULT_OPENER_ID = DATASET_OPENER_ID
-
 DATASET_ITERATOR_TYPE = DataType(
     DatasetIterator,
     ['dsiter', 'xcube_smos.dsiter.DatasetIterator']
 )
 DataType.register_data_type(DATASET_ITERATOR_TYPE)
+
+DATASET_OPENER_ID = 'dataset:zarr:smos'
+ML_DATASET_OPENER_ID = 'mldataset:zarr:smos'
+DATASET_ITERATOR_OPENER_ID = 'dsiter:zarr:smos'
+
+DEFAULT_OPENER_ID = DATASET_OPENER_ID
 
 
 class SmosDataStore(NotSerializable, DataStore):
@@ -163,7 +164,9 @@ class SmosDataStore(NotSerializable, DataStore):
         if data_type is not None:
             data_type = self._assert_valid_data_type(data_type)
         if data_type is None:
-            return DATASET_OPENER_ID, ML_DATASET_OPENER_ID
+            return (DATASET_OPENER_ID,
+                    ML_DATASET_OPENER_ID,
+                    DATASET_ITERATOR_OPENER_ID)
         return f'{data_type.alias}:zarr:smos',
 
     def describe_data(self,
@@ -198,12 +201,12 @@ class SmosDataStore(NotSerializable, DataStore):
         self._assert_valid_opener_id(opener_id)
         return OPEN_PARAMS_SCHEMA
 
-    def open_data(self,
-                  data_id: str,
-                  opener_id: str = None,
-                  **open_params) -> Union[xr.Dataset,
-                                          MultiLevelDataset,
-                                          DatasetIterator]:
+    def open_data(
+            self,
+            data_id: str,
+            opener_id: str = None,
+            **open_params
+    ) -> Union[xr.Dataset, MultiLevelDataset, DatasetIterator]:
         OPEN_PARAMS_SCHEMA.validate_instance(open_params)
         self._assert_valid_data_id(data_id)
         product_type = data_id.rsplit('-', maxsplit=1)[-1]
@@ -265,7 +268,9 @@ class SmosDataStore(NotSerializable, DataStore):
     def _assert_valid_opener_id(cls, opener_id: Optional[str]) -> str:
         if opener_id is None:
             return DEFAULT_OPENER_ID
-        if opener_id not in (DATASET_OPENER_ID, ML_DATASET_OPENER_ID):
+        if opener_id not in (DATASET_OPENER_ID,
+                             ML_DATASET_OPENER_ID,
+                             DATASET_ITERATOR_OPENER_ID):
             raise ValueError(f'Invalid opener identifier {opener_id!r}')
         return opener_id
 

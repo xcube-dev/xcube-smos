@@ -79,13 +79,26 @@ class DatasetIterator(Iterator, Sized):
                                    "chunks": mapped_chunks}
             mapped_data_vars[var_name] = mapped_var
 
+        time_encoding = {
+            "calendar": "proleptic_gregorian",
+            "units": "milliseconds since 2010-01-01 00:00:00.000000"
+        }
+
         time_bnds_data = np.array([[start, stop]],
                                   dtype=self._time_bounds.dtype)
-        time_bnds = xr.DataArray(time_bnds_data, dims=("time", "bnds"))
+        time_bnds = xr.DataArray(time_bnds_data,
+                                 dims=("time", "bnds"))
 
         time_data = np.array([start + (stop - start) / 2],
                              dtype=self._time_bounds.dtype)
-        time = xr.DataArray(time_data, dims=("time",))
+        time = xr.DataArray(time_data,
+                            dims=("time",),
+                            attrs={
+                                "long_name": "time",
+                                "standard_name": "time",
+                                "bounds": "time_bnds",
+                            })
+        time.encoding.update(time_encoding)
 
         mapped_l2_dataset = xr.Dataset(mapped_data_vars,
                                        coords={**dgg_ds.coords,
