@@ -36,6 +36,7 @@ from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import AbstractSmosCatalog
 from .catalog import SmosDirectCatalog
+from .dsiter import DatasetIterator
 from .mldataset.newdgg import MAX_HEIGHT
 from .mldataset.newdgg import MIN_PIXEL_SIZE
 from .mldataset.newdgg import new_dgg
@@ -59,6 +60,12 @@ DATASET_OPENER_ID = 'dataset:zarr:smos'
 ML_DATASET_OPENER_ID = 'mldataset:zarr:smos'
 
 DEFAULT_OPENER_ID = DATASET_OPENER_ID
+
+DATASET_ITERATOR_TYPE = DataType(
+    DatasetIterator,
+    ['dsiter', 'xcube_smos.dsiter.DatasetIterator']
+)
+DataType.register_data_type(DATASET_ITERATOR_TYPE)
 
 
 class SmosDataStore(NotSerializable, DataStore):
@@ -194,7 +201,9 @@ class SmosDataStore(NotSerializable, DataStore):
     def open_data(self,
                   data_id: str,
                   opener_id: str = None,
-                  **open_params) -> Union[xr.Dataset, MultiLevelDataset]:
+                  **open_params) -> Union[xr.Dataset,
+                                          MultiLevelDataset,
+                                          DatasetIterator]:
         OPEN_PARAMS_SCHEMA.validate_instance(open_params)
         self._assert_valid_data_id(data_id)
         product_type = data_id.rsplit('-', maxsplit=1)[-1]
@@ -214,6 +223,13 @@ class SmosDataStore(NotSerializable, DataStore):
                                  [path for path, _, _ in dataset_records]))
         time_ranges = [(start, stop) for _, start, stop in dataset_records]
         time_bounds = parse_time_ranges(time_ranges, is_compact=True)
+
+        if data_type.is_sub_type_of(DATASET_ITERATOR_TYPE):
+            return DatasetIterator(self.dgg,
+                                   self.catalog.get_dataset_opener(),
+                                   self.catalog.get_dataset_opener_kwargs(),
+                                   dataset_paths,
+                                   time_bounds)
 
         time_step_loader = SmosTimeStepLoader(
             self.dgg,
@@ -272,4 +288,5 @@ class SmosDataStore(NotSerializable, DataStore):
     def _is_valid_data_type(cls, data_type: Optional[DataTypeLike]) -> bool:
         data_type = cls._normalize_data_type(data_type)
         return data_type.is_sub_type_of(DATASET_TYPE) or \
-            data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE)
+            data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE) or \
+            data_type.is_sub_type_of(DATASET_ITERATOR_TYPE)
