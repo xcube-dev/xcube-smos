@@ -35,7 +35,8 @@ from xcube.core.store import MULTI_LEVEL_DATASET_TYPE
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import AbstractSmosCatalog
-from .catalog import SmosIndexCatalog
+from .catalog import SmosDirectCatalog
+from .dsiter import DatasetIterator
 from .mldataset.newdgg import MAX_HEIGHT
 from .mldataset.newdgg import MIN_PIXEL_SIZE
 from .mldataset.newdgg import new_dgg
@@ -55,8 +56,15 @@ _DATASETS = {
     }
 }
 
+DATASET_ITERATOR_TYPE = DataType(
+    DatasetIterator,
+    ['dsiter', 'xcube_smos.dsiter.DatasetIterator']
+)
+DataType.register_data_type(DATASET_ITERATOR_TYPE)
+
 DATASET_OPENER_ID = 'dataset:zarr:smos'
 ML_DATASET_OPENER_ID = 'mldataset:zarr:smos'
+DATASET_ITERATOR_OPENER_ID = 'dsiter:zarr:smos'
 
 DEFAULT_OPENER_ID = DATASET_OPENER_ID
 
@@ -64,24 +72,36 @@ DEFAULT_OPENER_ID = DATASET_OPENER_ID
 class SmosDataStore(NotSerializable, DataStore):
     """Data store for SMOS L2C data cubes.
 
-    :param index_path: Path or URL to the SMOS Kerchunk index
-    :param index_protocol: Optional filesystem protocol for accessing
+    :param source_path: Path or URL to the SMOS Kerchunk index
+    :param source_protocol: Optional filesystem protocol for accessing
         *index_path*. Overwrites the protocol parsed from *index_path*,
         if any.
-    :param index_storage_options: Storage options for accessing *index_path*.
-    :param catalog: Catalog (mock) instance used for testing only.
-        If given, *index_urlpath* and *index_options* are ignored.
+    :param source_storage_options: Storage options for accessing *index_path*.
+    :param cache_path: Path to local cache directory.
+        Must be given, if file caching is desired.
+    :param xarray_kwargs: Extra keyword arguments accepted by
+        ``xarray.open_dataset``.
+    :param _catalog: Catalog (mock) instance used for testing only.
+        If given, all other arguments are ignored.
     """
 
     def __init__(self,
-                 index_path: Optional[str] = None,
-                 index_protocol: Optional[str] = None,
-                 index_storage_options: Optional[Dict[str, Any]] = None,
-                 catalog: Optional[AbstractSmosCatalog] = None):
-        self._index_path = index_path
-        self._index_protocol = index_protocol
-        self._index_storage_options = index_storage_options
-        self._catalog = catalog
+                 source_path: Optional[str] = None,
+                 source_protocol: Optional[str] = None,
+                 source_storage_options: Optional[Dict[str, Any]] = None,
+                 cache_path: Optional[str] = None,
+                 xarray_kwargs: Optional[Dict[str, Any]] = None,
+                 _catalog: Optional[AbstractSmosCatalog] = None):
+        if _catalog is None:
+            self.catalog = SmosDirectCatalog(
+                source_path=source_path,
+                source_protocol=source_protocol,
+                source_storage_options=source_storage_options,
+                cache_path=cache_path,
+                xarray_kwargs=xarray_kwargs
+            )
+        else:
+            self.catalog = _catalog
 
     @cached_property
     def dgg(self) -> MultiLevelDataset:
@@ -144,7 +164,9 @@ class SmosDataStore(NotSerializable, DataStore):
         if data_type is not None:
             data_type = self._assert_valid_data_type(data_type)
         if data_type is None:
-            return DATASET_OPENER_ID, ML_DATASET_OPENER_ID
+            return (DATASET_OPENER_ID,
+                    ML_DATASET_OPENER_ID,
+                    DATASET_ITERATOR_OPENER_ID)
         return f'{data_type.alias}:zarr:smos',
 
     def describe_data(self,
@@ -179,16 +201,12 @@ class SmosDataStore(NotSerializable, DataStore):
         self._assert_valid_opener_id(opener_id)
         return OPEN_PARAMS_SCHEMA
 
-    @cached_property
-    def catalog(self) -> AbstractSmosCatalog:
-        if self._catalog is not None:
-            return self._catalog
-        return SmosIndexCatalog(index_path=self._index_path)
-
-    def open_data(self,
-                  data_id: str,
-                  opener_id: str = None,
-                  **open_params) -> Union[xr.Dataset, MultiLevelDataset]:
+    def open_data(
+            self,
+            data_id: str,
+            opener_id: str = None,
+            **open_params
+    ) -> Union[xr.Dataset, MultiLevelDataset, DatasetIterator]:
         OPEN_PARAMS_SCHEMA.validate_instance(open_params)
         self._assert_valid_data_id(data_id)
         product_type = data_id.rsplit('-', maxsplit=1)[-1]
@@ -200,17 +218,27 @@ class SmosDataStore(NotSerializable, DataStore):
 
         # TODO (forman): respect other parameter from open_params here
 
-        datasets = self.catalog.find_datasets(product_type, time_range)
-        dataset_paths = [dataset_path for dataset_path, _, _ in datasets]
-        time_ranges = [(start, stop) for _, start, stop in datasets]
+        dataset_records = self.catalog.find_datasets(product_type, time_range)
+        if not dataset_records:
+            raise ValueError(f"No SMOS datasets of type {product_type!r}"
+                             f" found for time range {time_range!r}")
+        dataset_paths = list(map(self.catalog.resolve_path,
+                                 [path for path, _, _ in dataset_records]))
+        time_ranges = [(start, stop) for _, start, stop in dataset_records]
         time_bounds = parse_time_ranges(time_ranges, is_compact=True)
+
+        if data_type.is_sub_type_of(DATASET_ITERATOR_TYPE):
+            return DatasetIterator(self.dgg,
+                                   self.catalog.get_dataset_opener(),
+                                   self.catalog.get_dataset_opener_kwargs(),
+                                   dataset_paths,
+                                   time_bounds)
 
         time_step_loader = SmosTimeStepLoader(
             self.dgg,
-            self.catalog.dataset_opener,
-            list(map(self.catalog.resolve_path, dataset_paths)),
-            self.catalog.source_protocol,
-            self.catalog.source_storage_options,
+            self.catalog.get_dataset_opener(),
+            self.catalog.get_dataset_opener_kwargs(),
+            dataset_paths,
             l2_product_cache_size
         )
 
@@ -240,7 +268,9 @@ class SmosDataStore(NotSerializable, DataStore):
     def _assert_valid_opener_id(cls, opener_id: Optional[str]) -> str:
         if opener_id is None:
             return DEFAULT_OPENER_ID
-        if opener_id not in (DATASET_OPENER_ID, ML_DATASET_OPENER_ID):
+        if opener_id not in (DATASET_OPENER_ID,
+                             ML_DATASET_OPENER_ID,
+                             DATASET_ITERATOR_OPENER_ID):
             raise ValueError(f'Invalid opener identifier {opener_id!r}')
         return opener_id
 
@@ -263,4 +293,5 @@ class SmosDataStore(NotSerializable, DataStore):
     def _is_valid_data_type(cls, data_type: Optional[DataTypeLike]) -> bool:
         data_type = cls._normalize_data_type(data_type)
         return data_type.is_sub_type_of(DATASET_TYPE) or \
-            data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE)
+            data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE) or \
+            data_type.is_sub_type_of(DATASET_ITERATOR_TYPE)

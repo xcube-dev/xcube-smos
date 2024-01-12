@@ -3,7 +3,8 @@ import unittest
 from pathlib import Path
 import xarray as xr
 
-from xcube_smos.catalog import SmosSimpleCatalog
+from xcube_smos.catalog.base import DatasetRecord
+from .simple import SmosSimpleCatalog
 
 
 def new_simple_catalog() -> SmosSimpleCatalog:
@@ -38,19 +39,51 @@ class SmosSimpleCatalogTest(unittest.TestCase):
             self.assertEqual(14, len(start))
             self.assertEqual(14, len(end))
 
+    def test_1_find_datasets_ascending(self):
+        catalog = new_simple_catalog()
+
+        key = "VH:SPH:MI:TI:Ascending_Flag"
+
+        def filter_ascending(record: DatasetRecord) -> bool:
+            attrs = catalog.get_dataset_attrs(record[0])
+            print(f"filter_ascending: {key} = {attrs.get(key)}")
+            return attrs.get(key) == "A"
+
+        ascending_files = catalog.find_datasets(
+            "SM", (None, None),
+            accept_record=filter_ascending
+        )
+        self.assertIsInstance(ascending_files, list)
+        self.assertEqual(1, len(ascending_files))
+
+    def test_1_find_datasets_descending(self):
+        catalog = new_simple_catalog()
+
+        key = "VH:SPH:MI:TI:Ascending_Flag"
+
+        def filter_descending(record: DatasetRecord) -> bool:
+            attrs = catalog.get_dataset_attrs(record[0])
+            print(f"filter_descending: {key} = {attrs.get(key)}")
+            return attrs.get(key) == "D"
+
+        descending_files = catalog.find_datasets(
+            "SM", (None, None),
+            accept_record=filter_descending
+        )
+        self.assertIsInstance(descending_files, list)
+        self.assertEqual(4, len(descending_files))
+
     def test_2_dataset_opener(self):
         catalog = new_simple_catalog()
         files = catalog.find_datasets("SM", (None, None))
         path, _, _ = files[0]
 
         path = catalog.resolve_path(path)
-        open_dataset = catalog.dataset_opener
+        open_dataset = catalog.get_dataset_opener()
 
         self.assertTrue(callable(open_dataset))
 
-        ds = open_dataset(path,
-                          protocol=catalog.source_protocol,
-                          storage_options=catalog.source_storage_options)
+        ds = open_dataset(path)
 
         self.assertIsInstance(ds, xr.Dataset)
         self.assertIn("Altitude", ds)

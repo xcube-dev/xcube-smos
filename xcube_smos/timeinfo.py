@@ -20,14 +20,13 @@
 # DEALINGS IN THE SOFTWARE.
 
 import datetime
-from typing import Tuple, Sequence
+from typing import Tuple, Sequence, Optional
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 
 from xcube.util.assertions import assert_true
-
 
 COMPACT_DATETIME_FORMAT = "%Y%m%d%H%M%S"
 
@@ -69,6 +68,17 @@ def get_time_range(l2_product: xr.Dataset) -> Tuple[str, str]:
     start = get_raw_time(l2_product, 'FH:Validity_Period:Validity_Start')
     stop = get_raw_time(l2_product, 'FH:Validity_Period:Validity_Stop')
     return start, stop
+
+
+def normalize_time_range(time_range: Tuple[Optional[str], Optional[str]]) \
+        -> Tuple[pd.Timestamp, pd.Timestamp]:
+    start, end = time_range
+    if start is None:
+        start = "2000-01-01 00:00:00"
+    if end is None:
+        end = "2050-01-01 00:00:00"
+    start, end = pd.to_datetime((start, end))
+    return start, end
 
 
 def get_raw_time(l2_product: xr.Dataset, attr_name: str) -> str:

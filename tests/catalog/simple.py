@@ -27,10 +27,12 @@ from typing import Tuple, Optional, List
 
 import xarray as xr
 
-from xcube_smos.nckcindex.producttype import ProductType
-from xcube_smos.nckcindex.producttype import ProductTypeLike
-from .base import AbstractSmosCatalog
-from .base import DatasetOpener
+from xcube_smos.catalog.base import AbstractSmosCatalog
+from xcube_smos.catalog.types import AcceptRecord
+from xcube_smos.catalog.types import DatasetRecord
+from xcube_smos.catalog.types import DatasetOpener
+from xcube_smos.catalog.producttype import ProductType
+from xcube_smos.catalog.producttype import ProductTypeLike
 
 
 class SmosSimpleCatalog(AbstractSmosCatalog):
@@ -46,24 +48,22 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
         self.smos_l2_sm_paths = smos_l2_sm_paths or []
         self.smos_l2_os_paths = smos_l2_os_paths or []
 
-    @property
-    def dataset_opener(self) -> DatasetOpener:
+    def get_dataset_opener(self) -> DatasetOpener:
         return SmosSimpleCatalog.open_dataset
 
-    # noinspection PyUnusedLocal
     @staticmethod
-    def open_dataset(dataset_path: str,
-                     protocol: Optional[str] = None,
-                     storage_options: Optional[dict] = None) \
-            -> xr.Dataset:
-        return xr.open_dataset(dataset_path, decode_cf=False)
+    def open_dataset(dataset_path: str) -> xr.Dataset:
+        return xr.open_dataset(dataset_path,
+                               engine="h5netcdf",
+                               decode_cf=False)
 
     def find_datasets(self,
                       product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]]) \
-            -> List[Tuple[str, str, str]]:
+                      time_range: Tuple[Optional[str], Optional[str]],
+                      accept_record: Optional[AcceptRecord] = None) \
+            -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
-        if product_type.id == "SM":
+        if product_type.type_id == "SM":
             paths = self.smos_l2_sm_paths
         else:
             paths = self.smos_l2_os_paths
@@ -79,5 +79,8 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
                 continue
             start = m.group("sd") + m.group("st")
             end = m.group("ed") + m.group("et")
-            result.append((path, start, end))
+            record = path, start, end
+            if accept_record is None or accept_record(record):
+                result.append(record)
+
         return result

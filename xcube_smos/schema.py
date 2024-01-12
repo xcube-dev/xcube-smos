@@ -30,18 +30,36 @@ from xcube_smos.mldataset.newdgg import NUM_LEVELS
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
-        index_path=JsonStringSchema(
+        source_path=JsonStringSchema(
             min_length=1,
-            title='Path or URL to the SMOS NetCDF Kerchunk index.',
+            title='Path or URL into SMOS archive filesystem.',
+            examples=["EODATA"]
         ),
-        index_protocol=JsonStringSchema(
+        source_protocol=JsonStringSchema(
             min_length=2,
-            title='Protocol name for the SMOS NetCDF Kerchunk index.',
+            title='Protocol name for the SMOS archive filesystem.',
+            examples=["s3", "file"]
         ),
-        index_storage_options=JsonObjectSchema(
+        source_storage_options=JsonObjectSchema(
             additional_properties=True,
             title='Storage options for the SMOS NetCDF Kerchunk index.',
-            description='See fsspec documentation for specific filesystems.'
+            description='See fsspec documentation for specific filesystems.',
+            examples=[dict(endpoint_url="https://s3.cloudferro.com",
+                           anon=False,
+                           key="******",
+                           secret="******")]
+        ),
+        cache_path=JsonStringSchema(
+            min_length=1,
+            title='Path to local cache directory. '
+                  'Must be given, if file caching is desired.',
+            examples=["~/.smos-nc-cache"]
+        ),
+        xarray_kwargs=JsonObjectSchema(
+            additional_properties=True,
+            title='Extra keyword arguments accepted by xarray.open_dataset.',
+            description='See xarray documentation for allowed keywords.',
+            examples=[dict(engine="netcdf4")]
         ),
     ),
     additional_properties=False

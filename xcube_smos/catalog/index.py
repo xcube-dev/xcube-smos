@@ -18,24 +18,26 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
 import json
 import os
-import re
 from pathlib import Path
-from typing import Union, Dict, Any, Optional, Tuple, List
+from typing import Union, Dict, Any, Optional, Tuple, List, Iterable
 
 import fsspec
 import pandas as pd
 import xarray as xr
 
 from xcube.util.assertions import assert_given
+
 from ..constants import INDEX_ENV_VAR_NAME
 from ..nckcindex.nckcindex import NcKcIndex
-from ..nckcindex.producttype import ProductType
-from ..nckcindex.producttype import ProductTypeLike
-from xcube_smos.timeinfo import to_compact_time
 from .base import AbstractSmosCatalog
-from .base import DatasetOpener
+from .producttype import ProductType
+from .producttype import ProductTypeLike
+from .types import AcceptRecord
+from .types import DatasetOpener
+from .types import DatasetRecord
 
 _ONE_DAY = pd.Timedelta(1, unit="days")
 
@@ -53,48 +55,6 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         self._nc_kc_index = NcKcIndex.open(index_path=index_path)
 
     @property
-    def dataset_opener(self) -> DatasetOpener:
-        return SmosIndexCatalog.open_dataset
-
-    @staticmethod
-    def open_dataset(path: str,
-                     protocol: Optional[str] = None,
-                     storage_options: Optional[dict] = None) \
-            -> xr.Dataset:
-        # Preload reference JSON
-        # See https://github.com/fsspec/filesystem_spec/issues/1455
-        with fsspec.open(path) as f:
-            refs = json.load(f)
-        return xr.open_dataset(
-            "reference://",
-            engine="zarr",
-            backend_kwargs={
-                "storage_options": {
-                    "fo": refs,
-                    "remote_protocol": protocol,
-                    "remote_options": storage_options
-                },
-                "consolidated": False
-            },
-            # decode_cf=False is important!
-            # Otherwise, fill-values will be replaced by NaN,
-            # which will convert variable "seqnum" from dtype uint32 to
-            # dtype float64.
-            decode_cf=False
-        )
-
-    def resolve_path(self, path: str) -> str:
-        index_path = self._nc_kc_index.index_path
-        index_protocol = "file"
-        # TODO: use this instead, once have NcKcIndex.index_protocol
-        # index_protocol = self._nc_kc_index.index_protocol
-        index_url = f"{index_protocol}://{index_path}"
-        if index_path.endswith(".zip"):
-            return f'zip://{path}::{index_url}'
-        else:
-            return f'{index_url}/{path}'
-
-    @property
     def source_protocol(self) -> Optional[str]:
         return self._nc_kc_index.source_protocol
 
@@ -102,102 +62,90 @@ class SmosIndexCatalog(AbstractSmosCatalog):
     def source_storage_options(self) -> Optional[Dict[str, Any]]:
         return self._nc_kc_index.source_storage_options
 
+    def get_dataset_opener_kwargs(self) -> Dict[str, Any]:
+        return dict(protocol=self.source_protocol,
+                    storage_options=self.source_storage_options)
+
+    def get_dataset_opener(self) -> DatasetOpener:
+        return open_dataset
+
+    def resolve_path(self, path: str) -> str:
+        index_path = self._nc_kc_index.index_path
+        index_url = f"file://{index_path}"
+        if index_path.endswith(".zip"):
+            return f'zip://{path}::{index_url}'
+        else:
+            return f'{index_url}/{path}'
+
     def find_datasets(self,
                       product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]]) \
-            -> List[Tuple[str, str, str]]:
+                      time_range: Tuple[Optional[str], Optional[str]],
+                      accept_record: Optional[AcceptRecord] = None) \
+            -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
-        start, end = self._normalize_time_range(time_range)
+        return product_type.find_files_for_time_range(
+            time_range,
+            self._get_files_for_path,
+            accept_record=accept_record
+        )
 
-        start_times = self._find_files_for_date(product_type,
-                                                start.year,
-                                                start.month,
-                                                start.day)
-        end_times = self._find_files_for_date(product_type,
-                                              end.year,
-                                              end.month,
-                                              end.day)
+    def _get_files_for_path(self, source_path: str) -> Iterable[str]:
+        index_store = self._nc_kc_index.index_store
+        for item in index_store.list(prefix=source_path + "/"):
+            yield item
 
-        start_str = to_compact_time(start)
-        end_str = to_compact_time(end)
+    def get_dataset_attrs(self, dataset_path: str) \
+            -> Optional[Dict[str, Any]]:
+        resolved_path = self.resolve_path(dataset_path)
+        try:
+            refs_dict = load_json(resolved_path)
+        except OSError:
+            # Warn
+            return None
+        if not isinstance(refs_dict, dict):
+            return None
+        refs = refs_dict.get("refs")
+        if not isinstance(refs, dict):
+            return None
+        attrs_json = refs.get(".zattrs")
+        if not isinstance(attrs_json, str):
+            return None
+        try:
+            attrs = json.loads(attrs_json)
+        except ValueError:
+            # Warn
+            return None
+        if not isinstance(attrs, dict):
+            return None
+        return attrs
 
-        start_index = -1
-        for index, (_, _, start_end_str) in enumerate(start_times):
-            if start_end_str >= start_str:
-                start_index = index
-                break
 
-        end_index = -1
-        for index, (_, end_start_str, _) in enumerate(end_times):
-            if end_start_str >= end_str:
-                end_index = index
-                break
+def open_dataset(path: str,
+                 protocol: Optional[str] = None,
+                 storage_options: Optional[dict] = None) \
+        -> xr.Dataset:
+    # Preload reference JSON
+    # See https://github.com/fsspec/filesystem_spec/issues/1455
+    refs = load_json(path)
+    return xr.open_dataset(
+        "reference://",
+        engine="zarr",
+        backend_kwargs={
+            "storage_options": {
+                "fo": refs,
+                "remote_protocol": protocol,
+                "remote_options": storage_options
+            },
+            "consolidated": False
+        },
+        # decode_cf=False is important!
+        # Otherwise, fill-values will be replaced by NaN,
+        # which will convert variable "seqnum" from dtype uint32 to
+        # dtype float64.
+        decode_cf=False
+    )
 
-        start_names = []
-        if start_index >= 0:
-            start_names.extend(start_times[start_index:])
 
-        # Add everything between start + start.day and end - end.day
-
-        start_p1d = pd.Timestamp(year=start.year,
-                                 month=start.month,
-                                 day=start.day) + _ONE_DAY
-        end_m1d = pd.Timestamp(year=end.year,
-                               month=end.month,
-                               day=end.day) - _ONE_DAY
-
-        in_between_names = []
-        if end_m1d > start_p1d:
-            time = start_p1d
-            while time <= end_m1d:
-                in_between_names.extend(
-                    self._find_files_for_date(product_type,
-                                              time.year,
-                                              time.month,
-                                              time.day)
-                )
-                time += _ONE_DAY
-
-        end_names = []
-        if end_index >= 0:
-            end_names.extend(end_times[:end_index])
-
-        return start_names + in_between_names + end_names
-
-    def _find_files_for_date(self,
-                             product_type: ProductTypeLike,
-                             year: int,
-                             month: int,
-                             day: int) -> List[Tuple[str, str, str]]:
-        product_type = ProductType.normalize(product_type)
-        path_pattern = product_type.path_pattern
-        name_pattern = product_type.name_pattern
-
-        prefix = path_pattern.format(
-            year=year,
-            month=f'0{month}' if month < 10 else month,
-            day=f'0{day}' if day < 10 else day
-        ) + "/"
-
-        items = []
-        for item in self._nc_kc_index.index_store.list(prefix=prefix):
-            parent_and_filename = item.rsplit("/", 1)
-            filename = parent_and_filename[1] \
-                if len(parent_and_filename) == 2 else item
-            m = re.match(name_pattern, filename)
-            if m is not None:
-                start = m.group("sd") + m.group("st")
-                end = m.group("ed") + m.group("et")
-                items.append((item, start, end))
-
-        return sorted(items)
-
-    @staticmethod
-    def _normalize_time_range(time_range):
-        start, end = time_range
-        if start is None:
-            start = "2000-01-01 00:00:00"
-        if end is None:
-            end = "2050-01-01 00:00:00"
-        start, end = pd.to_datetime((start, end))
-        return start, end
+def load_json(path):
+    with fsspec.open(path) as f:
+        return json.load(f)
