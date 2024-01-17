@@ -18,7 +18,6 @@ else:
 
 @unittest.skipUnless(index_path and os.path.exists(index_path), reason)
 class SmosIndexCatalogTest(unittest.TestCase):
-
     def test_1_find_datasets(self):
         catalog = SmosIndexCatalog(index_path)
 
@@ -60,10 +59,9 @@ class SmosIndexCatalogTest(unittest.TestCase):
     #     self.assert_files_ok(descending_files, "SMOS/L2OS/MIR_OSUDP2/",
     #                          (10, 15))
 
-    def assert_files_ok(self,
-                        files,
-                        expected_prefix: str,
-                        expected_count: Union[int, Tuple[int, int]]):
+    def assert_files_ok(
+        self, files, expected_prefix: str, expected_count: Union[int, Tuple[int, int]]
+    ):
         self.assertIsInstance(files, list)
         actual_count = len(files)
         if isinstance(expected_count, int):
@@ -78,7 +76,7 @@ class SmosIndexCatalogTest(unittest.TestCase):
             self.assertIsInstance(path, str)
             self.assertIsInstance(start, str)
             self.assertIsInstance(end, str)
-            self.assertEqual(expected_prefix, path[:len(expected_prefix)])
+            self.assertEqual(expected_prefix, path[: len(expected_prefix)])
             self.assertEqual(14, len(start))
             self.assertEqual(14, len(end))
 
@@ -92,9 +90,11 @@ class SmosIndexCatalogTest(unittest.TestCase):
 
         self.assertTrue(callable(open_dataset))
 
-        ds = open_dataset(path,
-                          protocol=catalog.source_protocol,
-                          storage_options=catalog.source_storage_options)
+        ds = open_dataset(
+            path,
+            protocol=catalog.source_protocol,
+            storage_options=catalog.source_storage_options,
+        )
 
         self.assertIsInstance(ds, xr.Dataset)
         self.assertIn("Altitude", ds)

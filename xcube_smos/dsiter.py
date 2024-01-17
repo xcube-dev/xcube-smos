@@ -30,13 +30,14 @@ from xcube_smos.mldataset.l2cube import SmosL2Product
 
 
 class DatasetIterator(Iterator, Sized):
-
-    def __init__(self,
-                 dgg: MultiLevelDataset,
-                 dataset_opener: Callable,
-                 dataset_opener_kwargs: Dict[str, Any],
-                 dataset_paths: List[str],
-                 time_bounds: np.array):
+    def __init__(
+        self,
+        dgg: MultiLevelDataset,
+        dataset_opener: Callable,
+        dataset_opener_kwargs: Dict[str, Any],
+        dataset_paths: List[str],
+        time_bounds: np.array,
+    ):
         self._dgg = dgg
         self._dataset_opener = dataset_opener
         self._dataset_opener_kwargs = dataset_opener_kwargs
@@ -59,8 +60,7 @@ class DatasetIterator(Iterator, Sized):
         dataset_path = self._dataset_paths[index]
         start, stop = self._time_bounds[index]
 
-        l2_dataset = self._dataset_opener(dataset_path,
-                                          **self._dataset_opener_kwargs)
+        l2_dataset = self._dataset_opener(dataset_path, **self._dataset_opener_kwargs)
         l2_product = SmosL2Product(self._dgg, l2_dataset)
 
         mapped_l2_product = l2_product.get_mapped_s2_product(0)
@@ -72,39 +72,39 @@ class DatasetIterator(Iterator, Sized):
         mapped_data_vars = {}
         for var_name, var in l2_dataset.data_vars.items():
             mapped_var_data = mapped_l2_product.map_l2_var(var_name)
-            mapped_var = xr.DataArray(mapped_var_data,
-                                      dims=("time", "lat", "lon"),
-                                      attrs=var.attrs)
-            mapped_var.encoding = {"dtype": var.dtype,
-                                   "chunks": mapped_chunks}
+            mapped_var = xr.DataArray(
+                mapped_var_data, dims=("time", "lat", "lon"), attrs=var.attrs
+            )
+            mapped_var.encoding = {"dtype": var.dtype, "chunks": mapped_chunks}
             mapped_data_vars[var_name] = mapped_var
 
         time_encoding = {
             "calendar": "proleptic_gregorian",
-            "units": "milliseconds since 2010-01-01 00:00:00.000000"
+            "units": "milliseconds since 2010-01-01 00:00:00.000000",
         }
 
-        time_bnds_data = np.array([[start, stop]],
-                                  dtype=self._time_bounds.dtype)
-        time_bnds = xr.DataArray(time_bnds_data,
-                                 dims=("time", "bnds"))
+        time_bnds_data = np.array([[start, stop]], dtype=self._time_bounds.dtype)
+        time_bnds = xr.DataArray(time_bnds_data, dims=("time", "bnds"))
 
-        time_data = np.array([start + (stop - start) / 2],
-                             dtype=self._time_bounds.dtype)
-        time = xr.DataArray(time_data,
-                            dims=("time",),
-                            attrs={
-                                "long_name": "time",
-                                "standard_name": "time",
-                                "bounds": "time_bnds",
-                            })
+        time_data = np.array(
+            [start + (stop - start) / 2], dtype=self._time_bounds.dtype
+        )
+        time = xr.DataArray(
+            time_data,
+            dims=("time",),
+            attrs={
+                "long_name": "time",
+                "standard_name": "time",
+                "bounds": "time_bnds",
+            },
+        )
         time.encoding.update(time_encoding)
 
-        mapped_l2_dataset = xr.Dataset(mapped_data_vars,
-                                       coords={**dgg_ds.coords,
-                                               "time": time,
-                                               "time_bnds": time_bnds},
-                                       attrs=l2_dataset.attrs)
+        mapped_l2_dataset = xr.Dataset(
+            mapped_data_vars,
+            coords={**dgg_ds.coords, "time": time, "time_bnds": time_bnds},
+            attrs=l2_dataset.attrs,
+        )
 
         self._current_index += 1
 

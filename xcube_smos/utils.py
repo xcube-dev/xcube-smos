@@ -22,8 +22,7 @@
 import collections
 import collections.abc
 import threading
-from typing import TypeVar, Generic, Dict, Any, Callable, Optional, \
-    Deque, Iterator
+from typing import TypeVar, Generic, Dict, Any, Callable, Optional, Deque, Iterator
 
 from xcube.util.assertions import assert_instance, assert_true
 
@@ -32,29 +31,29 @@ class NotSerializable:
     """A mixin that avoids serialization."""
 
     def __getstate__(self):
-        raise RuntimeError(f"Something went wrong:"
-                           f" objects of type {self.__class__.__name__}"
-                           f" are not serializable")
+        raise RuntimeError(
+            f"Something went wrong:"
+            f" objects of type {self.__class__.__name__}"
+            f" are not serializable"
+        )
 
 
-KT = TypeVar('KT')
-VT = TypeVar('VT')
+KT = TypeVar("KT")
+VT = TypeVar("VT")
 
 
-class LruCache(Generic[KT, VT],
-               NotSerializable,
-               collections.abc.Mapping):
-    def __init__(self,
-                 max_size: int = 128,
-                 dispose_value: Optional[Callable[[VT], Any]] = None):
+class LruCache(Generic[KT, VT], NotSerializable, collections.abc.Mapping):
+    def __init__(
+        self, max_size: int = 128, dispose_value: Optional[Callable[[VT], Any]] = None
+    ):
         assert_instance(max_size, int, name="max_size")
-        assert_true(max_size >= 0,
-                    message="max_size must be greater or equal zero")
+        assert_true(max_size >= 0, message="max_size must be greater or equal zero")
         if dispose_value is None:
             dispose_value = self.dispose_value
         else:
-            assert_true(callable(dispose_value),
-                        message="dispose_value must be callable")
+            assert_true(
+                callable(dispose_value), message="dispose_value must be callable"
+            )
         self._max_size = max_size
         self._dispose_value = dispose_value
         self._keys: Deque[KT] = collections.deque([], max_size)

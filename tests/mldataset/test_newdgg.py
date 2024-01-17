@@ -27,11 +27,11 @@ class NewDggTest(unittest.TestCase):
 
             ds = dgg.get_dataset(i)
             self.assertIsInstance(ds, xr.Dataset)
-            self.assertEqual({'lat': expected_h, 'lon': expected_w}, ds.dims)
+            self.assertEqual({"lat": expected_h, "lon": expected_w}, ds.dims)
             self.assertIn("seqnum", ds)
             self.assertIsInstance(ds.seqnum, xr.DataArray)
             self.assertEqual(np.dtype("uint32"), ds.seqnum.dtype)
-            self.assertEqual(('lat', 'lon'), ds.seqnum.dims)
+            self.assertEqual(("lat", "lon"), ds.seqnum.dims)
             self.assertEqual((expected_h, expected_w), ds.seqnum.shape)
             self.assertEqual(((expected_h,), (expected_w,)), ds.seqnum.chunks)
 
@@ -43,7 +43,9 @@ class NewDggTest(unittest.TestCase):
         self.assertIsNot(dgg1, dgg2)
 
     def test_get_package_path(self):
-        expected_path = (Path(__file__).parent / ".." / ".." /
-                         "xcube_smos" / "mldataset"
-                         ).absolute().resolve()
+        expected_path = (
+            (Path(__file__).parent / ".." / ".." / "xcube_smos" / "mldataset")
+            .absolute()
+            .resolve()
+        )
         self.assertEqual(expected_path, get_package_path())

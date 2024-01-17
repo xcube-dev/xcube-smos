@@ -10,18 +10,12 @@ from .simple import SmosSimpleCatalog
 def new_simple_catalog() -> SmosSimpleCatalog:
     path = Path(__file__).parent / ".." / ".." / "testdata" / "SM"
     smos_l2_sm_paths = [
-        str(path / name)
-        for name in path.resolve().iterdir()
-        if name.suffix == ".nc"
+        str(path / name) for name in path.resolve().iterdir() if name.suffix == ".nc"
     ]
-    return SmosSimpleCatalog(
-        smos_l2_sm_paths=smos_l2_sm_paths,
-        smos_l2_os_paths=[]
-    )
+    return SmosSimpleCatalog(smos_l2_sm_paths=smos_l2_sm_paths, smos_l2_os_paths=[])
 
 
 class SmosSimpleCatalogTest(unittest.TestCase):
-
     def test_1_find_datasets(self):
         catalog = new_simple_catalog()
         files = catalog.find_datasets("SM", (None, None))
@@ -50,8 +44,7 @@ class SmosSimpleCatalogTest(unittest.TestCase):
             return attrs.get(key) == "A"
 
         ascending_files = catalog.find_datasets(
-            "SM", (None, None),
-            accept_record=filter_ascending
+            "SM", (None, None), accept_record=filter_ascending
         )
         self.assertIsInstance(ascending_files, list)
         self.assertEqual(1, len(ascending_files))
@@ -67,8 +60,7 @@ class SmosSimpleCatalogTest(unittest.TestCase):
             return attrs.get(key) == "D"
 
         descending_files = catalog.find_datasets(
-            "SM", (None, None),
-            accept_record=filter_descending
+            "SM", (None, None), accept_record=filter_descending
         )
         self.assertIsInstance(descending_files, list)
         self.assertEqual(4, len(descending_files))

@@ -26,8 +26,7 @@ import sys
 import traceback
 import warnings
 from pathlib import Path
-from typing import Union, Dict, Any, Optional, Iterator, List, \
-    Tuple, TypeVar, Type
+from typing import Union, Dict, Any, Optional, Iterator, List, Tuple, TypeVar, Type
 
 import fsspec
 
@@ -43,10 +42,9 @@ class NcKcIndex:
     Represents a NetCDF Kerchunk index.
     """
 
-    def __init__(self,
-                 index_path: str,
-                 index_store: IndexStore,
-                 index_config: Dict[str, Any]):
+    def __init__(
+        self, index_path: str, index_store: IndexStore, index_config: Dict[str, Any]
+    ):
         """
         Private constructor. Use :meth:create() or :meth:open() instead.
 
@@ -62,16 +60,16 @@ class NcKcIndex:
         self.source_path = _get_config_param(index_config, "source_path")
         self.source_protocol = _get_config_param(
             index_config,
-            "source_protocol", str,
-            fsspec.core.split_protocol(self.source_path)[0] or "file"
+            "source_protocol",
+            str,
+            fsspec.core.split_protocol(self.source_path)[0] or "file",
         )
         self.source_storage_options = _get_config_param(
-            index_config,
-            "source_storage_options", dict,
-            {}
+            index_config, "source_storage_options", dict, {}
         )
-        self.source_fs = fsspec.filesystem(self.source_protocol,
-                                           **self.source_storage_options)
+        self.source_fs = fsspec.filesystem(
+            self.source_protocol, **self.source_storage_options
+        )
         self.is_closed = False
 
     def __enter__(self):
@@ -100,12 +98,12 @@ class NcKcIndex:
 
     @classmethod
     def create(
-            cls,
-            index_path: Union[str, Path],
-            source_path: Optional[Union[str, Path]] = None,
-            source_protocol: Optional[str] = None,
-            source_storage_options: Optional[Dict[str, Any]] = None,
-            replace: bool = False,
+        cls,
+        index_path: Union[str, Path],
+        source_path: Optional[Union[str, Path]] = None,
+        source_protocol: Optional[str] = None,
+        source_storage_options: Optional[Dict[str, Any]] = None,
+        replace: bool = False,
     ) -> "NcKcIndex":
         """
         Create a new NetCDF Kerchunk index.
@@ -126,8 +124,7 @@ class NcKcIndex:
 
         source_storage_options = source_storage_options or {}
         source_path, source_protocol = _normalize_path_protocol(
-            source_path,
-            protocol=source_protocol
+            source_path, protocol=source_protocol
         )
 
         index_config = dict(
@@ -138,15 +135,13 @@ class NcKcIndex:
         )
 
         index_store = IndexStore.new(index_path, mode="x", replace=replace)
-        index_store.write(INDEX_CONFIG_FILENAME,
-                          json.dumps(index_config, indent=2))
+        index_store.write(INDEX_CONFIG_FILENAME, json.dumps(index_config, indent=2))
         index_store.close()
 
         return cls.open(index_path, mode="a")
 
     @classmethod
-    def open(cls, index_path: Union[str, Path], mode: str = "r") \
-            -> "NcKcIndex":
+    def open(cls, index_path: Union[str, Path], mode: str = "r") -> "NcKcIndex":
         """Open the given index at *index_path*.
 
         :param index_path: The index path or URL.
@@ -168,12 +163,14 @@ class NcKcIndex:
 
         return NcKcIndex(index_path, index_store, index_config)
 
-    def sync(self,
-             prefix: Optional[str] = None,
-             num_workers: int = 1,
-             block_size: int = 100,
-             force: bool = False,
-             dry_run: bool = False) -> Tuple[int, List[str]]:
+    def sync(
+        self,
+        prefix: Optional[str] = None,
+        num_workers: int = 1,
+        block_size: int = 100,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> Tuple[int, List[str]]:
         """Synchronize this index with the files.
         If *prefix* is given, only files that match the given prefix
         are processed. Otherwise, all SMOS L2 files are processed.
@@ -193,9 +190,7 @@ class NcKcIndex:
         num_files = 0
         if num_workers < 2:
             for nc_file in self.get_nc_files(prefix=prefix):
-                problem = self.index_nc_file(
-                    nc_file, force=force, dry_run=dry_run
-                )
+                problem = self.index_nc_file(nc_file, force=force, dry_run=dry_run)
                 if problem is None:
                     num_files += 1
                 else:
@@ -203,24 +198,22 @@ class NcKcIndex:
         else:
             # TODO: setup mult-threaded/-process (Dask) executor with
             #   num_workers and submit workload in blocks. [#12]
-            warnings.warn(f'num_workers={num_workers}:'
-                          f' parallel processing not implemented yet.')
+            warnings.warn(
+                f"num_workers={num_workers}:"
+                f" parallel processing not implemented yet."
+            )
             for nc_file_block in self.get_nc_file_blocks(
-                    prefix=prefix, block_size=block_size
+                prefix=prefix, block_size=block_size
             ):
                 for nc_file in nc_file_block:
-                    problem = self.index_nc_file(
-                        nc_file, force=force, dry_run=dry_run
-                    )
+                    problem = self.index_nc_file(nc_file, force=force, dry_run=dry_run)
                     if problem is None:
                         num_files += 1
                     else:
                         problems.append(problem)
         return num_files, problems
 
-    def get_nc_files(self,
-                     prefix: Optional[str] = None) -> Iterator[str]:
-
+    def get_nc_files(self, prefix: Optional[str] = None) -> Iterator[str]:
         source_fs = self.source_fs
         source_path = self.source_path
 
@@ -228,18 +221,18 @@ class NcKcIndex:
             source_path += "/" + prefix
 
         def handle_error(e: OSError):
-            print(f"Error scanning source {source_path}:"
-                  f" {e.__class__.__name__}: {e}")
+            print(
+                f"Error scanning source {source_path}:" f" {e.__class__.__name__}: {e}"
+            )
 
-        for path, _, files in source_fs.walk(source_path,
-                                             on_error=handle_error):
+        for path, _, files in source_fs.walk(source_path, on_error=handle_error):
             for file in files:
                 if file.endswith(".nc"):
                     yield path + "/" + file
 
-    def get_nc_file_blocks(self,
-                           prefix: Optional[str] = None,
-                           block_size: int = 100) -> Iterator[List[str]]:
+    def get_nc_file_blocks(
+        self, prefix: Optional[str] = None, block_size: int = 100
+    ) -> Iterator[List[str]]:
         block = []
         for nc_file in self.get_nc_files(prefix=prefix):
             block.append(nc_file)
@@ -249,10 +242,9 @@ class NcKcIndex:
         if block:
             yield block
 
-    def index_nc_file(self,
-                      nc_source_path: str,
-                      force: bool = False,
-                      dry_run: bool = False) -> Optional[str]:
+    def index_nc_file(
+        self, nc_source_path: str, force: bool = False, dry_run: bool = False
+    ) -> Optional[str]:
         """
         Index a NetCDF file given by *nc_path* in S3.
 
@@ -265,7 +257,7 @@ class NcKcIndex:
         import kerchunk.hdf
 
         if nc_source_path.startswith(self.source_path + "/"):
-            nc_source_rel_path = nc_source_path[(len(self.source_path) + 1):]
+            nc_source_rel_path = nc_source_path[(len(self.source_path) + 1) :]
         else:
             nc_source_rel_path = nc_source_path
 
@@ -284,8 +276,9 @@ class NcKcIndex:
                 )
                 chunks_object = chunks.translate()
         except OSError as e:
-            problem = f"Error indexing {nc_source_path}:" \
-                      f" {e.__class__.__name__}: {e}"
+            problem = (
+                f"Error indexing {nc_source_path}:" f" {e.__class__.__name__}: {e}"
+            )
             print(problem)
             return problem
 
@@ -296,38 +289,42 @@ class NcKcIndex:
         try:
             self.index_store.write(nc_index_path, chunks_object)
         except OSError as e:
-            problem = f"Error writing index {nc_index_path}:" \
-                      f" {e.__class__.__name__}: {e}"
+            problem = (
+                f"Error writing index {nc_index_path}:" f" {e.__class__.__name__}: {e}"
+            )
             print(problem)
             return problem
 
         return None
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 _UNDEFINED = "_UNDEFINED"
 
 
-def _get_config_param(index_config: Dict[str, Any],
-                      param_name: str,
-                      param_type: Type[T] = str,
-                      default_value: Any = _UNDEFINED) -> T:
+def _get_config_param(
+    index_config: Dict[str, Any],
+    param_name: str,
+    param_type: Type[T] = str,
+    default_value: Any = _UNDEFINED,
+) -> T:
     if param_name not in index_config:
         if default_value == _UNDEFINED:
-            raise ValueError(f"Missing configuration "
-                             f"parameter '{param_name}'")
+            raise ValueError(f"Missing configuration " f"parameter '{param_name}'")
         return default_value
     value = index_config.get(param_name)
     if not isinstance(value, param_type):
-        raise ValueError(f"Configuration parameter '{param_name}' "
-                         f"must be of type {param_type}, "
-                         f"but was {type(value)}")
+        raise ValueError(
+            f"Configuration parameter '{param_name}' "
+            f"must be of type {param_type}, "
+            f"but was {type(value)}"
+        )
     return value
 
 
 def _normalize_path_protocol(
-        path: str | Path,
-        protocol: Optional[str] = None,
+    path: str | Path,
+    protocol: Optional[str] = None,
 ) -> Tuple[str, str]:
     _protocol, path = fsspec.core.split_protocol(path)
     protocol = protocol or _protocol or "file"
@@ -348,8 +345,7 @@ def _substitute_json(value: Any) -> Any:
     if isinstance(value, str):
         return _substitute_text(value)
     if isinstance(value, dict):
-        return {_substitute_text(k): _substitute_json(v)
-                for k, v in value.items()}
+        return {_substitute_text(k): _substitute_json(v) for k, v in value.items()}
     if isinstance(value, list):
         return [_substitute_json(v) for v in value]
     return value

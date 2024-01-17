@@ -50,7 +50,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
 
     def __init__(self, index_path: Optional[Union[str, Path]] = None):
         index_path = index_path or os.environ.get(INDEX_ENV_VAR_NAME)
-        assert_given(index_path, name='index_path')
+        assert_given(index_path, name="index_path")
         index_path = os.path.expanduser(str(index_path))
         self._nc_kc_index = NcKcIndex.open(index_path=index_path)
 
@@ -63,8 +63,9 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         return self._nc_kc_index.source_storage_options
 
     def get_dataset_opener_kwargs(self) -> Dict[str, Any]:
-        return dict(protocol=self.source_protocol,
-                    storage_options=self.source_storage_options)
+        return dict(
+            protocol=self.source_protocol, storage_options=self.source_storage_options
+        )
 
     def get_dataset_opener(self) -> DatasetOpener:
         return open_dataset
@@ -73,20 +74,19 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         index_path = self._nc_kc_index.index_path
         index_url = f"file://{index_path}"
         if index_path.endswith(".zip"):
-            return f'zip://{path}::{index_url}'
+            return f"zip://{path}::{index_url}"
         else:
-            return f'{index_url}/{path}'
+            return f"{index_url}/{path}"
 
-    def find_datasets(self,
-                      product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]],
-                      accept_record: Optional[AcceptRecord] = None) \
-            -> List[DatasetRecord]:
+    def find_datasets(
+        self,
+        product_type: ProductTypeLike,
+        time_range: Tuple[Optional[str], Optional[str]],
+        accept_record: Optional[AcceptRecord] = None,
+    ) -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
         return product_type.find_files_for_time_range(
-            time_range,
-            self._get_files_for_path,
-            accept_record=accept_record
+            time_range, self._get_files_for_path, accept_record=accept_record
         )
 
     def _get_files_for_path(self, source_path: str) -> Iterable[str]:
@@ -94,8 +94,7 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         for item in index_store.list(prefix=source_path + "/"):
             yield item
 
-    def get_dataset_attrs(self, dataset_path: str) \
-            -> Optional[Dict[str, Any]]:
+    def get_dataset_attrs(self, dataset_path: str) -> Optional[Dict[str, Any]]:
         resolved_path = self.resolve_path(dataset_path)
         try:
             refs_dict = load_json(resolved_path)
@@ -120,10 +119,9 @@ class SmosIndexCatalog(AbstractSmosCatalog):
         return attrs
 
 
-def open_dataset(path: str,
-                 protocol: Optional[str] = None,
-                 storage_options: Optional[dict] = None) \
-        -> xr.Dataset:
+def open_dataset(
+    path: str, protocol: Optional[str] = None, storage_options: Optional[dict] = None
+) -> xr.Dataset:
     # Preload reference JSON
     # See https://github.com/fsspec/filesystem_spec/issues/1455
     refs = load_json(path)
@@ -134,15 +132,15 @@ def open_dataset(path: str,
             "storage_options": {
                 "fo": refs,
                 "remote_protocol": protocol,
-                "remote_options": storage_options
+                "remote_options": storage_options,
             },
-            "consolidated": False
+            "consolidated": False,
         },
         # decode_cf=False is important!
         # Otherwise, fill-values will be replaced by NaN,
         # which will convert variable "seqnum" from dtype uint32 to
         # dtype float64.
-        decode_cf=False
+        decode_cf=False,
     )
 
 

@@ -32,64 +32,68 @@ STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
         source_path=JsonStringSchema(
             min_length=1,
-            title='Path or URL into SMOS archive filesystem.',
-            examples=["EODATA"]
+            title="Path or URL into SMOS archive filesystem.",
+            examples=["EODATA"],
         ),
         source_protocol=JsonStringSchema(
             min_length=2,
-            title='Protocol name for the SMOS archive filesystem.',
-            examples=["s3", "file"]
+            title="Protocol name for the SMOS archive filesystem.",
+            examples=["s3", "file"],
         ),
         source_storage_options=JsonObjectSchema(
             additional_properties=True,
-            title='Storage options for the SMOS NetCDF Kerchunk index.',
-            description='See fsspec documentation for specific filesystems.',
-            examples=[dict(endpoint_url="https://s3.cloudferro.com",
-                           anon=False,
-                           key="******",
-                           secret="******")]
+            title="Storage options for the SMOS NetCDF Kerchunk index.",
+            description="See fsspec documentation for specific filesystems.",
+            examples=[
+                dict(
+                    endpoint_url="https://s3.cloudferro.com",
+                    anon=False,
+                    key="******",
+                    secret="******",
+                )
+            ],
         ),
         cache_path=JsonStringSchema(
             min_length=1,
-            title='Path to local cache directory. '
-                  'Must be given, if file caching is desired.',
-            examples=["~/.smos-nc-cache"]
+            title="Path to local cache directory. "
+            "Must be given, if file caching is desired.",
+            examples=["~/.smos-nc-cache"],
         ),
         xarray_kwargs=JsonObjectSchema(
             additional_properties=True,
-            title='Extra keyword arguments accepted by xarray.open_dataset.',
-            description='See xarray documentation for allowed keywords.',
-            examples=[dict(engine="netcdf4")]
+            title="Extra keyword arguments accepted by xarray.open_dataset.",
+            description="See xarray documentation for allowed keywords.",
+            examples=[dict(engine="netcdf4")],
         ),
     ),
-    additional_properties=False
+    additional_properties=False,
 )
 
 OPEN_PARAMS_SCHEMA = JsonObjectSchema(
-    required=['time_range'],
+    required=["time_range"],
     properties=dict(
         variable_names=JsonArraySchema(
-            items=JsonStringSchema(),
-            title='Names of variables to be included'
+            items=JsonStringSchema(), title="Names of variables to be included"
         ),
         bbox=JsonArraySchema(
-            items=(JsonNumberSchema(),
-                   JsonNumberSchema(),
-                   JsonNumberSchema(),
-                   JsonNumberSchema()),
-            title='Bounding box [x1,y1, x2,y2] in geographical coordinates'
+            items=(
+                JsonNumberSchema(),
+                JsonNumberSchema(),
+                JsonNumberSchema(),
+                JsonNumberSchema(),
+            ),
+            title="Bounding box [x1,y1, x2,y2] in geographical coordinates",
         ),
         spatial_res=JsonNumberSchema(
-            enum=[(1 << level) * MIN_PIXEL_SIZE
-                  for level in range(NUM_LEVELS)],
-            title='Spatial resolution in decimal degrees.',
+            enum=[(1 << level) * MIN_PIXEL_SIZE for level in range(NUM_LEVELS)],
+            title="Spatial resolution in decimal degrees.",
         ),
         time_range=JsonArraySchema(
             items=[
                 JsonDateSchema(nullable=True),
                 JsonDateSchema(nullable=True),
             ],
-            title='Time range [from, to]'
+            title="Time range [from, to]",
         ),
         # time_period=JsonStringSchema(
         #     enum=[*map(lambda n: f'{n}D', range(1, 14)),
@@ -97,16 +101,16 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
         #     title='Time aggregation period'
         # ),
         time_tolerance=JsonStringSchema(
-            default='10m',  # 10 minutes
-            format='^([1-9]*[0-9]*)[NULSTH]$',
-            title='Time tolerance'
+            default="10m",  # 10 minutes
+            format="^([1-9]*[0-9]*)[NULSTH]$",
+            title="Time tolerance",
         ),
         l2_product_cache_size=JsonIntegerSchema(
             default=0,
             minimum=0,
-            title='Size of the SMOS L2 product cache.',
-            description='Maximum number of SMOS L2 products to be cached.',
-        )
+            title="Size of the SMOS L2 product cache.",
+            description="Maximum number of SMOS L2 products to be cached.",
+        ),
     ),
-    additional_properties=False
+    additional_properties=False,
 )

@@ -42,9 +42,7 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
     :param smos_l2_os_paths: SMOS L2 SM file paths
     """
 
-    def __init__(self,
-                 smos_l2_sm_paths: List[str],
-                 smos_l2_os_paths: List[str]):
+    def __init__(self, smos_l2_sm_paths: List[str], smos_l2_os_paths: List[str]):
         self.smos_l2_sm_paths = smos_l2_sm_paths or []
         self.smos_l2_os_paths = smos_l2_os_paths or []
 
@@ -53,15 +51,14 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
 
     @staticmethod
     def open_dataset(dataset_path: str) -> xr.Dataset:
-        return xr.open_dataset(dataset_path,
-                               engine="h5netcdf",
-                               decode_cf=False)
+        return xr.open_dataset(dataset_path, engine="h5netcdf", decode_cf=False)
 
-    def find_datasets(self,
-                      product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]],
-                      accept_record: Optional[AcceptRecord] = None) \
-            -> List[DatasetRecord]:
+    def find_datasets(
+        self,
+        product_type: ProductTypeLike,
+        time_range: Tuple[Optional[str], Optional[str]],
+        accept_record: Optional[AcceptRecord] = None,
+    ) -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
         if product_type.type_id == "SM":
             paths = self.smos_l2_sm_paths
@@ -74,8 +71,9 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
             name_pattern = product_type.name_pattern
             m = re.match(name_pattern, name)
             if m is None:
-                warnings.warn(f"path {path} does not match"
-                              f" pattern {name_pattern!r}")
+                warnings.warn(
+                    f"path {path} does not match" f" pattern {name_pattern!r}"
+                )
                 continue
             start = m.group("sd") + m.group("st")
             end = m.group("ed") + m.group("et")

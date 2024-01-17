@@ -13,7 +13,6 @@ index_zip_path = os.path.join(local_path, "test-index.zip")
 
 # noinspection PyUnresolvedReferences
 class IndexStoreTestMixin:
-
     def test_new_x(self):
         self.assertFalse(os.path.exists(self.path))
         store = IndexStore.new(self.path, mode="x")
@@ -34,30 +33,38 @@ class IndexStoreTestMixin:
         self._write_test_data(store)
         store.close()
         store = IndexStore.new(self.path, mode="r")
-        self.assertEqual({'README.md',
-                          'SMOS/SM/2022/05/07/data-07-1.nc.json',
-                          'SMOS/SM/2022/05/08/data-08-1.nc.json',
-                          'SMOS/SM/2022/05/08/data-08-2.nc.json',
-                          'SMOS/SM/2022/05/09/data-09-1.nc.json',
-                          'SMOS/SM/2022/05/09/data-09-2.nc.json',
-                          'SMOS/SM/2022/05/09/data-09-3.nc.json',
-                          'data/SMOS/SM/2022/05/07/data-07-1.nc',
-                          'data/SMOS/SM/2022/05/08/data-08-1.nc',
-                          'data/SMOS/SM/2022/05/08/data-08-2.nc',
-                          'data/SMOS/SM/2022/05/09/data-09-1.nc',
-                          'data/SMOS/SM/2022/05/09/data-09-2.nc',
-                          'data/SMOS/SM/2022/05/09/data-09-3.nc'},
-                         set(store.list()))
+        self.assertEqual(
+            {
+                "README.md",
+                "SMOS/SM/2022/05/07/data-07-1.nc.json",
+                "SMOS/SM/2022/05/08/data-08-1.nc.json",
+                "SMOS/SM/2022/05/08/data-08-2.nc.json",
+                "SMOS/SM/2022/05/09/data-09-1.nc.json",
+                "SMOS/SM/2022/05/09/data-09-2.nc.json",
+                "SMOS/SM/2022/05/09/data-09-3.nc.json",
+                "data/SMOS/SM/2022/05/07/data-07-1.nc",
+                "data/SMOS/SM/2022/05/08/data-08-1.nc",
+                "data/SMOS/SM/2022/05/08/data-08-2.nc",
+                "data/SMOS/SM/2022/05/09/data-09-1.nc",
+                "data/SMOS/SM/2022/05/09/data-09-2.nc",
+                "data/SMOS/SM/2022/05/09/data-09-3.nc",
+            },
+            set(store.list()),
+        )
 
     def test_list_with_prefix(self):
         store = IndexStore.new(self.path, mode="x")
         self._write_test_data(store)
         store.close()
         store = IndexStore.new(self.path, mode="r")
-        self.assertEqual({'SMOS/SM/2022/05/09/data-09-1.nc.json',
-                          'SMOS/SM/2022/05/09/data-09-2.nc.json',
-                          'SMOS/SM/2022/05/09/data-09-3.nc.json'},
-                         set(store.list(prefix='SMOS/SM/2022/05/09/')))
+        self.assertEqual(
+            {
+                "SMOS/SM/2022/05/09/data-09-1.nc.json",
+                "SMOS/SM/2022/05/09/data-09-2.nc.json",
+                "SMOS/SM/2022/05/09/data-09-3.nc.json",
+            },
+            set(store.list(prefix="SMOS/SM/2022/05/09/")),
+        )
 
     @staticmethod
     def _write_test_data(store: IndexStore):
@@ -77,7 +84,6 @@ class IndexStoreTestMixin:
 
 
 class DirIndexStoreTest(unittest.TestCase, IndexStoreTestMixin):
-
     def setUp(self) -> None:
         self.path = index_dir_path
         shutil.rmtree(self.path, ignore_errors=True)
@@ -88,7 +94,6 @@ class DirIndexStoreTest(unittest.TestCase, IndexStoreTestMixin):
 
 
 class ZipIndexStoreTest(unittest.TestCase, IndexStoreTestMixin):
-
     def setUp(self) -> None:
         self.path = index_zip_path
         if os.path.exists(self.path):

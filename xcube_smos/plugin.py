@@ -27,8 +27,8 @@ from xcube_smos.constants import SMOS_DATA_STORE_ID
 def init_plugin(ext_registry: extension.ExtensionRegistry):
     # xcube DataStore extensions
     ext_registry.add_extension(
-        loader=extension.import_component('xcube_smos.store:SmosDataStore'),
+        loader=extension.import_component("xcube_smos.store:SmosDataStore"),
         point=EXTENSION_POINT_DATA_STORES,
         name=SMOS_DATA_STORE_ID,
-        description='SMOS Level-2 Soil Moisture and Ocean Salinity'
+        description="SMOS Level-2 Soil Moisture and Ocean Salinity",
     )

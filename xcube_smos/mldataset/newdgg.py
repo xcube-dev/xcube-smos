@@ -34,6 +34,4 @@ def get_package_path() -> Path:
     file_manager = contextlib.ExitStack()
     atexit.register(file_manager.close)
     ref = importlib_resources.files("xcube_smos.mldataset")
-    return file_manager.enter_context(
-        importlib_resources.as_file(ref)
-    )
+    return file_manager.enter_context(importlib_resources.as_file(ref))

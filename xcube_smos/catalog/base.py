@@ -36,8 +36,7 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
     open a found dataset.
     """
 
-    def get_dataset_attrs(self, dataset_path: str) \
-            -> Optional[Dict[str, Any]]:
+    def get_dataset_attrs(self, dataset_path: str) -> Optional[Dict[str, Any]]:
         """Get the global attributes for the dataset given by *dataset_path*.
 
         The default implementation resolves the given *dataset_path*
@@ -53,8 +52,7 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
         open_dataset = self.get_dataset_opener()
         try:
             with open_dataset(
-                    resolved_path,
-                    **(self.get_dataset_opener_kwargs() or {})
+                resolved_path, **(self.get_dataset_opener_kwargs() or {})
             ) as ds:
                 return dict(ds.attrs)
         except OSError:
@@ -107,11 +105,12 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
         return dataset_path
 
     @abc.abstractmethod
-    def find_datasets(self,
-                      product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]],
-                      accept_record: Optional[AcceptRecord] = None) \
-            -> List[DatasetRecord]:
+    def find_datasets(
+        self,
+        product_type: ProductTypeLike,
+        time_range: Tuple[Optional[str], Optional[str]],
+        accept_record: Optional[AcceptRecord] = None,
+    ) -> List[DatasetRecord]:
         """Find SMOS L2 datasets in the given *time_range*.
 
         :param product_type: SMOS product type

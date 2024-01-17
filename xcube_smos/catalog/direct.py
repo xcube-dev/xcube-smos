@@ -45,15 +45,16 @@ LOG = logging.getLogger("xcube-smos")
 
 
 class SmosDirectCatalog(AbstractSmosCatalog):
-    """A SMOS L2 dataset catalog that directly accesses the source filesystem.
-    """
+    """A SMOS L2 dataset catalog that directly accesses the source filesystem."""
 
-    def __init__(self,
-                 source_path: Optional[Union[str, Path]] = None,
-                 source_protocol: Optional[str] = None,
-                 source_storage_options: Optional[Dict[str, Any]] = None,
-                 cache_path: Optional[str] = None,
-                 xarray_kwargs: Dict[str, Any] = None):
+    def __init__(
+        self,
+        source_path: Optional[Union[str, Path]] = None,
+        source_protocol: Optional[str] = None,
+        source_storage_options: Optional[Dict[str, Any]] = None,
+        cache_path: Optional[str] = None,
+        xarray_kwargs: Dict[str, Any] = None,
+    ):
         source_path = str(source_path or "EODATA")
         _protocol, source_path = fsspec.core.split_protocol(source_path)
         source_protocol = source_protocol or _protocol or "file"
@@ -62,34 +63,33 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         self._source_path = source_path
         self._source_protocol = source_protocol
         self._source_storage_options = source_storage_options or {}
-        self._cache_path = os.path.expanduser(cache_path) \
-            if cache_path else None
+        self._cache_path = os.path.expanduser(cache_path) if cache_path else None
         self._xarray_kwargs = xarray_kwargs or {}
 
     @cached_property
     def source_fs(self) -> fsspec.AbstractFileSystem:
-        return fsspec.filesystem(self._source_protocol,
-                                 **self._source_storage_options)
+        return fsspec.filesystem(self._source_protocol, **self._source_storage_options)
 
     def get_dataset_opener_kwargs(self) -> Dict[str, Any]:
-        return dict(source_protocol=self._source_protocol,
-                    source_storage_options=self._source_storage_options,
-                    cache_path=self._cache_path,
-                    xarray_kwargs=self._xarray_kwargs)
+        return dict(
+            source_protocol=self._source_protocol,
+            source_storage_options=self._source_storage_options,
+            cache_path=self._cache_path,
+            xarray_kwargs=self._xarray_kwargs,
+        )
 
     def get_dataset_opener(self) -> DatasetOpener:
         return open_dataset
 
-    def find_datasets(self,
-                      product_type: ProductTypeLike,
-                      time_range: Tuple[Optional[str], Optional[str]],
-                      accept_record: Optional[AcceptRecord] = None) \
-            -> List[DatasetRecord]:
+    def find_datasets(
+        self,
+        product_type: ProductTypeLike,
+        time_range: Tuple[Optional[str], Optional[str]],
+        accept_record: Optional[AcceptRecord] = None,
+    ) -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
         return product_type.find_files_for_time_range(
-            time_range,
-            self._get_files_for_path,
-            accept_record=accept_record
+            time_range, self._get_files_for_path, accept_record=accept_record
         )
 
     def _get_files_for_path(self, path: str) -> Iterable[str]:
@@ -116,7 +116,7 @@ class TempNcDir:
     _instance = None
 
     @staticmethod
-    def get_instance() -> 'TempNcDir':
+    def get_instance() -> "TempNcDir":
         if TempNcDir._instance is None:
             TempNcDir._instance = TempNcDir()
             atexit.register(TempNcDir.dispose_instance)
@@ -129,12 +129,13 @@ class TempNcDir:
             TempNcDir._instance = None
 
 
-def open_dataset(source_file: str,
-                 source_protocol: str = None,
-                 source_storage_options: Dict[str, Any] = None,
-                 cache_path: Optional[str] = None,
-                 xarray_kwargs: Dict[str, Any] = None) \
-        -> xr.Dataset:
+def open_dataset(
+    source_file: str,
+    source_protocol: str = None,
+    source_storage_options: Dict[str, Any] = None,
+    cache_path: Optional[str] = None,
+    xarray_kwargs: Dict[str, Any] = None,
+) -> xr.Dataset:
     open_dataset_kwargs = dict(xarray_kwargs or {})
     open_dataset_kwargs.update(decode_cf=False, chunks={})
 
@@ -145,8 +146,7 @@ def open_dataset(source_file: str,
     else:
         var_names = None
 
-    remote_fs = fsspec.filesystem(source_protocol,
-                                  **source_storage_options)
+    remote_fs = fsspec.filesystem(source_protocol, **source_storage_options)
     if not cache_path:
         if open_dataset_kwargs.get("engine") == "h5netcdf":
             LOG.debug("Opening dataset directly from %s", source_file)
@@ -178,10 +178,14 @@ def open_dataset(source_file: str,
 
 def filter_dataset(ds: xr.Dataset, var_names: Set[str]) -> xr.Dataset:
     key_prefix = "VH:SPH:MI:TI:"
-    ds = ds.drop_vars([v for v in ds.data_vars
-                       if var_names is None
-                       or not (v in var_names or v == "Grid_Point_ID")])
-    ds.attrs = {k[len(key_prefix):]: v
-                for k, v in ds.attrs.items()
-                if k.startswith(key_prefix)}
+    ds = ds.drop_vars(
+        [
+            v
+            for v in ds.data_vars
+            if var_names is None or not (v in var_names or v == "Grid_Point_ID")
+        ]
+    )
+    ds.attrs = {
+        k[len(key_prefix) :]: v for k, v in ds.attrs.items() if k.startswith(key_prefix)
+    }
     return ds

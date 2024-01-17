@@ -36,27 +36,30 @@ def parse_smos_time_ranges(l2_products: Sequence[xr.Dataset]) -> np.array:
     return parse_time_ranges(time_ranges)
 
 
-def parse_time_ranges(time_ranges: Sequence[Tuple[str, str]],
-                      is_compact: bool = False) -> np.array:
+def parse_time_ranges(
+    time_ranges: Sequence[Tuple[str, str]], is_compact: bool = False
+) -> np.array:
     if is_compact:
         time_ranges = compact_to_iso_time_ranges(time_ranges)
     return np.array(time_ranges, dtype="datetime64[ns]")
 
 
-def compact_to_iso_time_ranges(time_ranges: Sequence[Tuple[str, str]]) \
-        -> Sequence[Tuple[str, str]]:
-    return [(compact_to_iso_time(s), compact_to_iso_time(e))
-            for s, e in time_ranges]
+def compact_to_iso_time_ranges(
+    time_ranges: Sequence[Tuple[str, str]]
+) -> Sequence[Tuple[str, str]]:
+    return [(compact_to_iso_time(s), compact_to_iso_time(e)) for s, e in time_ranges]
 
 
 def compact_to_iso_time(compact_time: str) -> str:
-    assert_true(len(compact_time) == 14, message='invalid compact time')
-    return (f"{compact_time[0:4]}-"
-            f"{compact_time[4:6]}-"
-            f"{compact_time[6:8]}T"
-            f"{compact_time[8:10]}:"
-            f"{compact_time[10:12]}:"
-            f"{compact_time[12:14]}")
+    assert_true(len(compact_time) == 14, message="invalid compact time")
+    return (
+        f"{compact_time[0:4]}-"
+        f"{compact_time[4:6]}-"
+        f"{compact_time[6:8]}T"
+        f"{compact_time[8:10]}:"
+        f"{compact_time[10:12]}:"
+        f"{compact_time[12:14]}"
+    )
 
 
 def to_compact_time(time: datetime.datetime | pd.Timestamp | str) -> str:
@@ -65,13 +68,14 @@ def to_compact_time(time: datetime.datetime | pd.Timestamp | str) -> str:
 
 
 def get_time_range(l2_product: xr.Dataset) -> Tuple[str, str]:
-    start = get_raw_time(l2_product, 'FH:Validity_Period:Validity_Start')
-    stop = get_raw_time(l2_product, 'FH:Validity_Period:Validity_Stop')
+    start = get_raw_time(l2_product, "FH:Validity_Period:Validity_Start")
+    stop = get_raw_time(l2_product, "FH:Validity_Period:Validity_Stop")
     return start, stop
 
 
-def normalize_time_range(time_range: Tuple[Optional[str], Optional[str]]) \
-        -> Tuple[pd.Timestamp, pd.Timestamp]:
+def normalize_time_range(
+    time_range: Tuple[Optional[str], Optional[str]]
+) -> Tuple[pd.Timestamp, pd.Timestamp]:
     start, end = time_range
     if start is None:
         start = "2000-01-01 00:00:00"
@@ -84,5 +88,5 @@ def normalize_time_range(time_range: Tuple[Optional[str], Optional[str]]) \
 def get_raw_time(l2_product: xr.Dataset, attr_name: str) -> str:
     time_str = l2_product.attrs.get(attr_name)
     if not time_str:
-        raise ValueError(f'missing attribute {attr_name!r}')
+        raise ValueError(f"missing attribute {attr_name!r}")
     return time_str[4:] if time_str.startswith("UTC=") else time_str

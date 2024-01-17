@@ -10,13 +10,12 @@ import xarray as xr
 from xcube_smos.catalog import SmosDirectCatalog
 
 s3_storage_options = None
-if "CREODIAS_S3_KEY" in os.environ \
-        and "CREODIAS_S3_SECRET" in os.environ:
+if "CREODIAS_S3_KEY" in os.environ and "CREODIAS_S3_SECRET" in os.environ:
     s3_storage_options = dict(
         endpoint_url="https://s3.cloudferro.com",
         anon=False,
         key=os.environ["CREODIAS_S3_KEY"],
-        secret=os.environ["CREODIAS_S3_SECRET"]
+        secret=os.environ["CREODIAS_S3_SECRET"],
     )
 
 reason = "Set env vars CREODIAS_S3_KEY and CREODIAS_S3_SECRET to enable test"
@@ -24,12 +23,11 @@ reason = "Set env vars CREODIAS_S3_KEY and CREODIAS_S3_SECRET to enable test"
 
 @unittest.skipUnless(s3_storage_options is not None, reason)
 class SmosDirectCatalogTest(unittest.TestCase):
-
     def test_1_find_datasets(self):
         catalog = SmosDirectCatalog(
             source_path="EODATA",
             source_protocol="s3",
-            source_storage_options=s3_storage_options
+            source_storage_options=s3_storage_options,
         )
 
         files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-03"))
@@ -70,10 +68,9 @@ class SmosDirectCatalogTest(unittest.TestCase):
     #     self.assert_files_ok(descending_files, "SMOS/L2OS/MIR_OSUDP2/",
     #                          (10, 15))
 
-    def assert_files_ok(self,
-                        files,
-                        expected_prefix: str,
-                        expected_count: Union[int, Tuple[int, int]]):
+    def assert_files_ok(
+        self, files, expected_prefix: str, expected_count: Union[int, Tuple[int, int]]
+    ):
         self.assertIsInstance(files, list)
         actual_count = len(files)
         if isinstance(expected_count, int):
@@ -88,7 +85,7 @@ class SmosDirectCatalogTest(unittest.TestCase):
             self.assertIsInstance(path, str)
             self.assertIsInstance(start, str)
             self.assertIsInstance(end, str)
-            self.assertEqual(expected_prefix, path[:len(expected_prefix)])
+            self.assertEqual(expected_prefix, path[: len(expected_prefix)])
             self.assertEqual(14, len(start))
             self.assertEqual(14, len(end))
 
@@ -98,7 +95,7 @@ class SmosDirectCatalogTest(unittest.TestCase):
             source_protocol="s3",
             source_storage_options=s3_storage_options,
             cache_path=None,
-            xarray_kwargs=dict(engine="netcdf4")
+            xarray_kwargs=dict(engine="netcdf4"),
         )
 
         files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
@@ -110,8 +107,7 @@ class SmosDirectCatalogTest(unittest.TestCase):
 
         self.assertTrue(callable(open_dataset))
 
-        ds = open_dataset(path,
-                          **open_dataset_kwargs)
+        ds = open_dataset(path, **open_dataset_kwargs)
 
         self.assert_dataset_ok(ds)
 
@@ -122,7 +118,7 @@ class SmosDirectCatalogTest(unittest.TestCase):
             source_path="EODATA",
             source_protocol="s3",
             source_storage_options=s3_storage_options,
-            cache_path=cache_dir
+            cache_path=cache_dir,
         )
 
         files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
@@ -134,8 +130,7 @@ class SmosDirectCatalogTest(unittest.TestCase):
 
         self.assertTrue(callable(open_dataset))
 
-        ds = open_dataset(path,
-                          **open_dataset_kwargs)
+        ds = open_dataset(path, **open_dataset_kwargs)
 
         self.assert_dataset_ok(ds)
 

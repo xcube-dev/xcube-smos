@@ -10,8 +10,7 @@ class IndexStore(ABC):
     """A file store used by the Kerchunk NetCDF index."""
 
     @classmethod
-    def new(cls, path: str, mode: str = "r", replace: bool = False) \
-            -> 'IndexStore':
+    def new(cls, path: str, mode: str = "r", replace: bool = False) -> "IndexStore":
         """Create a new index store instance for the given *path*
         and *mode*.
 
@@ -109,10 +108,9 @@ class DirIndexStore(IndexStore):
         if not os.path.isdir(root_path):
             return []
         for abs_path, _, _filenames in os.walk(root_path):
-            file_prefix = abs_path[n + 1:]
+            file_prefix = abs_path[n + 1 :]
             for filename in _filenames:
-                file = filename if not file_prefix \
-                    else f"{file_prefix}/{filename}"
+                file = filename if not file_prefix else f"{file_prefix}/{filename}"
                 if os.name == "nt":
                     file = file.replace("\\", "/")
                 if not prefix or file.startswith(prefix):
@@ -132,7 +130,7 @@ class DirIndexStore(IndexStore):
         if isinstance(data, dict):
             data = json.dumps(data)
         if isinstance(data, str):
-            data = data.encode(encoding='utf-8')
+            data = data.encode(encoding="utf-8")
         with self.open(file, mode="w") as fp:
             # noinspection PyTypeChecker
             fp.write(data)
@@ -169,8 +167,7 @@ class ZipIndexStore(IndexStore):
         return file in self.file_set
 
     def list(self, prefix: Optional[str] = None) -> List[str]:
-        return [file for file in self.files
-                if not prefix or file.startswith(prefix)]
+        return [file for file in self.files if not prefix or file.startswith(prefix)]
 
     def open(self, file: str, mode: str = "r"):
         # noinspection PyTypeChecker
@@ -180,7 +177,7 @@ class ZipIndexStore(IndexStore):
         if isinstance(data, dict):
             data = json.dumps(data)
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode("utf-8")
         with self.open(file, mode="w") as fp:
             fp.write(data)
 

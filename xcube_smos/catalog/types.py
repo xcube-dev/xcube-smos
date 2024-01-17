@@ -5,7 +5,7 @@ import xarray as xr
 DatasetRecord = Tuple[
     str,  # relative path
     str,  # start date/time in compact format
-    str  # end date/time in compact format
+    str,  # end date/time in compact format
 ]
 
 DatasetOpener = Callable[
@@ -14,9 +14,9 @@ DatasetOpener = Callable[
         {
             "protocol": Optional[str],
             "storage_options": Optional[Dict[str, Any]],
-        }
+        },
     ],
-    xr.Dataset
+    xr.Dataset,
 ]
 
 AcceptRecord = Callable[[DatasetRecord], bool]

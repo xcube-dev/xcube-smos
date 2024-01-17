@@ -1,16 +1,16 @@
 # The MIT License (MIT)
 # Copyright (c) 2023 by the xcube development team and contributors
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
 # to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense,
 # and/or sell copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -50,7 +50,7 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
     """
 
     # Constant data type of "seqnum"
-    DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder('>')
+    DTYPE: np.dtype = np.dtype(np.uint32).newbyteorder(">")
 
     # Smallest possible "seqnum" value
     MIN_SEQNUM = 1
@@ -71,12 +71,9 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
     TILE_HEIGHT = 504
 
     # Pixel size in degrees at lever zero (= highest spatial resolution)
-    MIN_PIXEL_SIZE = 360. / MAX_WIDTH
+    MIN_PIXEL_SIZE = 360.0 / MAX_WIDTH
 
-    def __init__(self,
-                 urlpath: str,
-                 level0: int = 0,
-                 compute: bool = False):
+    def __init__(self, urlpath: str, level0: int = 0, compute: bool = False):
         super().__init__()
         assert_given(urlpath, name="urlpath")
         protocol, path = fsspec.core.split_protocol(urlpath)
@@ -85,10 +82,10 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
         if protocol == "file":
             path = os.path.expanduser(path)
             urlpath = path
-        assert_true(fs.exists(path),
-                    message=f'SMOS DDG not found: {urlpath}')
-        assert_true(0 <= level0 < self.MAX_NUM_LEVELS,
-                    message=f'Invalid level0: {level0}')
+        assert_true(fs.exists(path), message=f"SMOS DDG not found: {urlpath}")
+        assert_true(
+            0 <= level0 < self.MAX_NUM_LEVELS, message=f"Invalid level0: {level0}"
+        )
         self._urlpath = urlpath
         self._compute = compute
         self._level0 = level0
@@ -115,10 +112,7 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
         spatial_res = (1 << level) * self.MIN_PIXEL_SIZE
         return width, height, spatial_res
 
-    def _get_dataset_lazily(self,
-                            level: int,
-                            parameters: Dict[str, Any]) -> xr.Dataset:
-
+    def _get_dataset_lazily(self, level: int, parameters: Dict[str, Any]) -> xr.Dataset:
         width, height, spatial_res = self.get_level_geom(level)
 
         zarr_store = GenericZarrStore(
@@ -133,21 +127,21 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
                     level=level + self._level0,
                     base_path=self._urlpath,
                 ),
-                chunk_encoding="ndarray"
+                chunk_encoding="ndarray",
             ),
             GenericArray(
                 name="lon",
                 dims="lon",
-                data=np.linspace(-180 + spatial_res / 2,
-                                 +180 - spatial_res / 2,
-                                 width),
+                data=np.linspace(-180 + spatial_res / 2, +180 - spatial_res / 2, width),
             ),
             GenericArray(
                 name="lat",
                 dims="lat",
-                data=np.linspace(+height * spatial_res / 2 - spatial_res / 2,
-                                 -height * spatial_res / 2 + spatial_res / 2,
-                                 height),
+                data=np.linspace(
+                    +height * spatial_res / 2 - spatial_res / 2,
+                    -height * spatial_res / 2 + spatial_res / 2,
+                    height,
+                ),
             ),
         )
         dataset: xr.Dataset = xr.open_zarr(zarr_store)
@@ -161,10 +155,12 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
     # Otherwise, the current object will be serialized
     # to Dask workers! This must not happen.
     @staticmethod
-    def load_smos_dgg_tile(chunk_info: Dict[str, Any],
-                           array_info: Dict[str, Any],
-                           level: int,
-                           base_path: str) -> np.ndarray:
+    def load_smos_dgg_tile(
+        chunk_info: Dict[str, Any],
+        array_info: Dict[str, Any],
+        level: int,
+        base_path: str,
+    ) -> np.ndarray:
         y_index, x_index = chunk_info["index"]
         shape = chunk_info["shape"]
         dtype = array_info["dtype"]
@@ -185,6 +181,5 @@ class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):
         return np.where(
             grid_point_id < 1000000,
             grid_point_id,
-            grid_point_id - 737856 * ((grid_point_id - 1) // 1000000) + 1
+            grid_point_id - 737856 * ((grid_point_id - 1) // 1000000) + 1,
         )
-
