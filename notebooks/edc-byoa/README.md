@@ -5,7 +5,7 @@ using the [xcube-smos](https://github.com/dcs4cop/xcube-smos) data store
 and the [zappend](https://bcdev.github.io/zappend/) tool.
 
 It follows the repository structure required for 
-[Euro Data Cube](https://www.eurodatacube.com/) - _Insights On Demand_ 
+[Euro Data Cube](https://www.eurodatacube.com/) - [_Insights On Demand_](https://eurodatacube.com/marketplace/data-products/on-demand) 
 (aka BYOA Bring Your Own Algorithm). Please consult the 
 [EDC documentation](https://eurodatacube.com/documentation/offer_algorithms_for_on_demand_data_generation) for more information.
 
@@ -20,7 +20,7 @@ parameter specification:
         "name": "Product Type",
         "id": "product_type",
         "type": "string",
-        "description": "The SMOS product type, must be 'SMOS-L2C-SM' or 'SMOS-L2C-OS'",
+        "description": "The SMOS product type, must be 'SMOS-L2C-SM' or 'SMOS-L2C-OS'.",
         "optional": false
     },
     {
@@ -28,13 +28,13 @@ parameter specification:
         "id": "date_range",
         "type": "daterange",
         "description": "Date Range given as '<first>/<last>' with first and last having format 'YYYY-MM-DD'. Both are inclusive.",
-        "optional": true
+        "optional": false
     },
     {
-        "name": "Interval",
-        "id": "interval",
+        "name": "Aggregation Interval",
+        "id": "agg_interval",
         "type": "string",
-        "description": "The averaging interval, e.g., '1d', '2d', '1w'. Default is '1d' (one day).",
+        "description": "The averaging interval such as '1d' (the default), '2d', '1w', or empty, which means no aggregation.",
         "optional": true
     }
 ]
