@@ -12,10 +12,19 @@ from zappend.api import SliceSource
 from zappend.api import to_slice_factory
 
 
-def generate_slices(smos_store, product_type, time_ranges, agg_interval):
+def generate_slices(
+    smos_store,
+    product_type: str,
+    time_ranges: list[tuple[str, str]],
+    agg_interval: str | None,
+    res_level: int,
+):
     for time_range in time_ranges:
         ds_iterator = smos_store.open_data(
-            product_type, opener_id="dsiter:zarr:smos", time_range=time_range
+            data_id=product_type,
+            opener_id="dsiter:zarr:smos",
+            time_range=time_range,
+            res_level=res_level,
         )
         if not agg_interval:
             # If we have no interval, we deliver the slices as provided.

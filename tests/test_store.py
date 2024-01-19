@@ -1,4 +1,5 @@
 import unittest
+from typing import Any, Type
 
 import dask.array as da
 import jsonschema
@@ -11,9 +12,14 @@ from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 
 from tests.catalog.test_simple import new_simple_catalog
-from xcube_smos.schema import OPEN_PARAMS_SCHEMA
+from xcube_smos.dsiter import DatasetIterator
+from xcube_smos.schema import DATASET_OPEN_PARAMS_SCHEMA
+from xcube_smos.schema import ML_DATASET_OPEN_PARAMS_SCHEMA
 from xcube_smos.schema import STORE_PARAMS_SCHEMA
 from xcube_smos.store import SmosDataStore
+from xcube_smos.store import DATASET_OPENER_ID
+from xcube_smos.store import DATASET_ITERATOR_OPENER_ID
+from xcube_smos.store import ML_DATASET_OPENER_ID
 
 
 class SmosDataStoreTest(unittest.TestCase):
@@ -80,7 +86,7 @@ class SmosDataStoreTest(unittest.TestCase):
             {
                 "data_id": "SMOS-L2C-SM",
                 "data_type": "mldataset",
-                "num_levels": 6,
+                "num_levels": 5,
                 "spatial_res": 0.0439453125,
                 "bbox": [-180.0, -88.59375, 180.0, 88.59375],
                 "time_range": ["2010-01-01", None],
@@ -88,7 +94,7 @@ class SmosDataStoreTest(unittest.TestCase):
             {
                 "data_id": "SMOS-L2C-OS",
                 "data_type": "mldataset",
-                "num_levels": 6,
+                "num_levels": 5,
                 "spatial_res": 0.0439453125,
                 "bbox": [-180.0, -88.59375, 180.0, 88.59375],
                 "time_range": ["2010-01-01", None],
@@ -163,7 +169,19 @@ class SmosDataStoreTest(unittest.TestCase):
     def test_get_open_data_params_schema(self):
         store = SmosDataStore()
 
-        self.assertIs(OPEN_PARAMS_SCHEMA, store.get_open_data_params_schema())
+        self.assertIs(DATASET_OPEN_PARAMS_SCHEMA, store.get_open_data_params_schema())
+        self.assertIs(
+            DATASET_OPEN_PARAMS_SCHEMA,
+            store.get_open_data_params_schema(opener_id=DATASET_OPENER_ID),
+        )
+        self.assertIs(
+            DATASET_OPEN_PARAMS_SCHEMA,
+            store.get_open_data_params_schema(opener_id=DATASET_ITERATOR_OPENER_ID),
+        )
+        self.assertIs(
+            ML_DATASET_OPEN_PARAMS_SCHEMA,
+            store.get_open_data_params_schema(opener_id=ML_DATASET_OPENER_ID),
+        )
 
         with pytest.raises(ValueError, match="Unknown dataset identifier 'SMOS-L3-OS'"):
             store.get_open_data_params_schema(data_id="SMOS-L3-OS")
@@ -183,17 +201,22 @@ class SmosDataStoreTest(unittest.TestCase):
             store.open_data("SMOS-L3-OS", time_range=time_range)
 
         with pytest.raises(
+            jsonschema.exceptions.ValidationError,
+            match="8 is not one of \\[0, 1, 2, 3, 4\\]",
+        ):
+            store.open_data(
+                "SMOS-L2C-SM",
+                time_range=time_range,
+                res_level=8,
+                opener_id="dataset:zarr:smos",
+            )
+
+        with pytest.raises(
             ValueError, match="Invalid opener identifier 'dataset:zarr:s3'"
         ):
             store.open_data(
                 "SMOS-L2C-SM", time_range=time_range, opener_id="dataset:zarr:s3"
             )
-
-        with pytest.raises(
-            jsonschema.exceptions.ValidationError,
-            match="'time_range' is a required property",
-        ):
-            store.open_data("SMOS-L2C-SM", bbox="10, 20, 30, 40")
 
         with pytest.raises(
             jsonschema.exceptions.ValidationError,
@@ -203,29 +226,105 @@ class SmosDataStoreTest(unittest.TestCase):
 
         with pytest.raises(
             jsonschema.exceptions.ValidationError,
-            match="'10, 20, 30, 40' is not of type 'array'",
-        ):
-            store.open_data("SMOS-L2C-SM", time_range=time_range, bbox="10, 20, 30, 40")
-
-        with pytest.raises(
-            jsonschema.exceptions.ValidationError,
             match="Additional properties are not allowed"
             " \\('time_period' was unexpected\\)",
         ):
             store.open_data("SMOS-L2C-SM", time_range=time_range, time_period="2D")
 
-    def test_open_data(self):
+    def test_open_dataset_iterator_no_res_level(self):
+        self._test_open_dataset_iterator(None, (1, 4032, 8192))
+
+    def test_open_dataset_iterator_res_level_0(self):
+        self._test_open_dataset_iterator(0, (1, 4032, 8192))
+
+    def test_open_dataset_iterator_res_level_4(self):
+        self._test_open_dataset_iterator(4, (1, 252, 512))
+
+    def _test_open_dataset_iterator(
+        self, res_level: int | None, expected_shape: tuple[int, int, int]
+    ):
         store = SmosDataStore(_catalog=new_simple_catalog())
-
-        dataset = store.open_data(
-            "SMOS-L2C-SM", time_range=("2022-05-05", "2022-05-07")
+        kwargs = dict(time_range=("2022-05-05", "2022-05-07"))
+        if res_level is not None:
+            kwargs.update(res_level=res_level)
+        ds_iter = store.open_data("SMOS-L2C-SM", opener_id="dsiter:zarr:smos", **kwargs)
+        self.assertIsInstance(ds_iter, DatasetIterator)
+        self.assertEqual(5, len(ds_iter))
+        dataset = next(ds_iter)
+        t_size, y_size, x_size = expected_shape
+        expected_sm_attrs = {"_FillValue": -999.0, "units": "m3 m-3"}
+        expected_sm_encoding = {
+            "dtype": np.dtype("float32"),
+            "chunks": (1, y_size, x_size),
+            "preferred_chunks": {"time": 1, "lat": y_size, "lon": x_size},
+        }
+        self.assert_dataset_ok(
+            dataset,
+            expected_shape,
+            None,
+            expected_sm_attrs,
+            expected_sm_encoding,
+            np.ndarray,
         )
+
+    def test_open_dataset_no_res_level(self):
+        self._test_open_dataset(None, (5, 4032, 8192))
+
+    def test_open_dataset_no_res_level_0(self):
+        self._test_open_dataset(0, (5, 4032, 8192))
+
+    def test_open_dataset_no_res_level_4(self):
+        self._test_open_dataset(4, (5, 252, 512))
+
+    def _test_open_dataset(
+        self, res_level: int | None, expected_shape: tuple[int, int, int]
+    ):
+        store = SmosDataStore(_catalog=new_simple_catalog())
+        kwargs = dict(time_range=("2022-05-05", "2022-05-07"))
+        if res_level is not None:
+            kwargs.update(res_level=res_level)
+        dataset = store.open_data("SMOS-L2C-SM", **kwargs)
+        t_size, y_size, x_size = expected_shape
+        expected_chunks = (
+            t_size * (1,),
+            (y_size,),
+            (x_size,),
+        )
+        expected_sm_attrs = {"units": "m3 m-3"}
+        expected_sm_encoding = {
+            "_FillValue": -999.0,
+            "chunks": (1, y_size, x_size),
+            "compressor": None,
+            "dtype": np.dtype("float32"),
+            "filters": None,
+            "preferred_chunks": {"time": 1, "lat": y_size, "lon": x_size},
+        }
+        self.assert_dataset_ok(
+            dataset,
+            expected_shape,
+            expected_chunks,
+            expected_sm_attrs,
+            expected_sm_encoding,
+            da.Array,
+        )
+
+    def assert_dataset_ok(
+        self,
+        dataset: xr.Dataset,
+        expected_shape: tuple[int, int, int],
+        expected_chunks: tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]
+        | None,
+        expected_sm_attrs: dict[str, Any],
+        expected_sm_encoding: dict[str, Any],
+        expected_sm_array_type: Type,
+    ):
+        t_size, y_size, x_size = expected_shape
+
         self.assertIsInstance(dataset, xr.Dataset)
-
-        self.assertEqual({"lon": 8192, "lat": 4032, "time": 5, "bnds": 2}, dataset.dims)
-
+        self.assertEqual(
+            {"lon": x_size, "lat": y_size, "time": t_size, "bnds": 2}, dataset.dims
+        )
         self.assertEqual({"lon", "lat", "time", "time_bnds"}, set(dataset.coords))
-
         self.assertEqual(
             {
                 "Chi_2",
@@ -240,24 +339,14 @@ class SmosDataStoreTest(unittest.TestCase):
         )
 
         sm_var = dataset.Soil_Moisture
-        self.assertEqual((5, 4032, 8192), sm_var.shape)
-        self.assertEqual(((1, 1, 1, 1, 1), (4032,), (8192,)), sm_var.chunks)
+        self.assertEqual(expected_shape, sm_var.shape)
+        self.assertEqual(expected_chunks, sm_var.chunks)
         self.assertEqual(("time", "lat", "lon"), sm_var.dims)
         self.assertEqual(np.float32, sm_var.dtype)
-        self.assertEqual({"units": "m3 m-3"}, sm_var.attrs)
-        self.assertEqual(
-            {
-                "_FillValue": -999.0,
-                "chunks": (1, 4032, 8192),
-                "compressor": None,
-                "dtype": np.dtype("float32"),
-                "filters": None,
-                "preferred_chunks": {"lat": 4032, "lon": 8192, "time": 1},
-            },
-            sm_var.encoding,
-        )
+        self.assertEqual(expected_sm_attrs, sm_var.attrs)
+        self.assertEqual(expected_sm_encoding, sm_var.encoding)
 
-        self.assertIsInstance(sm_var.data, da.Array)
+        self.assertIsInstance(sm_var.data, expected_sm_array_type)
         sm_data = dataset.Soil_Moisture.values
         self.assertIsInstance(sm_data, np.ndarray)
 

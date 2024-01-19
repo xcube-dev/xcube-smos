@@ -27,7 +27,7 @@ parameter specification:
         "name": "Date Range",
         "id": "date_range",
         "type": "daterange",
-        "description": "Date Range given as '<first>/<last>' with first and last having format 'YYYY-MM-DD'. Both are inclusive.",
+        "description": "Date range given as closed interval '<first>/<last>' with first and last having format 'YYYY-MM-DD'.",
         "optional": false
     },
     {
@@ -35,6 +35,13 @@ parameter specification:
         "id": "agg_interval",
         "type": "string",
         "description": "The averaging interval such as '1d' (the default), '2d', '1w', or empty, which means no aggregation.",
+        "optional": true
+    },
+        {
+        "name": "Spatial Resolution Level",
+        "id": "res_level",
+        "type": "int",
+        "description": "Spatial resolution level in the range 0 to 4. Actual resolution in degrees is 360/8192 * 2^res_level. Defaults to zero.",
         "optional": true
     }
 ]

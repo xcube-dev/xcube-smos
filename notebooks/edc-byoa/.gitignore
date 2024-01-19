@@ -1,0 +1,5 @@
+/.idea/
+.ipynb_checkpoints/
+output/
+nc_cache/
+creodias-credentials.json
