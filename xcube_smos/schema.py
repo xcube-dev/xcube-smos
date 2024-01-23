@@ -82,7 +82,7 @@ OPEN_PARAMS_SCHEMA = JsonObjectSchema(
                 JsonNumberSchema(),
                 JsonNumberSchema(),
             ),
-            title="Bounding box [x1,y1, x2,y2] in geographical coordinates",
+            title="Bounding Xxx box [x1,y1, x2,y2] in geographical coordinates",
         ),
         spatial_res=JsonNumberSchema(
             enum=[(1 << level) * MIN_PIXEL_SIZE for level in range(NUM_LEVELS)],
