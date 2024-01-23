@@ -1,5 +1,8 @@
 ## Version 0.2.0 (in development)
 
+* Introduced open parameter `bbox`. [#20]
+* Introduced open parameter `res_level`, 
+  an integer value in the range 0 to 4. [#21]
 * The SMOS auxiliary dataset _Discrete Global Grid_ (DGG)
   has been made package data in `xcube_smos/mldataset/smos-dgg.levels`.
   Hence, the store parameter `dgg_urlpath` has been removed. [#9]
