@@ -40,7 +40,7 @@ LOG = logging.getLogger("xcube-smos")
 #   - l2 var data only needed to compute entire time steps of a var
 #   - don't cache l2 var data, used only temporarily
 
-DATASETS = {"SMOS-L2C-OS": OS_VAR_NAMES, "SMOS-L2C-SM": SM_VAR_NAMES}
+DATASET_VAR_NAMES = {"SMOS-L2C-OS": OS_VAR_NAMES, "SMOS-L2C-SM": SM_VAR_NAMES}
 
 
 class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
@@ -107,7 +107,7 @@ class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
                 attrs=_sanitize_attrs(var.attrs),
             )
             for var_name, var in l2_product.l2_dataset.data_vars.items()
-            if var_name in DATASETS[self.dataset_id]
+            if var_name in DATASET_VAR_NAMES[self.dataset_id]
         ]
 
         zarr_store = GenericZarrStore(

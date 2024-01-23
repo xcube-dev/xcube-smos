@@ -28,11 +28,14 @@ from typing import Tuple, Optional, List
 import xarray as xr
 
 from xcube_smos.catalog.base import AbstractSmosCatalog
+from xcube_smos.catalog.direct import filter_dataset
 from xcube_smos.catalog.types import AcceptRecord
 from xcube_smos.catalog.types import DatasetRecord
 from xcube_smos.catalog.types import DatasetOpener
 from xcube_smos.catalog.producttype import ProductType
 from xcube_smos.catalog.producttype import ProductTypeLike
+from xcube_smos.constants import OS_VAR_NAMES
+from xcube_smos.constants import SM_VAR_NAMES
 
 
 class SmosSimpleCatalog(AbstractSmosCatalog):
@@ -51,7 +54,10 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
 
     @staticmethod
     def open_dataset(dataset_path: str) -> xr.Dataset:
-        return xr.open_dataset(dataset_path, engine="h5netcdf", decode_cf=False)
+        ds = xr.open_dataset(dataset_path, engine="h5netcdf", decode_cf=False)
+        return filter_dataset(
+            ds, SM_VAR_NAMES if "_SMUDP2_" in dataset_path else OS_VAR_NAMES
+        )
 
     def find_datasets(
         self,

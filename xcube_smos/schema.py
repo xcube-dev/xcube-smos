@@ -22,11 +22,10 @@
 from xcube.util.jsonschema import JsonArraySchema
 from xcube.util.jsonschema import JsonIntegerSchema
 from xcube.util.jsonschema import JsonDateSchema
-from xcube.util.jsonschema import JsonNumberSchema
 from xcube.util.jsonschema import JsonObjectSchema
 from xcube.util.jsonschema import JsonStringSchema
-from xcube_smos.mldataset.newdgg import MIN_PIXEL_SIZE
-from xcube_smos.mldataset.newdgg import NUM_LEVELS
+from .mldataset.newdgg import MIN_PIXEL_SIZE
+from .mldataset.newdgg import NUM_LEVELS
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
     properties=dict(
@@ -69,48 +68,68 @@ STORE_PARAMS_SCHEMA = JsonObjectSchema(
     additional_properties=False,
 )
 
-OPEN_PARAMS_SCHEMA = JsonObjectSchema(
-    required=["time_range"],
-    properties=dict(
-        variable_names=JsonArraySchema(
-            items=JsonStringSchema(), title="Names of variables to be included"
-        ),
-        bbox=JsonArraySchema(
-            items=(
-                JsonNumberSchema(),
-                JsonNumberSchema(),
-                JsonNumberSchema(),
-                JsonNumberSchema(),
-            ),
-            title="Bounding box [x1,y1, x2,y2] in geographical coordinates",
-        ),
-        spatial_res=JsonNumberSchema(
-            enum=[(1 << level) * MIN_PIXEL_SIZE for level in range(NUM_LEVELS)],
-            title="Spatial resolution in decimal degrees.",
-        ),
-        time_range=JsonArraySchema(
-            items=[
-                JsonDateSchema(nullable=True),
-                JsonDateSchema(nullable=True),
-            ],
-            title="Time range [from, to]",
-        ),
-        # time_period=JsonStringSchema(
-        #     enum=[*map(lambda n: f'{n}D', range(1, 14)),
-        #           '1W', '2W'],
-        #     title='Time aggregation period'
-        # ),
-        time_tolerance=JsonStringSchema(
-            default="10m",  # 10 minutes
-            format="^([1-9]*[0-9]*)[NULSTH]$",
-            title="Time tolerance",
-        ),
-        l2_product_cache_size=JsonIntegerSchema(
-            default=0,
-            minimum=0,
-            title="Size of the SMOS L2 product cache.",
-            description="Maximum number of SMOS L2 products to be cached.",
+
+_COMMON_OPEN_PARAMS_PROPS = dict(
+    time_range=JsonArraySchema(
+        items=[
+            JsonDateSchema(nullable=True),
+            JsonDateSchema(nullable=True),
+        ],
+        title="Time Range",
+        description=(
+            "Time range given as pair of start and stop dates."
+            " Dates must be given using format 'YYYY-MM-DD'."
+            " Start and stop are inclusive."
         ),
     ),
+    # TODO: support variable_names
+    # variable_names=JsonArraySchema(
+    #     items=JsonStringSchema(), title="Names of variables to be included"
+    # ),
+    # TODO: support bbox
+    # bbox=JsonArraySchema(
+    #     items=(
+    #         JsonNumberSchema(),
+    #         JsonNumberSchema(),
+    #         JsonNumberSchema(),
+    #         JsonNumberSchema(),
+    #     ),
+    #     title="Bounding box [x1,y1, x2,y2] in geographical coordinates",
+    # ),
+)
+
+_ML_DATASET_OPEN_PARAMS_PROPS = dict(
+    **_COMMON_OPEN_PARAMS_PROPS,
+    l2_product_cache_size=JsonIntegerSchema(
+        title="Size of the SMOS L2 product cache",
+        description="Maximum number of SMOS L2 products to be cached.",
+        default=0,
+        minimum=0,
+    ),
+)
+
+_DATASET_OPEN_PARAMS_PROPS = dict(
+    **_COMMON_OPEN_PARAMS_PROPS,
+    res_level=JsonIntegerSchema(
+        enum=list(range(NUM_LEVELS)),
+        title="Spatial Resolution Level",
+        description=(
+            f"Spatial resolution level in the range 0 to {NUM_LEVELS-1}."
+            f" Zero refers to the max. resolution of {MIN_PIXEL_SIZE} degrees."
+        ),
+        default=0,
+    ),
+)
+
+
+ML_DATASET_OPEN_PARAMS_SCHEMA = JsonObjectSchema(
+    required=["time_range"],
+    properties=_ML_DATASET_OPEN_PARAMS_PROPS,
+    additional_properties=False,
+)
+
+DATASET_OPEN_PARAMS_SCHEMA = JsonObjectSchema(
+    required=["time_range"],
+    properties=_DATASET_OPEN_PARAMS_PROPS,
     additional_properties=False,
 )
