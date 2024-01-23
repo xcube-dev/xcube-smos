@@ -63,8 +63,13 @@ class TimeRangeTest(unittest.TestCase):
         )
 
     # noinspection PyMethodMayBeStatic
-    def test_it_raises_in_illegal_interval(self):
+    def test_it_raises_for_illegal_interval(self):
         with pytest.raises(
             ValueError, match="agg_interval must not be less than a day"
         ):
             get_time_ranges("2020-01-01", agg_interval="4h")
+
+    # noinspection PyMethodMayBeStatic
+    def test_it_raises_for_illegal_time_range(self):
+        with pytest.raises(ValueError, match="time_range must not exceed 400 days"):
+            get_time_ranges("2020-01-01/2021-03-01", agg_interval="8d")

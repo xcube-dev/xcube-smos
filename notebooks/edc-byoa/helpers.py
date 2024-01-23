@@ -12,6 +12,10 @@ from zappend.api import SliceSource
 from zappend.api import to_slice_factory
 
 
+MAX_TIME_RANGE_DAYS = 400  # days
+MAX_TIME_RANGE_DAYS = 400  # days
+
+
 def generate_slices(
     smos_store,
     product_type: str,
@@ -28,10 +32,12 @@ def generate_slices(
         )
         if not agg_interval:
             # If we have no interval, we deliver the slices as provided.
+            # --> Level-2C
             yield from ds_iterator
         else:
             # Otherwise we deliver a slice source that creates the
             # mean of slices in ds_iterator.
+            # --> Level-3
             yield to_slice_factory(MeanSliceSource, ds_iterator, time_range)
 
 
@@ -61,7 +67,7 @@ class MeanSliceSource(SliceSource):
         num_datasets = len(ds_iterator)
         temp_slice_paths = []
         for index, ds in enumerate(ds_iterator):
-            temp_slice_path = f"{temp_path}/slice-{index}.nc"
+            temp_slice_path = f"{temp_path}/slice-{index:05d}.nc"
             logger.info(
                 f"Writing slice %d of %d to %s",
                 index + 1,
@@ -129,6 +135,10 @@ def get_time_ranges(time_range: str, agg_interval: str | None) -> list[tuple[str
         start_date, stop_date = date_range
     else:
         start_date, stop_date = date_range[0], date_range[0]
+
+    if (stop_date - start_date) / one_day > MAX_TIME_RANGE_DAYS:
+        raise ValueError(f"time_range must not exceed {MAX_TIME_RANGE_DAYS} days")
+        
     dates = pd.date_range(start_date, stop_date + interval_td, freq=interval_td)
 
     def to_date_str(date):
