@@ -138,7 +138,7 @@ def get_time_ranges(time_range: str, agg_interval: str | None) -> list[tuple[str
 
     if (stop_date - start_date) / one_day > MAX_TIME_RANGE_DAYS:
         raise ValueError(f"time_range must not exceed {MAX_TIME_RANGE_DAYS} days")
-        
+
     dates = pd.date_range(start_date, stop_date + interval_td, freq=interval_td)
 
     def to_date_str(date):
