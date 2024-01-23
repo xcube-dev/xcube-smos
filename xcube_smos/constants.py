@@ -49,3 +49,13 @@ SM_VAR_NAMES = {
     "RFI_Prob",
     "X_swath",
 }
+
+SM_DATA_ID = "SMOS-L2C-SM"
+OS_DATA_ID = "SMOS-L2C-OS"
+
+DATASET_VAR_NAMES = {SM_DATA_ID: SM_VAR_NAMES, OS_DATA_ID: OS_VAR_NAMES}
+
+DATASET_ATTRIBUTES = {
+    SM_DATA_ID: {"title": "SMOS Level-2 Soil Moisture"},
+    OS_DATA_ID: {"title": "SMOS Level-2 Ocean Salinity"},
+}

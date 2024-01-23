@@ -4,6 +4,7 @@ from pathlib import Path
 import xarray as xr
 
 from xcube_smos.catalog.base import DatasetRecord
+from xcube_smos.constants import SM_VAR_NAMES
 from .simple import SmosSimpleCatalog
 
 
@@ -36,7 +37,7 @@ class SmosSimpleCatalogTest(unittest.TestCase):
     def test_1_find_datasets_ascending(self):
         catalog = new_simple_catalog()
 
-        key = "VH:SPH:MI:TI:Ascending_Flag"
+        key = "Ascending_Flag"
 
         def filter_ascending(record: DatasetRecord) -> bool:
             attrs = catalog.get_dataset_attrs(record[0])
@@ -52,7 +53,7 @@ class SmosSimpleCatalogTest(unittest.TestCase):
     def test_1_find_datasets_descending(self):
         catalog = new_simple_catalog()
 
-        key = "VH:SPH:MI:TI:Ascending_Flag"
+        key = "Ascending_Flag"
 
         def filter_descending(record: DatasetRecord) -> bool:
             attrs = catalog.get_dataset_attrs(record[0])
@@ -78,7 +79,9 @@ class SmosSimpleCatalogTest(unittest.TestCase):
         ds = open_dataset(path)
 
         self.assertIsInstance(ds, xr.Dataset)
-        self.assertIn("Altitude", ds)
-        self.assertIn("Grid_Point_ID", ds)
-        self.assertIn("Soil_Moisture", ds)
-        self.assertIn("Surface_Temperature", ds)
+        self.assertEquals(
+            SM_VAR_NAMES.difference({"X_swath", "Mean_acq_time"}).union(
+                {"Grid_Point_ID"}
+            ),
+            set(ds.data_vars.keys()),
+        )

@@ -36,21 +36,20 @@ from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import AbstractSmosCatalog
 from .catalog import SmosDirectCatalog
+from .constants import DATASET_ATTRIBUTES
 from .dsiter import DatasetIterator
-from .mldataset.newdgg import MAX_HEIGHT
+from .mldataset.newdgg import MAX_HEIGHT, NUM_LEVELS
 from .mldataset.newdgg import MIN_PIXEL_SIZE
 from .mldataset.newdgg import new_dgg
 from .mldataset.l2cube import SmosL2Cube
 from .mldataset.l2cube import SmosTimeStepLoader
-from .schema import OPEN_PARAMS_SCHEMA
+from .mldataset.l2cube import DATASET_VAR_NAMES
+from .schema import DATASET_OPEN_PARAMS_SCHEMA
+from .schema import ML_DATASET_OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
 from .timeinfo import parse_time_ranges
 from .utils import NotSerializable
 
-_DATASETS = {
-    "SMOS-L2C-SM": {"title": "SMOS Level-2 Soil Moisture"},
-    "SMOS-L2C-OS": {"title": "SMOS Level-2 Ocean Salinity"},
-}
 
 DATASET_ITERATOR_TYPE = DataType(
     DatasetIterator, ["dsiter", "xcube_smos.dsiter.DatasetIterator"]
@@ -120,7 +119,7 @@ class SmosDataStore(NotSerializable, DataStore):
         self, data_type: DataTypeLike = None, include_attrs: Container[str] = None
     ) -> Union[Iterator[str], Iterator[Tuple[str, Dict[str, Any]]]]:
         if self._is_valid_data_type(data_type):
-            for data_id, data_attrs in _DATASETS.items():
+            for data_id, data_attrs in DATASET_ATTRIBUTES.items():
                 if include_attrs:
                     yield (
                         data_id,
@@ -132,7 +131,7 @@ class SmosDataStore(NotSerializable, DataStore):
     def has_data(self, data_id: str, data_type: DataTypeLike = None) -> bool:
         if not self._is_valid_data_type(data_type):
             return False
-        return data_id in _DATASETS
+        return data_id in DATASET_ATTRIBUTES
 
     @classmethod
     def get_search_params_schema(
@@ -145,7 +144,7 @@ class SmosDataStore(NotSerializable, DataStore):
         self, data_type: DataTypeLike = None, **search_params
     ) -> Iterator[DataDescriptor]:
         data_type = self._assert_valid_data_type(data_type)
-        for data_id, data_attrs in _DATASETS.items():
+        for data_id, data_attrs in DATASET_ATTRIBUTES.items():
             yield self.describe_data(data_id, data_type=data_type)
 
     def get_data_opener_ids(
@@ -156,7 +155,7 @@ class SmosDataStore(NotSerializable, DataStore):
         if data_type is not None:
             data_type = self._assert_valid_data_type(data_type)
         if data_type is None:
-            return (DATASET_OPENER_ID, ML_DATASET_OPENER_ID, DATASET_ITERATOR_OPENER_ID)
+            return DATASET_OPENER_ID, ML_DATASET_OPENER_ID, DATASET_ITERATOR_OPENER_ID
         return (f"{data_type.alias}:zarr:smos",)
 
     def describe_data(
@@ -175,7 +174,9 @@ class SmosDataStore(NotSerializable, DataStore):
             time_range=["2010-01-01", None],  # TODO (forman): adjust start!
         )
         if data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE):
-            return MultiLevelDatasetDescriptor(data_id, num_levels=6, **metadata)
+            return MultiLevelDatasetDescriptor(
+                data_id, num_levels=NUM_LEVELS, **metadata
+            )
         else:
             return DatasetDescriptor(data_id, **metadata)
 
@@ -185,21 +186,24 @@ class SmosDataStore(NotSerializable, DataStore):
         if data_id is not None:
             self._assert_valid_data_id(data_id)
         self._assert_valid_opener_id(opener_id)
-        return OPEN_PARAMS_SCHEMA
+        if opener_id == ML_DATASET_OPENER_ID:
+            return ML_DATASET_OPEN_PARAMS_SCHEMA
+        else:
+            return DATASET_OPEN_PARAMS_SCHEMA
 
     def open_data(
         self, data_id: str, opener_id: str = None, **open_params
     ) -> Union[xr.Dataset, MultiLevelDataset, DatasetIterator]:
-        OPEN_PARAMS_SCHEMA.validate_instance(open_params)
         self._assert_valid_data_id(data_id)
+        schema = self.get_open_data_params_schema(opener_id=opener_id)
+        schema.validate_instance(open_params)
         product_type = data_id.rsplit("-", maxsplit=1)[-1]
         opener_id = self._assert_valid_opener_id(opener_id)
         data_type = DataType.normalize(opener_id.split(":")[0])
 
         time_range = open_params["time_range"]  # required
         l2_product_cache_size = open_params.get("l2_product_cache_size", 0)
-
-        # TODO (forman): respect other parameter from open_params here
+        res_level = open_params.get("res_level", 0)
 
         dataset_records = self.catalog.find_datasets(product_type, time_range)
         if not dataset_records:
@@ -220,6 +224,8 @@ class SmosDataStore(NotSerializable, DataStore):
                 self.catalog.get_dataset_opener_kwargs(),
                 dataset_paths,
                 time_bounds,
+                res_level,
+                DATASET_VAR_NAMES[data_id],
             )
 
         time_step_loader = SmosTimeStepLoader(
@@ -240,7 +246,7 @@ class SmosDataStore(NotSerializable, DataStore):
         if data_type.is_sub_type_of(MULTI_LEVEL_DATASET_TYPE):
             return ml_dataset
         else:
-            return ml_dataset.get_dataset(0)
+            return ml_dataset.get_dataset(res_level)
 
     @staticmethod
     def _debug_print(debug: bool, msg: str):
@@ -249,7 +255,7 @@ class SmosDataStore(NotSerializable, DataStore):
 
     @classmethod
     def _assert_valid_data_id(cls, data_id: str):
-        if data_id not in _DATASETS:
+        if data_id not in DATASET_ATTRIBUTES:
             raise ValueError(f"Unknown dataset identifier {data_id!r}")
 
     @classmethod

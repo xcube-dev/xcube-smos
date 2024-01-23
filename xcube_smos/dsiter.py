@@ -37,12 +37,16 @@ class DatasetIterator(Iterator, Sized):
         dataset_opener_kwargs: Dict[str, Any],
         dataset_paths: List[str],
         time_bounds: np.array,
+        res_level: int,
+        var_names: set[str],
     ):
         self._dgg = dgg
         self._dataset_opener = dataset_opener
         self._dataset_opener_kwargs = dataset_opener_kwargs
         self._dataset_paths = dataset_paths
         self._time_bounds = time_bounds
+        self._res_level = res_level
+        self._var_names = var_names
         self._current_index = 0
 
     @property
@@ -59,24 +63,32 @@ class DatasetIterator(Iterator, Sized):
 
         dataset_path = self._dataset_paths[index]
         start, stop = self._time_bounds[index]
+        res_level = self._res_level
 
         l2_dataset = self._dataset_opener(dataset_path, **self._dataset_opener_kwargs)
         l2_product = SmosL2Product(self._dgg, l2_dataset)
 
-        mapped_l2_product = l2_product.get_mapped_s2_product(0)
+        mapped_l2_product = l2_product.get_mapped_s2_product(res_level)
 
-        dgg_ds = self._dgg.get_dataset(0)
+        mapped_dims = "time", "lat", "lon"
+
+        dgg_ds = self._dgg.get_dataset(self._res_level)
         h, w = dgg_ds.seqnum.shape
-        mapped_chunks = 1, h // 4, w // 4
+        mapped_chunks = 1, h, w
 
         mapped_data_vars = {}
         for var_name, var in l2_dataset.data_vars.items():
-            mapped_var_data = mapped_l2_product.map_l2_var(var_name)
-            mapped_var = xr.DataArray(
-                mapped_var_data, dims=("time", "lat", "lon"), attrs=var.attrs
-            )
-            mapped_var.encoding = {"dtype": var.dtype, "chunks": mapped_chunks}
-            mapped_data_vars[var_name] = mapped_var
+            if var_name in self._var_names:
+                mapped_var_data = mapped_l2_product.map_l2_var(var_name)
+                mapped_var = xr.DataArray(
+                    mapped_var_data, dims=mapped_dims, attrs=var.attrs
+                )
+                mapped_var.encoding = {
+                    "dtype": var.dtype,
+                    "chunks": mapped_chunks,
+                    "preferred_chunks": dict(zip(mapped_dims, mapped_chunks)),
+                }
+                mapped_data_vars[var_name] = mapped_var
 
         time_encoding = {
             "calendar": "proleptic_gregorian",

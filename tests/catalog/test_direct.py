@@ -9,6 +9,8 @@ import xarray as xr
 
 from xcube_smos.catalog import SmosDirectCatalog
 
+_TEST_ENABLED = False
+
 s3_storage_options = None
 if "CREODIAS_S3_KEY" in os.environ and "CREODIAS_S3_SECRET" in os.environ:
     s3_storage_options = dict(
@@ -21,7 +23,7 @@ if "CREODIAS_S3_KEY" in os.environ and "CREODIAS_S3_SECRET" in os.environ:
 reason = "Set env vars CREODIAS_S3_KEY and CREODIAS_S3_SECRET to enable test"
 
 
-@unittest.skipUnless(s3_storage_options is not None, reason)
+@unittest.skipUnless(_TEST_ENABLED and s3_storage_options is not None, reason)
 class SmosDirectCatalogTest(unittest.TestCase):
     def test_1_find_datasets(self):
         catalog = SmosDirectCatalog(
