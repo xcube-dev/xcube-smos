@@ -20,8 +20,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 from xcube.util.jsonschema import JsonArraySchema
-from xcube.util.jsonschema import JsonIntegerSchema
 from xcube.util.jsonschema import JsonDateSchema
+from xcube.util.jsonschema import JsonIntegerSchema
+from xcube.util.jsonschema import JsonNumberSchema
 from xcube.util.jsonschema import JsonObjectSchema
 from xcube.util.jsonschema import JsonStringSchema
 from .mldataset.newdgg import MIN_PIXEL_SIZE
@@ -82,19 +83,18 @@ _COMMON_OPEN_PARAMS_PROPS = dict(
             " Start and stop are inclusive."
         ),
     ),
+    bbox=JsonArraySchema(
+        items=(
+            JsonNumberSchema(),
+            JsonNumberSchema(),
+            JsonNumberSchema(),
+            JsonNumberSchema(),
+        ),
+        title="Bounding box [x1,y1, x2,y2] in geographical coordinates",
+    ),
     # TODO: support variable_names
     # variable_names=JsonArraySchema(
     #     items=JsonStringSchema(), title="Names of variables to be included"
-    # ),
-    # TODO: support bbox
-    # bbox=JsonArraySchema(
-    #     items=(
-    #         JsonNumberSchema(),
-    #         JsonNumberSchema(),
-    #         JsonNumberSchema(),
-    #         JsonNumberSchema(),
-    #     ),
-    #     title="Bounding box [x1,y1, x2,y2] in geographical coordinates",
     # ),
 )
 

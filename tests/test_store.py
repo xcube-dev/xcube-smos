@@ -350,6 +350,26 @@ class SmosDataStoreTest(unittest.TestCase):
         sm_data = dataset.Soil_Moisture.values
         self.assertIsInstance(sm_data, np.ndarray)
 
+    def test_open_dataset_with_bbox(self):
+        store = SmosDataStore(_catalog=new_simple_catalog())
+        #  The bounding box for Germany
+        expected_bbox = (5.87, 47.27, 15.03, 55.06)
+        dataset = store.open_data(
+            "SMOS-L2C-SM", time_range=("2022-05-05", "2022-05-07"), bbox=expected_bbox
+        )
+        self.assertEqual({"lon": 208, "lat": 177, "time": 5, "bnds": 2}, dataset.sizes)
+        actual_bbox = tuple(
+            map(
+                float,
+                (dataset.lon[0], dataset.lat[-1], dataset.lon[-1], dataset.lat[0]),
+            )
+        )
+        places = 1
+        self.assertAlmostEqual(expected_bbox[0], actual_bbox[0], places=places)
+        self.assertAlmostEqual(expected_bbox[1], actual_bbox[1], places=places)
+        self.assertAlmostEqual(expected_bbox[2], actual_bbox[2], places=places)
+        self.assertAlmostEqual(expected_bbox[3], actual_bbox[3], places=places)
+
 
 class SmosDistributedDataStoreTest(unittest.TestCase):
     def setUp(self) -> None:

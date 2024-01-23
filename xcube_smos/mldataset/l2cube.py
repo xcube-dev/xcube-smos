@@ -7,7 +7,6 @@ from typing import Hashable, Union
 import numba as nb
 import numpy as np
 import xarray as xr
-from dask.distributed import print
 
 from xcube.core.gridmapping import GridMapping
 from xcube.core.mldataset import LazyMultiLevelDataset
@@ -60,19 +59,25 @@ class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
         dgg: MultiLevelDataset,
         dataset_id: str,
         time_bounds: np.array,
+        bbox: tuple[float, float, float, float] | None,
         time_step_loader: "SmosTimeStepLoader",
     ):
         super().__init__()
         self.dgg = dgg
         self.dataset_id = dataset_id
         self.time_bounds = time_bounds
+        self.bbox = bbox
         self.time_step_loader = time_step_loader
 
     def _get_num_levels_lazily(self) -> int:
         return self.dgg.num_levels
 
     def _get_grid_mapping_lazily(self) -> GridMapping:
-        return self.dgg.grid_mapping
+        if self.bbox is None:
+            return self.dgg.grid_mapping
+        dataset = self.dgg.get_dataset(0)
+        dataset_subset = self._get_dataset_spatial_subset(dataset)
+        return GridMapping.from_dataset(dataset_subset)
 
     def _get_dataset_lazily(self, level: int, parameters: Dict[str, Any]) -> xr.Dataset:
         scale = 1 << level
@@ -158,7 +163,24 @@ class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
 
         dataset = xr.open_zarr(zarr_store)
         dataset.zarr_store.set(zarr_store)
-        return dataset
+        return (
+            dataset if self.bbox is None else self._get_dataset_spatial_subset(dataset)
+        )
+
+    def _get_dataset_spatial_subset(self, dataset: xr.Dataset) -> xr.Dataset:
+        assert isinstance(self.bbox, (tuple, list))
+        assert len(self.bbox) == 4
+        global_gm = self.dgg.grid_mapping
+        x_min, y_min, x_max, y_max = self.bbox
+        eps = MIN_PIXEL_SIZE
+        if (
+            x_min < global_gm.x_min + eps
+            and x_max > global_gm.x_max - eps
+            and y_min < global_gm.y_min + eps
+            and y_max > global_gm.y_max - eps
+        ):
+            return dataset
+        return dataset.sel(lon=slice(x_min, x_max), lat=slice(y_max, y_min))
 
 
 class SmosTimeStepLoader:

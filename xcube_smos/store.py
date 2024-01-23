@@ -204,6 +204,7 @@ class SmosDataStore(NotSerializable, DataStore):
         time_range = open_params["time_range"]  # required
         l2_product_cache_size = open_params.get("l2_product_cache_size", 0)
         res_level = open_params.get("res_level", 0)
+        bbox = open_params.get("bbox")
 
         dataset_records = self.catalog.find_datasets(product_type, time_range)
         if not dataset_records:
@@ -240,6 +241,7 @@ class SmosDataStore(NotSerializable, DataStore):
             self.dgg,
             data_id,
             time_bounds,
+            bbox,
             time_step_loader,
         )
 
