@@ -27,6 +27,7 @@ import xarray as xr
 
 from xcube.core.mldataset import MultiLevelDataset
 from xcube_smos.mldataset.l2cube import SmosL2Product
+from xcube_smos.mldataset.l2cube import get_dataset_spatial_subset
 
 
 class DatasetIterator(Iterator, Sized):
@@ -37,6 +38,7 @@ class DatasetIterator(Iterator, Sized):
         dataset_opener_kwargs: Dict[str, Any],
         dataset_paths: List[str],
         time_bounds: np.array,
+        bbox: tuple[float, float, float, float] | None,
         res_level: int,
         var_names: set[str],
     ):
@@ -45,6 +47,7 @@ class DatasetIterator(Iterator, Sized):
         self._dataset_opener_kwargs = dataset_opener_kwargs
         self._dataset_paths = dataset_paths
         self._time_bounds = time_bounds
+        self._bbox = bbox
         self._res_level = res_level
         self._var_names = var_names
         self._current_index = 0
@@ -61,18 +64,20 @@ class DatasetIterator(Iterator, Sized):
         if index >= len(self._time_bounds):
             raise StopIteration()
 
+        dgg = self._dgg
         dataset_path = self._dataset_paths[index]
         start, stop = self._time_bounds[index]
+        bbox = self._bbox
         res_level = self._res_level
 
         l2_dataset = self._dataset_opener(dataset_path, **self._dataset_opener_kwargs)
-        l2_product = SmosL2Product(self._dgg, l2_dataset)
+        l2_product = SmosL2Product(dgg, l2_dataset)
 
         mapped_l2_product = l2_product.get_mapped_s2_product(res_level)
 
         mapped_dims = "time", "lat", "lon"
 
-        dgg_ds = self._dgg.get_dataset(self._res_level)
+        dgg_ds = dgg.get_dataset(self._res_level)
         h, w = dgg_ds.seqnum.shape
         mapped_chunks = 1, h, w
 
@@ -116,6 +121,12 @@ class DatasetIterator(Iterator, Sized):
             mapped_data_vars,
             coords={**dgg_ds.coords, "time": time, "time_bnds": time_bnds},
             attrs=l2_dataset.attrs,
+        )
+
+        mapped_l2_dataset = (
+            mapped_l2_dataset
+            if bbox is None
+            else get_dataset_spatial_subset(mapped_l2_dataset, bbox, dgg.grid_mapping)
         )
 
         self._current_index += 1

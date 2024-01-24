@@ -1,27 +1,26 @@
 import logging
-import sys
 import warnings
-from typing import Dict, Any, Callable, List, Optional
+from typing import Dict, Any, Callable, List
 from typing import Hashable, Union
 
 import numba as nb
 import numpy as np
 import xarray as xr
-
 from xcube.core.gridmapping import GridMapping
 from xcube.core.mldataset import LazyMultiLevelDataset
 from xcube.core.mldataset import MultiLevelDataset
 from xcube.core.zarrstore import GenericArray
 from xcube.core.zarrstore import GenericZarrStore
-from .newdgg import MAX_WIDTH
+
+from .dgg import SmosDiscreteGlobalGrid
 from .newdgg import MAX_HEIGHT
+from .newdgg import MAX_WIDTH
 from .newdgg import MIN_PIXEL_SIZE
 from .newdgg import new_dgg
-from .dgg import SmosDiscreteGlobalGrid
-from ..utils import LruCache
-from ..utils import NotSerializable
 from ..constants import OS_VAR_NAMES
 from ..constants import SM_VAR_NAMES
+from ..utils import LruCache
+from ..utils import NotSerializable
 
 LOG = logging.getLogger("xcube-smos")
 
@@ -168,19 +167,24 @@ class SmosL2Cube(NotSerializable, LazyMultiLevelDataset):
         )
 
     def _get_dataset_spatial_subset(self, dataset: xr.Dataset) -> xr.Dataset:
-        assert isinstance(self.bbox, (tuple, list))
-        assert len(self.bbox) == 4
-        global_gm = self.dgg.grid_mapping
-        x_min, y_min, x_max, y_max = self.bbox
-        eps = MIN_PIXEL_SIZE
-        if (
-            x_min < global_gm.x_min + eps
-            and x_max > global_gm.x_max - eps
-            and y_min < global_gm.y_min + eps
-            and y_max > global_gm.y_max - eps
-        ):
-            return dataset
-        return dataset.sel(lon=slice(x_min, x_max), lat=slice(y_max, y_min))
+        return get_dataset_spatial_subset(dataset, self.bbox, self.dgg.grid_mapping)
+
+
+def get_dataset_spatial_subset(
+    dataset: xr.Dataset, bbox: tuple[float, float, float, float], global_gm: GridMapping
+) -> xr.Dataset:
+    assert isinstance(bbox, (tuple, list))
+    assert len(bbox) == 4
+    x_min, y_min, x_max, y_max = bbox
+    eps = MIN_PIXEL_SIZE
+    if (
+        x_min < global_gm.x_min + eps
+        and x_max > global_gm.x_max - eps
+        and y_min < global_gm.y_min + eps
+        and y_max > global_gm.y_max - eps
+    ):
+        return dataset
+    return dataset.sel(lon=slice(x_min, x_max), lat=slice(y_max, y_min))
 
 
 class SmosTimeStepLoader:

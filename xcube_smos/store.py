@@ -225,6 +225,7 @@ class SmosDataStore(NotSerializable, DataStore):
                 self.catalog.get_dataset_opener_kwargs(),
                 dataset_paths,
                 time_bounds,
+                bbox,
                 res_level,
                 DATASET_VAR_NAMES[data_id],
             )

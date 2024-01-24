@@ -357,13 +357,35 @@ class SmosDataStoreTest(unittest.TestCase):
         dataset = store.open_data(
             "SMOS-L2C-SM", time_range=("2022-05-05", "2022-05-07"), bbox=expected_bbox
         )
-        self.assertEqual({"lon": 208, "lat": 177, "time": 5, "bnds": 2}, dataset.sizes)
+        self._test_dataset_with_bbox(dataset, expected_bbox, expected_time_size=5)
+
+    def test_open_dataset_with_bbox_and_dsiter(self):
+        store = SmosDataStore(_catalog=new_simple_catalog())
+        #  The bounding box for Germany
+        expected_bbox = (5.87, 47.27, 15.03, 55.06)
+        ds_iter = store.open_data(
+            "SMOS-L2C-SM",
+            opener_id="dsiter:zarr:smos",
+            time_range=("2022-05-05", "2022-05-07"),
+            bbox=expected_bbox,
+        )
+        dataset = next(ds_iter)
+        self._test_dataset_with_bbox(dataset, expected_bbox, expected_time_size=1)
+
+    def _test_dataset_with_bbox(self, dataset, expected_bbox, expected_time_size):
+        self.assertEqual(
+            {"lon": 208, "lat": 177, "time": expected_time_size, "bnds": 2},
+            dataset.sizes,
+        )
         actual_bbox = tuple(
             map(
                 float,
                 (dataset.lon[0], dataset.lat[-1], dataset.lon[-1], dataset.lat[0]),
             )
         )
+        # It is ok to have such an uncertainty here because actual
+        # coordinates computed by xarray snap into the raster given
+        # by spatial coordinate labels
         places = 1
         self.assertAlmostEqual(expected_bbox[0], actual_bbox[0], places=places)
         self.assertAlmostEqual(expected_bbox[1], actual_bbox[1], places=places)
