@@ -29,6 +29,11 @@ from .mldataset.newdgg import MIN_PIXEL_SIZE
 from .mldataset.newdgg import NUM_LEVELS
 
 STORE_PARAMS_SCHEMA = JsonObjectSchema(
+    description=(
+        "Describes the parameters of the xcube data store 'smos'."
+        " Additional parameters are allowed and override properties"
+        " in 'source_storage_options'."
+    ),
     properties=dict(
         source_path=JsonStringSchema(
             min_length=1,
@@ -42,7 +47,7 @@ STORE_PARAMS_SCHEMA = JsonObjectSchema(
         ),
         source_storage_options=JsonObjectSchema(
             additional_properties=True,
-            title="Storage options for the SMOS NetCDF Kerchunk index.",
+            title="Storage options for the SMOS archive filesystem.",
             description="See fsspec documentation for specific filesystems.",
             examples=[
                 dict(
@@ -55,8 +60,10 @@ STORE_PARAMS_SCHEMA = JsonObjectSchema(
         ),
         cache_path=JsonStringSchema(
             min_length=1,
-            title="Path to local cache directory. "
-            "Must be given, if file caching is desired.",
+            title=(
+                "Path to local cache directory. "
+                "Must be given, if file caching is desired."
+            ),
             examples=["~/.smos-nc-cache"],
         ),
         xarray_kwargs=JsonObjectSchema(
@@ -66,7 +73,7 @@ STORE_PARAMS_SCHEMA = JsonObjectSchema(
             examples=[dict(engine="netcdf4")],
         ),
     ),
-    additional_properties=False,
+    additional_properties=True,
 )
 
 

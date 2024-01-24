@@ -31,6 +31,8 @@ from typing import Union, Dict, Any, Optional, Tuple, List, Set, Iterable
 import fsspec
 import xarray as xr
 
+from ..constants import DEFAULT_ARCHIVE_URL
+from ..constants import DEFAULT_STORAGE_OPTIONS
 from ..constants import OS_VAR_NAMES
 from ..constants import SM_VAR_NAMES
 from .base import AbstractSmosCatalog
@@ -54,12 +56,19 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         source_storage_options: Optional[Dict[str, Any]] = None,
         cache_path: Optional[str] = None,
         xarray_kwargs: Dict[str, Any] = None,
+        **extra_source_storage_options,
     ):
-        source_path = str(source_path or "EODATA")
+        source_path = str(source_path or DEFAULT_ARCHIVE_URL)
         _protocol, source_path = fsspec.core.split_protocol(source_path)
         source_protocol = source_protocol or _protocol or "file"
         if source_protocol == "file":
             source_path = os.path.expanduser(source_path)
+        if source_storage_options is None:
+            source_storage_options = dict(DEFAULT_STORAGE_OPTIONS)
+        if extra_source_storage_options:
+            source_storage_options = (
+                dict(source_storage_options or {}) | extra_source_storage_options
+            )
         self._source_path = source_path
         self._source_protocol = source_protocol
         self._source_storage_options = source_storage_options or {}

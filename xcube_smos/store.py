@@ -75,6 +75,8 @@ class SmosDataStore(NotSerializable, DataStore):
         Must be given, if file caching is desired.
     :param xarray_kwargs: Extra keyword arguments accepted by
         ``xarray.open_dataset``.
+    :param extra_source_storage_options: Extra keyword arguments that override
+        settings in *source_storage_options*.
     :param _catalog: Catalog (mock) instance used for testing only.
         If given, all other arguments are ignored.
     """
@@ -87,17 +89,19 @@ class SmosDataStore(NotSerializable, DataStore):
         cache_path: Optional[str] = None,
         xarray_kwargs: Optional[Dict[str, Any]] = None,
         _catalog: Optional[AbstractSmosCatalog] = None,
+        **extra_source_storage_options,
     ):
-        if _catalog is None:
+        if _catalog is not None:
+            self.catalog = _catalog
+        else:
             self.catalog = SmosDirectCatalog(
                 source_path=source_path,
                 source_protocol=source_protocol,
                 source_storage_options=source_storage_options,
                 cache_path=cache_path,
                 xarray_kwargs=xarray_kwargs,
+                **extra_source_storage_options,
             )
-        else:
-            self.catalog = _catalog
 
     @cached_property
     def dgg(self) -> MultiLevelDataset:

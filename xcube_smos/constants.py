@@ -19,6 +19,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import os
+
 SMOS_DATA_STORE_ID = "smos"
 
 INDEX_ENV_VAR_NAME = "XCUBE_SMOS_INDEX_PATH"
@@ -58,4 +60,14 @@ DATASET_VAR_NAMES = {SM_DATA_ID: SM_VAR_NAMES, OS_DATA_ID: OS_VAR_NAMES}
 DATASET_ATTRIBUTES = {
     SM_DATA_ID: {"title": "SMOS Level-2 Soil Moisture"},
     OS_DATA_ID: {"title": "SMOS Level-2 Ocean Salinity"},
+}
+
+DEFAULT_ENDPOINT_URL = "https://s3.cloudferro.com"
+DEFAULT_ARCHIVE_URL = "s3://EODATA"
+
+DEFAULT_STORAGE_OPTIONS = {
+    "endpoint_url": DEFAULT_ENDPOINT_URL,
+    "anon": False,
+    "key": os.environ.get("CREODIAS_S3_KEY"),
+    "secret": os.environ.get("CREODIAS_S3_SECRET"),
 }
