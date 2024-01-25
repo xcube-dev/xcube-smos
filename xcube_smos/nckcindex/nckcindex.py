@@ -254,7 +254,11 @@ class NcKcIndex:
         :return: None, if the NetCDF file has been successfully indexed.
             Otherwise, a message indicating the problem.
         """
-        import kerchunk.hdf
+        try:
+            import kerchunk.hdf
+        except ImportError:
+            warnings.warn("the kerchunk package is required to index NetCDF files")
+            raise
 
         if nc_source_path.startswith(self.source_path + "/"):
             nc_source_rel_path = nc_source_path[(len(self.source_path) + 1) :]
