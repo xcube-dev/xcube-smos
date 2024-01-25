@@ -38,6 +38,7 @@ from .catalog import AbstractSmosCatalog
 from .catalog import SmosDirectCatalog
 from .constants import DATASET_ATTRIBUTES
 from .dsiter import DatasetIterator
+from .dsiter import SmosDatasetIterator
 from .mldataset.newdgg import MAX_HEIGHT, NUM_LEVELS
 from .mldataset.newdgg import MIN_PIXEL_SIZE
 from .mldataset.newdgg import new_dgg
@@ -223,7 +224,7 @@ class SmosDataStore(NotSerializable, DataStore):
         time_bounds = parse_time_ranges(time_ranges, is_compact=True)
 
         if data_type.is_sub_type_of(DATASET_ITERATOR_TYPE):
-            return DatasetIterator(
+            return SmosDatasetIterator(
                 self.dgg,
                 self.catalog.get_dataset_opener(),
                 self.catalog.get_dataset_opener_kwargs(),

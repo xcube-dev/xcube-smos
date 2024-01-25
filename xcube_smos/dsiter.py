@@ -18,7 +18,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
+from abc import ABC
 from collections.abc import Sized, Iterator
 from typing import List, Dict, Any, Callable
 
@@ -30,7 +30,16 @@ from xcube_smos.mldataset.l2cube import SmosL2Product
 from xcube_smos.mldataset.l2cube import get_dataset_spatial_subset
 
 
-class DatasetIterator(Iterator, Sized):
+# TODO: Move this into xcube
+#   See https://github.com/dcs4cop/xcube/issues/919
+class DatasetIterator(Iterator, Sized, ABC):
+    """Interface representing a dataset interator."""
+
+    def __next__(self) -> xr.Dataset:
+        """Yield the next dataset."""
+
+
+class SmosDatasetIterator(DatasetIterator):
     def __init__(
         self,
         dgg: MultiLevelDataset,
@@ -59,7 +68,7 @@ class DatasetIterator(Iterator, Sized):
     def __len__(self) -> int:
         return len(self._time_bounds)
 
-    def __next__(self) -> xr.Dataset | None:
+    def __next__(self) -> xr.Dataset:
         index = self._current_index
         if index >= len(self._time_bounds):
             raise StopIteration()
