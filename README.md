@@ -1,6 +1,7 @@
 # xcube-smos data store
 
 [![CI](https://github.com/dcs4cop/xcube-smos/actions/workflows/tests.yaml/badge.svg)](https://github.com/dcs4cop/xcube-smos/actions/workflows/tests.yaml)
+[![codecov](https://codecov.io/gh/dcs4cop/xcube-smos/graph/badge.svg?token=ZJ0J4QT1UM)](https://codecov.io/gh/dcs4cop/xcube-smos)
 
 xcube-smos is a
 [data store plug-in](https://xcube.readthedocs.io/en/latest/api.html#data-store-framework)
