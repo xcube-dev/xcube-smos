@@ -15,13 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout-xcube-smos
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       # Set up micromamba build environment
       - name: setup-micromamba-xcube-smos
         uses: mamba-org/setup-micromamba@v1
         with:
           micromamba-version: '1.5.6-0'
           environment-file: environment.yml
+          # Install kerchunk explicitly, since it's not included in the
+          # environment file.
+          create-args: kerchunk
           init-shell: >-
             bash
           cache-environment: true
