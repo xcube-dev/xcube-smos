@@ -1,17 +1,23 @@
 # xcube-smos User Guide
 
-## Capabilities
+## Store Parameters
 
-_Coming soon._
+## Store Capabilities
 
-## Data store parameters
+## Data Access
 
-_Coming soon._
+THe SMOS data store can currently provide datasets in three different forms:
 
-## Datacube parameters
+* Datacubes of a fixed resolution
+* Datacubes providing multiple ospatial resolutions
+* An iterator that yields a dataset for each SMOS Level-2 data product  
 
-_Coming soon._
+### Datacube
 
-## Writing a Datacube
+### Multi-Resolution Datacube
 
-_Coming soon._
+### Dataset Iterators
+
+
+
+
