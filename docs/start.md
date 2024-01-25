@@ -1,4 +1,14 @@
-## Getting Started
+# Getting Started
+
+## Credentials
+
+The SMOS data store directly accesses SMOS data in its S3 archive on CREODIAS.
+Therefore, the data store requires your credentials, which allow you to access
+the data. If not already done, create an account on CREODIAS and follow the 
+instructions to 
+[generate your access key and secret](https://creodias.docs.cloudferro.com/en/latest/general/How-to-generate-ec2-credentials-on-Creodias.html).
+
+## Installation
 
 You can install xcube-smos as a conda package:
 
@@ -15,39 +25,25 @@ cd xcube-smos
 pip install -ve .
 ```
 
-You can now use the new data store using its class imported from the `xcube_smos.store` 
-module:
+## Get the Data
 
-```python
-from xcube_smos.store import SmosDataStore
-
-store = SmosDataStore(...)
-```
-
-However, the preferred way is to use it by its by its name `"smos"` via the xcube 
-`new_data_store()` function, because many other xcube data stores can be used this way:
+You can now use the SMOS data store using the xcube `new_data_store()` 
+function and passing the store identifier `"smos"` and using your credentials.
+Then you use the store method `open_data()` to access the data:
 
 ```python
 from xcube.core.store import new_data_store
 
-store = new_data_store("smos", ...)
+store = new_data_store("smos", 
+                       key="your access key", 
+                       secret="your secret")
+
+dataset = store.open_data(data_id="SMOS-L2C-SM",
+                          time_range=("2022-01-01", "2022-01-05"), 
+                          bbox=(5.87, 47.27, 15.03, 55.06),
+                          res_level=0)
 ```
 
-The `new_data_store()` function in its general form can take arbitrary keyword 
-arguments. The store identifier, here `"smos"` determines the allowed keywords.
-You can inspect the allowed data store keywords by using the xcube function
-`get_data_store_params_schema()`, which outputs the allowed parameters as a 
-JSON Schema object:
-
-```python
-import json
-from xcube.core.store import get_data_store_params_schema
-
-store_schema = get_data_store_params_schema("smos")
-print(json.dumps(store_schema, indent=2))
-```
-
-
-
-
-
+There are a couple of parameters that can be passed to the `new_data_store()`
+function and the `open_data()` method. You can read more about it in the 
+[user guide](guide.md).
