@@ -48,15 +48,6 @@ Textual values that contain the pattern `${NAME}` will be interpolated
 by environment variables.
 
 
-## Installation
-
-xcube-smos consists of two parts: the code itself and the auxiliary data
-(aux-data). The auxiliary data comprises a mapping between the SMOS native
-discrete global grid (DGG) and a standard WGS84 CRS, and a pre-generated
-data index which enables the plug-in to fetch required subsets of the data
-directly from the public SMOS data files.
-
-Currently, you need to install code and aux-data separately.
 
 ### Code installation
 
