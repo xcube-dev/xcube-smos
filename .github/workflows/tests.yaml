@@ -1,0 +1,45 @@
+name: Unittest and docker builds
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  APP_NAME: xcube-smos
+  ORG_NAME: bcdev
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout-xcube-smos
+        uses: actions/checkout@v2
+      # Set up micromamba build environment
+      - name: setup-micromamba-xcube-smos
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          micromamba-version: '1.5.6-0'
+          environment-file: environment.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: 'all'
+      # Setup xcube
+      - name: setup-xcube-smos
+        shell: bash -l {0}
+        run: |
+          micromamba info
+          micromamba list
+          python setup.py develop
+      # Run unit tests
+      - name: unittest-xcube-smos
+        shell: bash -l {0}
+        run: |
+          pip install pytest pytest-cov
+          pytest --cov=./ --cov-report=xml
+      - name: coverage-xcube-smos
+        uses: codecov/codecov-action@v1
+        with:
+          verbose: true # optional (default = false)
