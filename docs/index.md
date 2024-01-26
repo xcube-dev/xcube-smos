@@ -11,7 +11,7 @@ named `smos` to xcube. The data store is used to
 access [ESA SMOS](https://earth.esa.int/eogateway/missions/smos) Level-2 data 
 in form of analysis-ready geospatial datacubes with the dimensions 
 `time`, `lat`, and `lon`. The datacubes are computed on-the-fly from the SMOS 
-data archive `s3://EODATA/SMOS` hosted on [CreoDIAS](https://creodias.eu/).
+data archive `s3://EODATA/SMOS` hosted on [CREODIAS](https://creodias.eu/).
 
 ## Usage
 
@@ -21,14 +21,17 @@ After installation, data access is as easy as follows:
 from xcube.core.store import new_data_store
 
 store = new_data_store("smos", **credentials)
-
-# Get a SMOS Soil Moisture datacube as xarray.Dataset
-# To access SMOS Ocean Salinity data use identifier "SMOS-L2C-OS" 
-dataset = store.open_data(
+datacube = store.open_data(
     "SMOS-L2C-SM", 
     time_range=("2022-01-01", "2022-01-06")
 )
 ```
+
+Above, a datacube of type
+[xarray.Dataset](https://docs.xarray.dev/en/stable/generated/xarray.Dataset.html)
+for SMOS **Soil Moisture** has been obtained.  
+To access SMOS **Ocean Salinity** data use the identifier `"SMOS-L2C-OS"`. 
+
 
 ## Features
 

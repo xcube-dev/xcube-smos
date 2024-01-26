@@ -2,10 +2,11 @@
 
 ## Credentials
 
-The SMOS data store directly accesses SMOS data in its S3 archive on CREODIAS.
-Therefore, the data store requires your credentials, which allow you to access
-the data. If not already done, create an account on CREODIAS and follow the 
-instructions to 
+The xcube SMOS data store directly accesses 
+[SMOS data](https://creodias.eu/eodata/smos/) in its S3 archive on 
+[CREODIAS](https://creodias.eu/). Therefore, the data store requires your 
+credentials. If not already done, create an account on CREODIAS and follow 
+the instructions to 
 [generate your access key and secret](https://creodias.docs.cloudferro.com/en/latest/general/How-to-generate-ec2-credentials-on-Creodias.html).
 
 ## Installation
