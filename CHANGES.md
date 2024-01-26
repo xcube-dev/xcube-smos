@@ -1,5 +1,9 @@
+## Version 0.2.1 (in development)
+
+
 ## Version 0.2.0
 
+* Added basic documentation. [#24]
 * Introduced open parameter `bbox`. [#20]
 * Introduced open parameter `res_level`, 
   an integer value in the range 0 to 4. [#21]
