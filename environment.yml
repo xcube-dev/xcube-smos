@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - python >=3.10
   - click
   - fsspec
   - h5netcdf
@@ -12,7 +13,7 @@ dependencies:
   - numba
   - pandas
   - xarray
-  - xcube
+  - xcube >=1.2
   # Optional
   #- kerchunk
   # Development
