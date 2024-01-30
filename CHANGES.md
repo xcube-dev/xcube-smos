@@ -1,3 +1,5 @@
+## Version 0.2.2 (in development)
+
 ## Version 0.2.1
 
 * Adjusted dependencies in `environment.yml` to fix the `xcube-smos` 

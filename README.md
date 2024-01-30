@@ -4,6 +4,7 @@ _User-defined datacubes from SMOS Level-2 data_
 
 [![CI](https://github.com/dcs4cop/xcube-smos/actions/workflows/tests.yaml/badge.svg)](https://github.com/dcs4cop/xcube-smos/actions/workflows/tests.yaml)
 [![codecov](https://codecov.io/gh/dcs4cop/xcube-smos/graph/badge.svg?token=ZJ0J4QT1UM)](https://codecov.io/gh/dcs4cop/xcube-smos)
+[![conda](https://anaconda.org/conda-forge/xcube-smos/badges/version.svg)](https://anaconda.org/conda-forge/xcube-smos)
 
 <!--- Align following section with docs/index.md -->
 
