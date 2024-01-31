@@ -24,6 +24,10 @@ from xcube.core.store import new_data_store
 store = new_data_store("smos", key="your access key", secret="your secret")
 ```
 
+!!! note
+    You can avoid passing `key` and `secret` arguments if you set the environment 
+    variables `CREODIAS_S3_KEY` and `CREODIAS_S3_SECRET` accordingly.
+
 The `new_data_store()` function in its general form can take arbitrary keyword 
 arguments. The store identifier, here `"smos"` determines the allowed keywords.
 You can inspect the allowed data store keywords by using the xcube function

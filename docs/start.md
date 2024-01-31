@@ -9,6 +9,10 @@ credentials. If not already done, create an account on CREODIAS and follow
 the instructions to 
 [generate your access key and secret](https://creodias.docs.cloudferro.com/en/latest/general/How-to-generate-ec2-credentials-on-Creodias.html).
 
+Once you have received your credentials, you may consider setting the environment 
+variables `CREODIAS_S3_KEY` and `CREODIAS_S3_SECRET`. If you do so,
+you can omit the `key` and `secret` arguments passed to the data store.
+
 ## Installation
 
 You can install xcube-smos as a conda package:
@@ -37,7 +41,7 @@ from xcube.core.store import new_data_store
 
 store = new_data_store("smos", 
                        key="your access key", 
-                       secret="your secret")
+                       secret="your access key secret")
 
 dataset = store.open_data(data_id="SMOS-L2C-SM",
                           time_range=("2022-01-01", "2022-01-05"), 
