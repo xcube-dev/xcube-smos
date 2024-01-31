@@ -536,6 +536,11 @@ data stores can be used in the same way:</p>
 
 <span class="n">store</span> <span class="o">=</span> <span class="n">new_data_store</span><span class="p">(</span><span class="s2">&quot;smos&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;your access key&quot;</span><span class="p">,</span> <span class="n">secret</span><span class="o">=</span><span class="s2">&quot;your secret&quot;</span><span class="p">)</span>
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You can avoid passing <code>key</code> and <code>secret</code> arguments if you set the environment 
+variables <code>CREODIAS_S3_KEY</code> and <code>CREODIAS_S3_SECRET</code> accordingly.</p>
+</div>
 <p>The <code>new_data_store()</code> function in its general form can take arbitrary keyword 
 arguments. The store identifier, here <code>"smos"</code> determines the allowed keywords.
 You can inspect the allowed data store keywords by using the xcube function

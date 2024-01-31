@@ -443,6 +443,9 @@
 credentials. If not already done, create an account on CREODIAS and follow 
 the instructions to 
 <a href="https://creodias.docs.cloudferro.com/en/latest/general/How-to-generate-ec2-credentials-on-Creodias.html">generate your access key and secret</a>.</p>
+<p>Once you have received your credentials, you may consider setting the environment 
+variables <code>CREODIAS_S3_KEY</code> and <code>CREODIAS_S3_SECRET</code>. If you do so,
+you can omit the <code>key</code> and <code>secret</code> arguments passed to the data store.</p>
 <h2 id="installation">Installation</h2>
 <p>You can install xcube-smos as a conda package:</p>
 <div class="highlight"><pre><span></span><code>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>xcube-smos
@@ -461,7 +464,7 @@ Then you use the store method <code>open_data()</code> to access the data:</p>
 
 <span class="n">store</span> <span class="o">=</span> <span class="n">new_data_store</span><span class="p">(</span><span class="s2">&quot;smos&quot;</span><span class="p">,</span> 
                        <span class="n">key</span><span class="o">=</span><span class="s2">&quot;your access key&quot;</span><span class="p">,</span> 
-                       <span class="n">secret</span><span class="o">=</span><span class="s2">&quot;your secret&quot;</span><span class="p">)</span>
+                       <span class="n">secret</span><span class="o">=</span><span class="s2">&quot;your access key secret&quot;</span><span class="p">)</span>
 
 <span class="n">dataset</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">open_data</span><span class="p">(</span><span class="n">data_id</span><span class="o">=</span><span class="s2">&quot;SMOS-L2C-SM&quot;</span><span class="p">,</span>
                           <span class="n">time_range</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;2022-01-01&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01-05&quot;</span><span class="p">),</span> 
