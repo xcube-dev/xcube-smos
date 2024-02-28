@@ -42,17 +42,17 @@ setup(
     author='xcube Development Team',
     packages=packages,
     package_data={
-        'xcube_smos.mldataset': ['smos-dgg.levels/**']
+        'xcube_smos.mldataset': [
+            'smos-dgg.levels/.*',
+            'smos-dgg.levels/**/.*',
+            'smos-dgg.levels/**'
+        ]
     },
     include_package_data=True,
     entry_points={
         'console_scripts': [
             'nckcidx = xcube_smos.nckcindex.cli:cli',
-        ],
-        'xcube_plugins': [
-            # xcube_smos extensions
-            # 'xcube_smos = xcube_smos.plugin:init_plugin',
-        ],
+        ]
     },
     install_requires=requirements,
 )
