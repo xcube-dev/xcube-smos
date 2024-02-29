@@ -1,4 +1,7 @@
-## Version 0.2.2 (in development)
+## Version 0.2.2
+
+* Fixed problem where package data in `xcube_smos/mldataset/smos-dgg.levels` 
+  did not include any hidden files prefixed with a dot such as `.zattrs`.
 
 ## Version 0.2.1
 
