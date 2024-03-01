@@ -49,10 +49,5 @@ setup(
         ]
     },
     include_package_data=True,
-    entry_points={
-        'console_scripts': [
-            'nckcidx = xcube_smos.nckcindex.cli:cli',
-        ]
-    },
     install_requires=requirements,
 )
