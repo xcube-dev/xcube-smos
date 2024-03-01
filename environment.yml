@@ -12,9 +12,8 @@ dependencies:
   - numpy
   - numba
   - pandas
+  - requests
   - xarray
   - xcube >=1.2
-  # Optional
-  #- kerchunk
   # Development
   - pytest
