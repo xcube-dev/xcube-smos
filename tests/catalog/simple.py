@@ -29,7 +29,7 @@ import xarray as xr
 
 from xcube_smos.catalog.base import AbstractSmosCatalog
 from xcube_smos.catalog.direct import filter_dataset
-from xcube_smos.catalog.types import AcceptRecord
+from xcube_smos.catalog.types import ProductFilter
 from xcube_smos.catalog.types import DatasetRecord
 from xcube_smos.catalog.types import DatasetOpener
 from xcube_smos.catalog.producttype import ProductType
@@ -63,7 +63,7 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
         self,
         product_type: ProductTypeLike,
         time_range: Tuple[Optional[str], Optional[str]],
-        accept_record: Optional[AcceptRecord] = None,
+        accept_record: Optional[ProductFilter] = None,
     ) -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
         if product_type.type_id == "SM":

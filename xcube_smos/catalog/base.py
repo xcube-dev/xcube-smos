@@ -22,11 +22,11 @@
 import abc
 from typing import Dict, Any, Optional, Tuple, List
 
-from xcube_smos.catalog.producttype import ProductTypeLike
 from ..utils import NotSerializable
+from .producttype import ProductTypeLike
 from .types import DatasetOpener
 from .types import DatasetRecord
-from .types import AcceptRecord
+from .types import ProductFilter
 
 
 class AbstractSmosCatalog(NotSerializable, abc.ABC):
@@ -109,14 +109,14 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
         self,
         product_type: ProductTypeLike,
         time_range: Tuple[Optional[str], Optional[str]],
-        accept_record: Optional[AcceptRecord] = None,
+        product_filter: Optional[ProductFilter] = None,
     ) -> List[DatasetRecord]:
         """Find SMOS L2 datasets in the given *time_range*.
 
         :param product_type: SMOS product type
         :param time_range: Time range (from, to) ISO format, UTC
-        :param accept_record: An optional dataset filter function,
-            that receives a dataset record.
+        :param product_filter: An optional filter function,
+            which receives catalog-specific product information.
         :return: List of dataset records of the form
             (*dataset_path*, *start*, *stop*), where *dataset_path*
             is yet unresolved and *start*, *stop* represent the observation

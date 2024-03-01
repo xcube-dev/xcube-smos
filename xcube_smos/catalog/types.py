@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional, Tuple, Callable, Iterator, Iterable
+from typing import Dict, Any, Optional, Tuple, Callable
 
 import xarray as xr
 
@@ -19,5 +19,4 @@ DatasetOpener = Callable[
     xr.Dataset,
 ]
 
-AcceptRecord = Callable[[DatasetRecord], bool]
-GetFilesForPath = Callable[[str], Iterable[str]]
+ProductFilter = Callable[[Any], bool]
