@@ -1,9 +1,11 @@
 import pickle
 import unittest
 
+import pandas as pd
 import pytest
 
 from xcube_smos.utils import LruCache
+from xcube_smos.utils import normalize_time_range
 
 
 class LruCacheTest(unittest.TestCase):
@@ -158,3 +160,58 @@ class LruCacheTest(unittest.TestCase):
             " not serializable",
         ):
             pickle.dumps(c)
+
+
+class NormalizeTimeRangeTest(unittest.TestCase):
+    def test_normalize_time_range(self):
+        self.assertEqual(
+            (
+                pd.Timestamp("2023-12-04 09:45:11", tz="UTC"),
+                pd.Timestamp("2024-01-07 11:10:43", tz="UTC"),
+            ),
+            normalize_time_range(("2023-12-04 09:45:11", "2024-01-07 11:10:43")),
+        )
+        self.assertEqual(
+            (
+                pd.Timestamp("2023-12-04 09:45:11", tz="UTC"),
+                pd.Timestamp("2100-01-01 00:00:00", tz="UTC"),
+            ),
+            normalize_time_range(("2023-12-04 09:45:11", None)),
+        )
+        self.assertEqual(
+            (
+                pd.Timestamp("2010-01-01 00:00:00", tz="UTC"),
+                pd.Timestamp("2024-01-07 11:10:43", tz="UTC"),
+            ),
+            normalize_time_range((None, "2024-01-07 11:10:43")),
+        )
+        self.assertEqual(
+            (
+                pd.Timestamp("2010-01-01 00:00:00", tz="UTC"),
+                pd.Timestamp("2100-01-01 00:00:00", tz="UTC"),
+            ),
+            normalize_time_range((None, None)),
+        )
+
+    def test_normalize_date_range(self):
+        self.assertEqual(
+            (
+                pd.Timestamp("2023-12-04 00:00:00", tz="UTC"),
+                pd.Timestamp("2024-01-07 23:59:59.999999", tz="UTC"),
+            ),
+            normalize_time_range(("2023-12-04", "2024-01-07")),
+        )
+        self.assertEqual(
+            (
+                pd.Timestamp("2023-12-04 00:00:00", tz="UTC"),
+                pd.Timestamp("2023-12-31 23:59:59.999999", tz="UTC"),
+            ),
+            normalize_time_range(("2023-12-04", "2023-12-31")),
+        )
+        self.assertEqual(
+            (
+                pd.Timestamp("2023-12-04 00:00:00", tz="UTC"),
+                pd.Timestamp("2023-12-31 23:59:59.999999", tz="UTC"),
+            ),
+            normalize_time_range(("2023/12/04", "2023/12/31")),
+        )

@@ -25,6 +25,7 @@ import re
 import warnings
 from typing import Tuple, Optional, List
 
+import pandas as pd
 import xarray as xr
 
 from xcube_smos.catalog.base import AbstractSmosCatalog
@@ -35,6 +36,7 @@ from xcube_smos.catalog.types import DatasetOpener
 from xcube_smos.catalog.producttype import ProductType
 from xcube_smos.catalog.producttype import ProductTypeLike
 from xcube_smos.catalog.producttype import TYPE_ID_SM
+from xcube_smos.constants import COMPACT_DATETIME_FORMAT
 from xcube_smos.constants import OS_VAR_NAMES
 from xcube_smos.constants import SM_VAR_NAMES
 
@@ -63,7 +65,7 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
     def find_datasets(
         self,
         product_type: ProductTypeLike,
-        time_range: Tuple[Optional[str], Optional[str]],
+        time_range: Tuple[pd.Timestamp, pd.Timestamp],
         accept_record: Optional[DatasetFilter] = None,
         **query_parameters,
     ) -> List[DatasetRecord]:
@@ -85,7 +87,11 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
                 continue
             start = m.group("sd") + m.group("st")
             end = m.group("ed") + m.group("et")
-            record = path, start, end
+            record = (
+                path,
+                pd.to_datetime(start, format=COMPACT_DATETIME_FORMAT, utc=True),
+                pd.to_datetime(end, format=COMPACT_DATETIME_FORMAT, utc=True),
+            )
             if accept_record is None or accept_record(record):
                 result.append(record)
 

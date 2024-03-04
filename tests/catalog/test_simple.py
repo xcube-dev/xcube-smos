@@ -1,6 +1,8 @@
 import os
 import unittest
 from pathlib import Path
+
+import pandas as pd
 import xarray as xr
 
 from xcube_smos.catalog.base import DatasetRecord
@@ -27,12 +29,10 @@ class SmosSimpleCatalogTest(unittest.TestCase):
             self.assertEqual(3, len(file))
             path, start, end = file
             self.assertIsInstance(path, str)
-            self.assertIsInstance(start, str)
-            self.assertIsInstance(end, str)
+            self.assertIsInstance(start, pd.Timestamp)
+            self.assertIsInstance(end, pd.Timestamp)
             self.assertIn(os.path.join("SM", "SM_OPER_MIR_SMUDP2_"), path)
             self.assertTrue(path.endswith("_700_001_1.nc"))
-            self.assertEqual(14, len(start))
-            self.assertEqual(14, len(end))
 
     def test_1_find_datasets_ascending(self):
         catalog = new_simple_catalog()

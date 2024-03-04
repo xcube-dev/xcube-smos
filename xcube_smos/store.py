@@ -18,10 +18,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
+import datetime
 from functools import cached_property
+import re
 from typing import Iterator, Any, Tuple, Container, Union, Dict, Optional
 
+import numpy as np
+import pandas as pd
 import xarray as xr
 
 from xcube.core.mldataset import MultiLevelDataset
@@ -48,8 +51,8 @@ from .mldataset.l2cube import DATASET_VAR_NAMES
 from .schema import DATASET_OPEN_PARAMS_SCHEMA
 from .schema import ML_DATASET_OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
-from .timeinfo import parse_time_ranges
 from .utils import NotSerializable
+from .utils import normalize_time_range
 
 
 DATASET_ITERATOR_TYPE = DataType(
@@ -211,7 +214,9 @@ class SmosDataStore(NotSerializable, DataStore):
         res_level = open_params.get("res_level", 0)
         bbox = open_params.get("bbox")
 
-        dataset_records = self.catalog.find_datasets(product_type, time_range)
+        dataset_records = self.catalog.find_datasets(
+            product_type, normalize_time_range(time_range)
+        )
         if not dataset_records:
             raise ValueError(
                 f"No SMOS datasets of type {product_type!r}"
@@ -221,7 +226,7 @@ class SmosDataStore(NotSerializable, DataStore):
             map(self.catalog.resolve_path, [path for path, _, _ in dataset_records])
         )
         time_ranges = [(start, stop) for _, start, stop in dataset_records]
-        time_bounds = parse_time_ranges(time_ranges, is_compact=True)
+        time_bounds = np.array(time_ranges, dtype="datetime64[ns]")
 
         if data_type.is_sub_type_of(DATASET_ITERATOR_TYPE):
             return SmosDatasetIterator(

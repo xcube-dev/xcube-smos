@@ -24,6 +24,7 @@ import logging
 from typing import Dict, Any, Optional, Tuple, List, Callable
 
 import fsspec
+import pandas as pd
 import requests
 
 from .producttype import ProductTypeLike, ProductType
@@ -59,14 +60,14 @@ class SmosStacCatalog(SmosDirectCatalog):
     def find_datasets(
         self,
         product_type: ProductTypeLike,
-        time_range: Tuple[Optional[str], Optional[str]],
+        time_range: Tuple[pd.Timestamp, pd.Timestamp],
         bbox: tuple[float, float, float, float] | None = None,
         dataset_filter: Optional[DatasetFilter] = None,
         feature_filter: Optional[FeatureFilter] = None,
     ) -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
         features = fetch_features(product_type.type_id, time_range, feature_filter)
-        dataset_records = []
+        dataset_records: List[DatasetRecord] = []
         for feature in features:
             s3_url = (
                 feature.get("assets", {})
@@ -77,10 +78,14 @@ class SmosStacCatalog(SmosDirectCatalog):
             )
             if s3_url:
                 properties = feature.get("properties", {})
-                start_datetime = properties.get("start_datetime")
-                end_datetime = properties.get("end_datetime")
-                if start_datetime and end_datetime:
-                    dataset_record = s3_url, start_datetime, end_datetime
+                start = properties.get("start_datetime")
+                end = properties.get("end_datetime")
+                if start and end:
+                    dataset_record = (
+                        s3_url,
+                        pd.to_datetime(start),
+                        pd.to_datetime(end),
+                    )
                     if dataset_filter is None or dataset_filter(dataset_record):
                         dataset_records.append(dataset_record)
         return dataset_records
@@ -88,13 +93,13 @@ class SmosStacCatalog(SmosDirectCatalog):
 
 def fetch_features(
     product_type_id: str,
-    date_range: tuple[str, str],
+    time_range: Tuple[pd.Timestamp, pd.Timestamp],
     bbox: tuple[float, float, float, float] | None,
     feature_filter: Callable[[dict], bool] | None = None,
     limit: int = 100,
 ) -> list[dict[str, Any]]:
     params = create_request_params(
-        date_range=date_range,
+        time_range=time_range,
         bbox=bbox,
         limit=limit,
     )
@@ -134,15 +139,20 @@ def fetch_features(
 
 
 def create_request_params(
-    date_range: tuple[str, str],
+    time_range: Tuple[pd.Timestamp, pd.Timestamp],
     bbox: tuple[float, float, float, float] | None,
     limit: int,
 ) -> list[tuple[str, str]]:
-    start, stop = date_range
-    start += "T00:00:00.000Z"
-    stop += "T23:59:59.999Z"
-    params = [("limit", str(limit)), ("datetime", f"{start}/{stop}")]
+    start, end = time_range
+    params = [
+        ("limit", str(limit)),
+        ("datetime", f"{to_iso_format(start)}/{to_iso_format(end)}"),
+    ]
     if bbox:
         x1, y1, x2, y2 = bbox
         params.append(("bbox", f"{x1},{y1},{x2},{y2}"))
     return params
+
+
+def to_iso_format(ts: pd.Timestamp) -> str:
+    return ts.isoformat(timespec="milliseconds").replace("+00:00", "Z")

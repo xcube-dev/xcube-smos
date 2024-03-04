@@ -22,6 +22,8 @@
 import abc
 from typing import Dict, Any, Optional, Tuple, List
 
+import pandas as pd
+
 from ..utils import NotSerializable
 from .producttype import ProductTypeLike
 from .types import DatasetOpener
@@ -94,13 +96,15 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
 
     # noinspection PyMethodMayBeStatic
     def resolve_path(self, dataset_path: str) -> str:
-        """Resolve the given path returned by ``find_datasets()``.
+        """Resolve the given path returned by `find_datasets()`.
 
-        :param dataset_path: Unresolved dataset path as returned by
-            ``find_datasets()``.
-        :return: A resolved dataset path that is passed to the
-            (static) ``open_dataset`` function returned by the
-            ``get_dataset_opener()`` method.
+        Args:
+            dataset_path: Unresolved dataset path as returned by
+                `find_datasets()`.
+        Returns:
+            A resolved dataset path that is passed to the
+            (static) `open_dataset` function returned by the
+            `get_dataset_opener()` method.
         """
         return dataset_path
 
@@ -108,21 +112,23 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
     def find_datasets(
         self,
         product_type: ProductTypeLike,
-        time_range: Tuple[Optional[str], Optional[str]],
+        time_range: Tuple[pd.Timestamp, pd.Timestamp],
         dataset_filter: Optional[DatasetFilter] = None,
         **query_parameters
     ) -> List[DatasetRecord]:
         """Find SMOS L2 datasets in the given *time_range*.
 
-        :param product_type: SMOS product type
-        :param time_range: Time range (from, to) ISO format, UTC
-        :param dataset_filter: An optional filter function,
-            which receives catalog-specific product information.
-        :param query_parameters: Optional catalog-specific
-            query parameters.
-        :return: List of dataset records of the form
+        Args:
+            product_type: SMOS product type
+            time_range: Time range (from, to) ISO format, UTC
+            dataset_filter: An optional filter function,
+                which receives catalog-specific product information.
+            query_parameters: Optional catalog-specific
+                query parameters.
+        Returns:
+            List of dataset records of the form
             (*dataset_path*, *start*, *stop*), where *dataset_path*
             is yet unresolved and *start*, *stop* represent the observation
-            time range using "compact" datetime format,
-            e.g., ``"20230503103546"``.
+            time range using ISO datetime format,
+            e.g., `"2023-05-03T10:35:46.000Z"`.
         """

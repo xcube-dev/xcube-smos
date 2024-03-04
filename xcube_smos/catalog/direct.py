@@ -34,12 +34,11 @@ import fsspec
 import pandas as pd
 import xarray as xr
 
+from ..constants import COMPACT_DATETIME_FORMAT
 from ..constants import DEFAULT_ARCHIVE_URL
 from ..constants import DEFAULT_STORAGE_OPTIONS
 from ..constants import OS_VAR_NAMES
 from ..constants import SM_VAR_NAMES
-from ..timeinfo import normalize_time_range
-from ..timeinfo import to_compact_time
 from .base import AbstractSmosCatalog
 from .producttype import ProductType
 from .producttype import ProductTypeLike
@@ -102,7 +101,7 @@ class SmosDirectCatalog(AbstractSmosCatalog):
     def find_datasets(
         self,
         product_type: ProductTypeLike,
-        time_range: Tuple[Optional[str], Optional[str]],
+        time_range: Tuple[pd.Timestamp, pd.Timestamp],
         dataset_filter: Optional[DatasetFilter] = None,
         **query_parameters,
     ) -> List[DatasetRecord]:
@@ -220,51 +219,51 @@ def filter_dataset(ds: xr.Dataset, var_names: Set[str]) -> xr.Dataset:
 
 def find_files_for_time_range(
     product_type: ProductType,
-    time_range: Tuple[Optional[str], Optional[str]],
+    time_range: Tuple[pd.Timestamp, pd.Timestamp],
     get_files_for_path: GetFilesForPath,
     dataset_filter: Optional[DatasetFilter] = None,
 ) -> List[DatasetRecord]:
-    start, end = normalize_time_range(time_range)
+    start, end = time_range
 
-    start_times = find_files_for_date(
+    start_records = find_records_for_date(
         product_type, start, get_files_for_path, dataset_filter
     )
-    end_times = find_files_for_date(
+    end_records = find_records_for_date(
         product_type, end, get_files_for_path, dataset_filter
     )
 
-    start_str = to_compact_time(start)
-    end_str = to_compact_time(end)
-
     start_index = -1
-    for index, (_, _, start_end_str) in enumerate(start_times):
-        if start_end_str >= start_str:
+    for index, (_, _, start_end) in enumerate(start_records):
+        if start_end >= start:
             start_index = index
             break
 
     end_index = -1
-    for index, (_, end_start_str, _) in enumerate(end_times):
-        if end_start_str >= end_str:
+    for index, (_, end_start, _) in enumerate(end_records):
+        if end_start >= end:
             end_index = index
             break
 
     start_names = []
     if start_index >= 0:
-        start_names.extend(start_times[start_index:])
+        start_names.extend(start_records[start_index:])
 
     # Add everything between start + start.day and end - end.day
 
     start_p1d = (
-        pd.Timestamp(year=start.year, month=start.month, day=start.day) + _ONE_DAY
+        pd.Timestamp(year=start.year, month=start.month, day=start.day, tz="UTC")
+        + _ONE_DAY
     )
-    end_m1d = pd.Timestamp(year=end.year, month=end.month, day=end.day) - _ONE_DAY
+    end_m1d = (
+        pd.Timestamp(year=end.year, month=end.month, day=end.day, tz="UTC") - _ONE_DAY
+    )
 
     in_between_names = []
     if end_m1d > start_p1d:
         time = start_p1d
         while time <= end_m1d:
             in_between_names.extend(
-                find_files_for_date(
+                find_records_for_date(
                     product_type, time, get_files_for_path, dataset_filter
                 )
             )
@@ -272,12 +271,12 @@ def find_files_for_time_range(
 
     end_names = []
     if end_index >= 0:
-        end_names.extend(end_times[:end_index])
+        end_names.extend(end_records[:end_index])
 
     return start_names + in_between_names + end_names
 
 
-def find_files_for_date(
+def find_records_for_date(
     product_type: ProductType,
     date: pd.Timestamp,
     get_files_for_path: GetFilesForPath,
@@ -306,9 +305,12 @@ def find_files_for_date(
         if m is not None:
             start = m.group("sd") + m.group("st")
             end = m.group("ed") + m.group("et")
-
-            record = file_path, start, end
+            record = (
+                file_path,
+                pd.to_datetime(start, format=COMPACT_DATETIME_FORMAT, utc=True),
+                pd.to_datetime(end, format=COMPACT_DATETIME_FORMAT, utc=True),
+            )
             if accept_record is None or accept_record(record):
                 records.append(record)
 
-    return sorted(records)
+    return sorted(records, key=lambda r: r[1])

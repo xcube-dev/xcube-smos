@@ -21,12 +21,13 @@
 
 from typing import Dict, Any, Optional, Tuple, Callable
 
+import pandas as pd
 import xarray as xr
 
 DatasetRecord = Tuple[
     str,  # relative path
-    str,  # start date/time in compact format
-    str,  # end date/time in compact format
+    pd.Timestamp,  # start time
+    pd.Timestamp,  # end time
 ]
 
 DatasetOpener = Callable[

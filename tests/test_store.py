@@ -4,6 +4,7 @@ from typing import Any, Type
 import dask.array as da
 import jsonschema
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 
@@ -16,10 +17,10 @@ from xcube_smos.dsiter import DatasetIterator
 from xcube_smos.schema import DATASET_OPEN_PARAMS_SCHEMA
 from xcube_smos.schema import ML_DATASET_OPEN_PARAMS_SCHEMA
 from xcube_smos.schema import STORE_PARAMS_SCHEMA
-from xcube_smos.store import SmosDataStore
 from xcube_smos.store import DATASET_OPENER_ID
 from xcube_smos.store import DATASET_ITERATOR_OPENER_ID
 from xcube_smos.store import ML_DATASET_OPENER_ID
+from xcube_smos.store import SmosDataStore
 
 
 class SmosDataStoreTest(unittest.TestCase):
@@ -312,8 +313,9 @@ class SmosDataStoreTest(unittest.TestCase):
         self,
         dataset: xr.Dataset,
         expected_shape: tuple[int, int, int],
-        expected_chunks: tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]
-        | None,
+        expected_chunks: (
+            tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]] | None
+        ),
         expected_sm_attrs: dict[str, Any],
         expected_sm_encoding: dict[str, Any],
         expected_sm_array_type: Type,

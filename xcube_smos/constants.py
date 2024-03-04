@@ -72,3 +72,5 @@ DEFAULT_STORAGE_OPTIONS = {
     "key": os.environ.get("CREODIAS_S3_KEY"),
     "secret": os.environ.get("CREODIAS_S3_SECRET"),
 }
+
+COMPACT_DATETIME_FORMAT = "%Y%m%d%H%M%S"

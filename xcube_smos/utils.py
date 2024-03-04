@@ -21,8 +21,22 @@
 
 import collections
 import collections.abc
+import re
 import threading
-from typing import TypeVar, Generic, Dict, Any, Callable, Optional, Deque, Iterator
+from typing import (
+    TypeVar,
+    Generic,
+    Dict,
+    Any,
+    Callable,
+    Optional,
+    Deque,
+    Iterator,
+    Tuple,
+    Union,
+)
+
+import pandas as pd
 
 from xcube.util.assertions import assert_instance, assert_true
 
@@ -138,3 +152,37 @@ class LruCache(Generic[KT, VT], NotSerializable, collections.abc.Mapping):
     def dispose_value(self, value: VT):
         """May be overridden by subclasses."""
         pass
+
+
+TimestampLike = Union[pd.Timestamp, str]
+MIN_DATE = pd.Timestamp("2010-01-01 00:00:00", tz="UTC")
+MAX_DATE = pd.Timestamp("2100-01-01 00:00:00", tz="UTC")
+ISO_DATE_PAT = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+EN_DATE_PAT = re.compile(r"^[0-9]{4}/[0-9]{2}/[0-9]{2}$")
+ALMOST_ONE_DAY = pd.Timedelta("1D") - pd.Timedelta("1us")
+
+
+def normalize_time_range(
+    time_range: Tuple[Optional[TimestampLike], Optional[TimestampLike]]
+) -> Tuple[pd.Timestamp, pd.Timestamp]:
+    """Normalize timestamp-like object pair into a pair of timestamps.
+
+    Args:
+        time_range: tuple of date or datetime strings or timestamps
+    Returns:
+        A pair of timestamps.
+    """
+    start, end = time_range
+    if not start:
+        start_ts = MIN_DATE
+    else:
+        start_ts = pd.Timestamp(start, tz="UTC")
+    if not end:
+        end_ts = MAX_DATE
+    else:
+        end_ts = pd.Timestamp(end, tz="UTC")
+        if isinstance(end, str) and (
+            re.match(ISO_DATE_PAT, end) or re.match(EN_DATE_PAT, end)
+        ):
+            end_ts += ALMOST_ONE_DAY
+    return start_ts, end_ts

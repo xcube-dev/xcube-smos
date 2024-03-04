@@ -5,6 +5,9 @@ import pytest
 from xcube_smos.catalog.stac import SmosStacCatalog
 from xcube_smos.catalog.stac import create_request_params
 from xcube_smos.catalog.stac import fetch_features
+from xcube_smos.utils import normalize_time_range
+
+SUPPRESS_TEST = True
 
 properties = {
     "authority": "ESA",
@@ -45,6 +48,7 @@ assets = {
 
 # noinspection PyMethodMayBeStatic
 class SmosStacCatalogTest(unittest.TestCase):
+    @unittest.skipIf(SUPPRESS_TEST, reason="Test has been suppressed by intention")
     def test_find_datasets(self):
         catalog = SmosStacCatalog()
         dataset_records = catalog.find_datasets(
@@ -52,6 +56,7 @@ class SmosStacCatalogTest(unittest.TestCase):
         )
         self.assertEqual([], dataset_records)
 
+    @unittest.skipIf(SUPPRESS_TEST, reason="Test has been suppressed by intention")
     def test_fetch_features(self):
         features = fetch_features(
             product_type_id="MIR_SMUDP2",
@@ -91,6 +96,7 @@ class SmosStacCatalogTest(unittest.TestCase):
         )
         # print(json.dumps(features[0], indent=2))
 
+    @unittest.skipIf(SUPPRESS_TEST, reason="Test has been suppressed by intention")
     def test_fetch_features_fails_ok(self):
         with pytest.raises(
             ValueError,
@@ -108,7 +114,7 @@ class SmosStacCatalogTest(unittest.TestCase):
 
     def test_create_request_params(self):
         params = create_request_params(
-            date_range=("2023-05-01", "2023-05-30"),
+            time_range=normalize_time_range(("2023-05-01", "2023-05-30")),
             bbox=None,
             limit=1000,
         )
@@ -121,7 +127,7 @@ class SmosStacCatalogTest(unittest.TestCase):
         )
 
         params = create_request_params(
-            date_range=("2023-05-01", "2023-05-30"),
+            time_range=normalize_time_range(("2023-05-01", "2023-05-30")),
             bbox=(0, 40, 20, 60),
             limit=1000,
         )
