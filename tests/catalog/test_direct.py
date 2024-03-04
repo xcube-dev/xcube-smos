@@ -9,7 +9,7 @@ import xarray as xr
 
 from xcube_smos.catalog import SmosDirectCatalog
 
-_TEST_ENABLED = False
+_TEST_ENABLED = True
 
 s3_storage_options = None
 if "CREODIAS_S3_KEY" in os.environ and "CREODIAS_S3_SECRET" in os.environ:

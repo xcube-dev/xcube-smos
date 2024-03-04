@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2023 by the xcube development team and contributors
+# Copyright (c) 2023-2024 by the xcube development team and contributors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -29,11 +29,12 @@ import xarray as xr
 
 from xcube_smos.catalog.base import AbstractSmosCatalog
 from xcube_smos.catalog.direct import filter_dataset
-from xcube_smos.catalog.types import ProductFilter
+from xcube_smos.catalog.types import DatasetFilter
 from xcube_smos.catalog.types import DatasetRecord
 from xcube_smos.catalog.types import DatasetOpener
 from xcube_smos.catalog.producttype import ProductType
 from xcube_smos.catalog.producttype import ProductTypeLike
+from xcube_smos.catalog.producttype import TYPE_ID_SM
 from xcube_smos.constants import OS_VAR_NAMES
 from xcube_smos.constants import SM_VAR_NAMES
 
@@ -42,7 +43,7 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
     """A simple SMOS L2 dataset catalog for testing only.
 
     :param smos_l2_sm_paths: SMOS L2 SM file paths
-    :param smos_l2_os_paths: SMOS L2 SM file paths
+    :param smos_l2_os_paths: SMOS L2 OS file paths
     """
 
     def __init__(self, smos_l2_sm_paths: List[str], smos_l2_os_paths: List[str]):
@@ -63,10 +64,11 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
         self,
         product_type: ProductTypeLike,
         time_range: Tuple[Optional[str], Optional[str]],
-        accept_record: Optional[ProductFilter] = None,
+        accept_record: Optional[DatasetFilter] = None,
+        **query_parameters,
     ) -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
-        if product_type.type_id == "SM":
+        if product_type.type_id == TYPE_ID_SM:
             paths = self.smos_l2_sm_paths
         else:
             paths = self.smos_l2_os_paths

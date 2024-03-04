@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2024 by the xcube development team and contributors
+# Copyright (c) 2023-2024 by the xcube development team and contributors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -20,6 +20,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import atexit
+import warnings
 from functools import cached_property
 import logging
 import os
@@ -44,7 +45,7 @@ from .producttype import ProductType
 from .producttype import ProductTypeLike
 from .types import DatasetOpener
 from .types import DatasetRecord
-from .types import ProductFilter
+from .types import DatasetFilter
 
 
 GetFilesForPath = Callable[[str], Iterable[str]]
@@ -58,13 +59,13 @@ class SmosDirectCatalog(AbstractSmosCatalog):
     """A SMOS L2 dataset catalog that directly accesses the source filesystem."""
 
     def __init__(
-            self,
-            source_path: Optional[Union[str, Path]] = None,
-            source_protocol: Optional[str] = None,
-            source_storage_options: Optional[Dict[str, Any]] = None,
-            cache_path: Optional[str] = None,
-            xarray_kwargs: Dict[str, Any] = None,
-            **extra_source_storage_options,
+        self,
+        source_path: Optional[Union[str, Path]] = None,
+        source_protocol: Optional[str] = None,
+        source_storage_options: Optional[Dict[str, Any]] = None,
+        cache_path: Optional[str] = None,
+        xarray_kwargs: Dict[str, Any] = None,
+        **extra_source_storage_options,
     ):
         source_path = str(source_path or DEFAULT_ARCHIVE_URL)
         _protocol, source_path = fsspec.core.split_protocol(source_path)
@@ -75,7 +76,7 @@ class SmosDirectCatalog(AbstractSmosCatalog):
             source_storage_options = dict(DEFAULT_STORAGE_OPTIONS)
         if extra_source_storage_options:
             source_storage_options = (
-                    dict(source_storage_options or {}) | extra_source_storage_options
+                dict(source_storage_options or {}) | extra_source_storage_options
             )
         self._source_path = source_path
         self._source_protocol = source_protocol
@@ -99,15 +100,23 @@ class SmosDirectCatalog(AbstractSmosCatalog):
         return open_dataset
 
     def find_datasets(
-            self,
-            product_type: ProductTypeLike,
-            time_range: Tuple[Optional[str], Optional[str]],
-            accept_record: Optional[ProductFilter] = None,
+        self,
+        product_type: ProductTypeLike,
+        time_range: Tuple[Optional[str], Optional[str]],
+        dataset_filter: Optional[DatasetFilter] = None,
+        **query_parameters,
     ) -> List[DatasetRecord]:
+        if query_parameters:
+            warnings.warn(
+                f"Additional parameter(s) not understood:"
+                f" {', '.join(query_parameters.keys())}"
+            )
         product_type = ProductType.normalize(product_type)
         return find_files_for_time_range(
-            product_type, time_range, self._get_files_for_path,
-            accept_record=accept_record
+            product_type,
+            time_range,
+            self._get_files_for_path,
+            dataset_filter=dataset_filter,
         )
 
     def _get_files_for_path(self, path: str) -> Iterable[str]:
@@ -148,11 +157,11 @@ class TempNcDir:
 
 
 def open_dataset(
-        source_file: str,
-        source_protocol: str = None,
-        source_storage_options: Dict[str, Any] = None,
-        cache_path: Optional[str] = None,
-        xarray_kwargs: Dict[str, Any] = None,
+    source_file: str,
+    source_protocol: str = None,
+    source_storage_options: Dict[str, Any] = None,
+    cache_path: Optional[str] = None,
+    xarray_kwargs: Dict[str, Any] = None,
 ) -> xr.Dataset:
     open_dataset_kwargs = dict(xarray_kwargs or {})
     open_dataset_kwargs.update(decode_cf=False, chunks={})
@@ -204,24 +213,24 @@ def filter_dataset(ds: xr.Dataset, var_names: Set[str]) -> xr.Dataset:
         ]
     )
     ds.attrs = {
-        k[len(key_prefix):]: v for k, v in ds.attrs.items() if k.startswith(key_prefix)
+        k[len(key_prefix) :]: v for k, v in ds.attrs.items() if k.startswith(key_prefix)
     }
     return ds
 
 
 def find_files_for_time_range(
-        product_type: ProductType,
-        time_range: Tuple[Optional[str], Optional[str]],
-        get_files_for_path: GetFilesForPath,
-        accept_record: Optional[ProductFilter] = None,
+    product_type: ProductType,
+    time_range: Tuple[Optional[str], Optional[str]],
+    get_files_for_path: GetFilesForPath,
+    dataset_filter: Optional[DatasetFilter] = None,
 ) -> List[DatasetRecord]:
     start, end = normalize_time_range(time_range)
 
     start_times = find_files_for_date(
-        product_type, start, get_files_for_path, accept_record
+        product_type, start, get_files_for_path, dataset_filter
     )
     end_times = find_files_for_date(
-        product_type, end, get_files_for_path, accept_record
+        product_type, end, get_files_for_path, dataset_filter
     )
 
     start_str = to_compact_time(start)
@@ -246,7 +255,7 @@ def find_files_for_time_range(
     # Add everything between start + start.day and end - end.day
 
     start_p1d = (
-            pd.Timestamp(year=start.year, month=start.month, day=start.day) + _ONE_DAY
+        pd.Timestamp(year=start.year, month=start.month, day=start.day) + _ONE_DAY
     )
     end_m1d = pd.Timestamp(year=end.year, month=end.month, day=end.day) - _ONE_DAY
 
@@ -256,7 +265,7 @@ def find_files_for_time_range(
         while time <= end_m1d:
             in_between_names.extend(
                 find_files_for_date(
-                    product_type, time, get_files_for_path, accept_record
+                    product_type, time, get_files_for_path, dataset_filter
                 )
             )
             time += _ONE_DAY
@@ -269,10 +278,10 @@ def find_files_for_time_range(
 
 
 def find_files_for_date(
-        product_type: ProductType,
-        date: pd.Timestamp,
-        get_files_for_path: GetFilesForPath,
-        accept_record: Optional[ProductFilter] = None,
+    product_type: ProductType,
+    date: pd.Timestamp,
+    get_files_for_path: GetFilesForPath,
+    accept_record: Optional[DatasetFilter] = None,
 ) -> List[DatasetRecord]:
     path_pattern = product_type.path_pattern
     name_pattern = product_type.name_pattern

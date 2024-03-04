@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2023 by the xcube development team and contributors
+# Copyright (c) 2023-2024 by the xcube development team and contributors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -26,7 +26,7 @@ from ..utils import NotSerializable
 from .producttype import ProductTypeLike
 from .types import DatasetOpener
 from .types import DatasetRecord
-from .types import ProductFilter
+from .types import DatasetFilter
 
 
 class AbstractSmosCatalog(NotSerializable, abc.ABC):
@@ -109,14 +109,17 @@ class AbstractSmosCatalog(NotSerializable, abc.ABC):
         self,
         product_type: ProductTypeLike,
         time_range: Tuple[Optional[str], Optional[str]],
-        product_filter: Optional[ProductFilter] = None,
+        dataset_filter: Optional[DatasetFilter] = None,
+        **query_parameters
     ) -> List[DatasetRecord]:
         """Find SMOS L2 datasets in the given *time_range*.
 
         :param product_type: SMOS product type
         :param time_range: Time range (from, to) ISO format, UTC
-        :param product_filter: An optional filter function,
+        :param dataset_filter: An optional filter function,
             which receives catalog-specific product information.
+        :param query_parameters: Optional catalog-specific
+            query parameters.
         :return: List of dataset records of the form
             (*dataset_path*, *start*, *stop*), where *dataset_path*
             is yet unresolved and *start*, *stop* represent the observation
