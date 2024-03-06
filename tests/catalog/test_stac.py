@@ -1,103 +1,127 @@
+import json
 import unittest
+from pathlib import Path
+from unittest.mock import Mock
+from unittest.mock import patch
 
+import pandas as pd
 import pytest
+import requests
 
 from xcube_smos.catalog.stac import SmosStacCatalog
 from xcube_smos.catalog.stac import create_request_params
 from xcube_smos.catalog.stac import fetch_features
 from xcube_smos.utils import normalize_time_range
 
-SUPPRESS_TEST = True
-
-properties = {
-    "authority": "ESA",
-    "orbitNumber": 74013,
-    "orbitDirection": "DESCENDING",
-    "acquisitionType": "NOMINAL",
-    "operationalMode": "FULL",
-    "processingLevel": "1B",
-    "processingCenter": "ESAC",
-    "processorVersion": "724",
-    "wrsLongitudeGrid": "01029",
-    "platformShortName": "SMOS",
-    "spatialResolution": 50,
-    "instrumentShortName": "MIRAS",
-    "datetime": "2023-12-02T16:58:33.177Z",
-    "end_datetime": "2023-12-02T17:52:32.019Z",
-    "start_datetime": "2023-12-02T16:58:33.177Z",
-    "productType": "MIR_SC_F1B",
-}
-
-assets = {
-    "PRODUCT": {
-        "href": "https://datahub.creodias.eu/odata/v1/Products(1b3d7d9d-aecd-4fa4-927e-98ba36f5ccd5)/$value",
-        "title": "Product",
-        "type": "application/octet-stream",
-        "alternate": {
-            "s3": {
-                "href": "/eodata/SMOS/L1B/MIR_SC_F1B/2023/12/02/SM_OPER_MIR_SC_F1B_20231202T165834_20231202T175232_724_001_1",
-                "storage:platform": "CLOUDFERRO",
-                "storage:region": "waw",
-                "storage:requester_pays": False,
-                "storage:tier": "Online",
-            }
-        },
-    }
-}
-
 
 # noinspection PyMethodMayBeStatic
 class SmosStacCatalogTest(unittest.TestCase):
-    @unittest.skipIf(SUPPRESS_TEST, reason="Test has been suppressed by intention")
-    def test_find_datasets(self):
+
+    expected = None
+
+    @classmethod
+    def setUpClass(cls):
+        with open(Path(__file__).parent / "stac-response.json") as fp:
+            cls.expected = json.load(fp)
+
+    def setUp(self):
+        self.assertIsInstance(self.expected.get("url"), str)
+        self.assertIsInstance(self.expected.get("params"), list)
+        self.assertIsInstance(self.expected.get("response"), dict)
+
+        self.response_mock = unittest.mock.Mock(requests.Response)
+        self.response_mock.status_code = 200
+        self.response_mock.ok = True
+        self.response_mock.json = lambda: self.expected["response"]
+
+    @unittest.mock.patch("requests.get")
+    def test_requests_mock(self, requests_get_mock):
+        """Test that `unittest.mock` works as expected with `requests` module."""
+        requests_get_mock.return_value = self.response_mock
+
+        response = requests.get(self.expected["url"], params=self.expected["params"])
+
+        self.assertEqual(True, response.ok)
+        self.assertEqual(200, response.status_code)
+        feature_collection = response.json()
+        self.assertIsInstance(feature_collection, dict)
+        self.assertEqual("FeatureCollection", feature_collection.get("type"))
+        self.assertIsInstance(feature_collection.get("features"), list)
+        self.assertEqual(20, len(feature_collection.get("features")))
+
+    @unittest.mock.patch("requests.get")
+    def test_find_datasets(self, requests_get_mock):
+        requests_get_mock.return_value = self.response_mock
+
         catalog = SmosStacCatalog()
         dataset_records = catalog.find_datasets(
-            "MIR_SMUDP2", time_range=("2023-05-01", "2023-05-02"), bbox=(0, 40, 20, 60)
+            "MIR_SMUDP2",
+            time_range=normalize_time_range(("2023-05-01", "2023-05-01")),
+            bbox=(0, 40, 20, 60),
         )
-        self.assertEqual([], dataset_records)
+        self.assertEqual(2, len(dataset_records))
+        prefix = "/eodata/SMOS/L2SM/MIR_SMUDP2/2023/05/01/SM_OPER_MIR_SMUDP2"
+        self.assertEqual(
+            [
+                (
+                    f"{prefix}_20230501T162850_20230501T172204_700_001_1",
+                    pd.Timestamp("2023-05-01 16:28:49.927", tz="UTC"),
+                    pd.Timestamp("2023-05-01 17:22:04.372", tz="UTC"),
+                ),
+                (
+                    f"{prefix}_20230501T180855_20230501T190209_700_001_1",
+                    pd.Timestamp("2023-05-01 18:08:54.811", tz="UTC"),
+                    pd.Timestamp("2023-05-01 19:02:09.256", tz="UTC"),
+                ),
+            ],
+            dataset_records,
+        )
 
-    @unittest.skipIf(SUPPRESS_TEST, reason="Test has been suppressed by intention")
-    def test_fetch_features(self):
+    @patch("requests.get")
+    def test_fetch_sm_features(self, requests_get_mock):
+        requests_get_mock.return_value = self.response_mock
+
         features = fetch_features(
             product_type_id="MIR_SMUDP2",
-            date_range=("2023-05-01", "2023-05-02"),
+            time_range=normalize_time_range(("2023-05-01", "2023-05-01")),
             bbox=(0, 40, 20, 60),
-            limit=100,
         )
-        self.assertEqual(5, len(features))
+        self.assertEqual(2, len(features))
         self.assertEqual(
             [
                 "SM_OPER_MIR_SMUDP2_20230501T162850_20230501T172204_700_001_1",
                 "SM_OPER_MIR_SMUDP2_20230501T180855_20230501T190209_700_001_1",
-                "SM_OPER_MIR_SMUDP2_20230502T045919_20230502T055238_700_001_1",
-                "SM_OPER_MIR_SMUDP2_20230502T172958_20230502T182311_700_001_1",
-                "SM_OPER_MIR_SMUDP2_20230502T191004_20230502T200316_700_001_1",
             ],
             [f.get("id") for f in features],
         )
         # print(json.dumps(features[0], indent=2))
 
+    @patch("requests.get")
+    def test_fetch_os_features(self, requests_get_mock):
+        requests_get_mock.return_value = self.response_mock
+
         features = fetch_features(
             product_type_id="MIR_OSUDP2",
-            date_range=("2023-05-01", "2023-05-02"),
+            time_range=normalize_time_range(("2023-05-01", "2023-05-02")),
             bbox=(0, 40, 20, 60),
-            limit=100,
         )
-        self.assertEqual(5, len(features))
+        self.assertEqual(2, len(features))
         self.assertEqual(
             [
                 "SM_OPER_MIR_OSUDP2_20230501T162850_20230501T172204_700_001_1",
                 "SM_OPER_MIR_OSUDP2_20230501T180855_20230501T190209_700_001_1",
-                "SM_OPER_MIR_OSUDP2_20230502T045919_20230502T055238_700_001_1",
-                "SM_OPER_MIR_OSUDP2_20230502T172958_20230502T182311_700_001_1",
-                "SM_OPER_MIR_OSUDP2_20230502T191004_20230502T200316_700_001_1",
             ],
             [f.get("id") for f in features],
         )
         # print(json.dumps(features[0], indent=2))
 
-    @unittest.skipIf(SUPPRESS_TEST, reason="Test has been suppressed by intention")
-    def test_fetch_features_fails_ok(self):
+    @patch("requests.get")
+    def test_fetch_features_fails_ok(self, requests_get_mock):
+        self.response_mock.status_code = 400
+        self.response_mock.ok = False
+        self.response_mock.json = lambda: {}
+        requests_get_mock.return_value = self.response_mock
+
         with pytest.raises(
             ValueError,
             match=(
@@ -107,7 +131,7 @@ class SmosStacCatalogTest(unittest.TestCase):
         ):
             fetch_features(
                 product_type_id="MIR_SMUDP2",
-                date_range=("2023-05-01", "2023-05-02"),
+                time_range=normalize_time_range(("2023-05-01", "2023-05-02")),
                 bbox=(0, 40, 20, 60),
                 limit=-1,  # !
             )

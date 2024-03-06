@@ -32,7 +32,8 @@ from .types import DatasetOpener
 from .types import DatasetRecord
 from .types import DatasetFilter
 from .direct import SmosDirectCatalog
-from ..constants import DEFAULT_STAC_URL
+from ..constants import DEFAULT_STAC_PAGE_LIMIT
+from ..constants import DEFAULT_STAC_SMOS_URL
 
 FeatureFilter = Callable[[Dict[str, Any]], bool]
 
@@ -41,10 +42,17 @@ LOG = logging.getLogger("xcube-smos")
 
 class SmosStacCatalog(SmosDirectCatalog):
     """A SMOS L2 dataset catalog that directly accesses the source filesystem
-    including a STAC Catalog for filtering."""
+    including a STAC Catalog for filtering.
 
-    def __init__(self, **direct_catalog_kwargs):
+    Args:
+        stac_smos_url: The STAC URL that provides the SMOS collection.
+        direct_catalog_kwargs: Keyword arguments passed
+            to `SmosDirectCatalog`.
+    """
+
+    def __init__(self, stac_smos_url: Optional[str] = None, **direct_catalog_kwargs):
         super().__init__()
+        self._stac_smos_url = stac_smos_url or DEFAULT_STAC_SMOS_URL
         self._direct_catalog = SmosDirectCatalog(**direct_catalog_kwargs)
 
     @property
@@ -66,7 +74,12 @@ class SmosStacCatalog(SmosDirectCatalog):
         feature_filter: Optional[FeatureFilter] = None,
     ) -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
-        features = fetch_features(product_type.type_id, time_range, feature_filter)
+        features = fetch_features(
+            product_type.type_id,
+            time_range,
+            feature_filter,
+            stac_smos_url=self._stac_smos_url,
+        )
         dataset_records: List[DatasetRecord] = []
         for feature in features:
             s3_url = (
@@ -88,32 +101,56 @@ class SmosStacCatalog(SmosDirectCatalog):
                     )
                     if dataset_filter is None or dataset_filter(dataset_record):
                         dataset_records.append(dataset_record)
-        return dataset_records
+        return sorted(dataset_records, key=lambda r: r[1])
 
 
 def fetch_features(
     product_type_id: str,
     time_range: Tuple[pd.Timestamp, pd.Timestamp],
-    bbox: tuple[float, float, float, float] | None,
-    feature_filter: Callable[[dict], bool] | None = None,
-    limit: int = 100,
-) -> list[dict[str, Any]]:
+    bbox: Optional[Tuple[float, float, float, float]],
+    feature_filter: Optional[Callable[[dict], bool]] = None,
+    limit: int = DEFAULT_STAC_PAGE_LIMIT,
+    stac_smos_url: str = DEFAULT_STAC_SMOS_URL,
+    dump=False,
+) -> List[Dict[str, Any]]:
+    smos_items_url = stac_smos_url + "/items"
     params = create_request_params(
         time_range=time_range,
         bbox=bbox,
         limit=limit,
     )
-    url = DEFAULT_STAC_URL + "/items"
+
     filtered_features = []
     while True:
-        response = requests.get(url, params)
+        response = requests.get(smos_items_url, params)
         feature_collection = response.json()
+
+        if dump:
+
+            def dump_it(name, value):
+                print(80 * "=")
+                print(f"{name}: {json.dumps(value, indent=2)}")
+
+            dump_it("url", smos_items_url)
+            dump_it("params", params)
+            dump_it("response", feature_collection)
+
         try:
             features = feature_collection["features"]
         except KeyError:
-            msg = f"Encountered error from {url}: {json.dumps(feature_collection)}"
+            msg = (
+                f"Encountered error from {smos_items_url}:"
+                f" {json.dumps(feature_collection)}"
+            )
             LOG.error(msg)
             raise ValueError(msg)
+
+        for feature in features:
+            _product_type_id = feature.get("properties", {}).get("productType")
+            if _product_type_id == product_type_id and (
+                feature_filter is None or feature_filter(feature)
+            ):
+                filtered_features.append(feature)
 
         links = feature_collection.get("links", [])
         next_url = None
@@ -124,16 +161,8 @@ def fetch_features(
                 break
         if not next_url:
             break
-
-        url = next_url
+        smos_items_url = next_url
         params = {}
-
-        for feature in features:
-            _product_type_id = feature.get("properties", {}).get("productType")
-            if _product_type_id == product_type_id and (
-                feature_filter is None or feature_filter(feature)
-            ):
-                filtered_features.append(feature)
 
     return filtered_features
 

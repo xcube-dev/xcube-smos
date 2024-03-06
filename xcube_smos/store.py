@@ -18,13 +18,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-import datetime
+
 from functools import cached_property
-import re
 from typing import Iterator, Any, Tuple, Container, Union, Dict, Optional
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 
 from xcube.core.mldataset import MultiLevelDataset
@@ -38,7 +36,7 @@ from xcube.core.store import MULTI_LEVEL_DATASET_TYPE
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import AbstractSmosCatalog
-from .catalog import SmosDirectCatalog
+from .catalog import SmosStacCatalog
 from .constants import DATASET_ATTRIBUTES
 from .dsiter import DatasetIterator
 from .dsiter import SmosDatasetIterator
@@ -70,19 +68,20 @@ DEFAULT_OPENER_ID = DATASET_OPENER_ID
 class SmosDataStore(NotSerializable, DataStore):
     """Data store for SMOS L2C data cubes.
 
-    :param source_path: Path or URL to the SMOS Kerchunk index
-    :param source_protocol: Optional filesystem protocol for accessing
-        *index_path*. Overwrites the protocol parsed from *index_path*,
-        if any.
-    :param source_storage_options: Storage options for accessing *index_path*.
-    :param cache_path: Path to local cache directory.
-        Must be given, if file caching is desired.
-    :param xarray_kwargs: Extra keyword arguments accepted by
-        ``xarray.open_dataset``.
-    :param extra_source_storage_options: Extra keyword arguments that override
-        settings in *source_storage_options*.
-    :param _catalog: Catalog (mock) instance used for testing only.
-        If given, all other arguments are ignored.
+    Args:
+        source_path: Path or URL to the SMOS Kerchunk index
+        source_protocol: Optional filesystem protocol for accessing
+            *index_path*. Overwrites the protocol parsed from *index_path*,
+            if any.
+        source_storage_options: Storage options for accessing *index_path*.
+        cache_path: Path to local cache directory.
+            Must be given, if file caching is desired.
+        xarray_kwargs: Extra keyword arguments accepted by
+            ``xarray.open_dataset``.
+        extra_source_storage_options: Extra keyword arguments that override
+            settings in *source_storage_options*.
+        _catalog: Catalog (mock) instance used for testing only.
+            If given, all other arguments are ignored.
     """
 
     def __init__(
@@ -98,7 +97,7 @@ class SmosDataStore(NotSerializable, DataStore):
         if _catalog is not None:
             self.catalog = _catalog
         else:
-            self.catalog = SmosDirectCatalog(
+            self.catalog = SmosStacCatalog(
                 source_path=source_path,
                 source_protocol=source_protocol,
                 source_storage_options=source_storage_options,
