@@ -172,7 +172,7 @@ def open_dataset(
     else:
         var_names = None
 
-    remote_fs = fsspec.filesystem(source_protocol, **source_storage_options)
+    remote_fs = fsspec.filesystem(source_protocol, **(source_storage_options or {}))
     if not cache_path:
         if open_dataset_kwargs.get("engine") == "h5netcdf":
             LOG.debug("Opening dataset directly from %s", source_file)

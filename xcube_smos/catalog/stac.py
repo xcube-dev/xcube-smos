@@ -82,20 +82,20 @@ class SmosStacCatalog(SmosDirectCatalog):
         )
         dataset_records: List[DatasetRecord] = []
         for feature in features:
-            s3_url = (
+            dataset_path = (
                 feature.get("assets", {})
                 .get("PRODUCT", {})
                 .get("alternate", {})
                 .get("s3", {})
                 .get("href")
             )
-            if s3_url:
+            if dataset_path:
                 properties = feature.get("properties", {})
                 start = properties.get("start_datetime")
                 end = properties.get("end_datetime")
                 if start and end:
                     dataset_record = (
-                        s3_url,
+                        normalize_dataset_path(dataset_path),
                         pd.to_datetime(start),
                         pd.to_datetime(end),
                     )
@@ -185,3 +185,11 @@ def create_request_params(
 
 def to_iso_format(ts: pd.Timestamp) -> str:
     return ts.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def normalize_dataset_path(dataset_path: str) -> str:
+    path_components = [
+        "EODATA" if c == "eodata" else c for c in dataset_path.split("/") if c
+    ]
+    path_components.append(path_components[-1] + ".nc")
+    return "/".join(path_components)
