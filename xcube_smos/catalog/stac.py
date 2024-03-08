@@ -77,7 +77,8 @@ class SmosStacCatalog(SmosDirectCatalog):
         features = fetch_features(
             product_type.type_id,
             time_range,
-            feature_filter,
+            bbox=bbox,
+            feature_filter=feature_filter,
             stac_smos_url=self._stac_smos_url,
         )
         dataset_records: List[DatasetRecord] = []
@@ -107,7 +108,7 @@ class SmosStacCatalog(SmosDirectCatalog):
 def fetch_features(
     product_type_id: str,
     time_range: Tuple[pd.Timestamp, pd.Timestamp],
-    bbox: Optional[Tuple[float, float, float, float]],
+    bbox: Optional[Tuple[float, float, float, float]] = None,
     feature_filter: Optional[Callable[[dict], bool]] = None,
     limit: int = DEFAULT_STAC_PAGE_LIMIT,
     stac_smos_url: str = DEFAULT_STAC_SMOS_URL,
