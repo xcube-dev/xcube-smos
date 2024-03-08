@@ -60,16 +60,22 @@ class SmosStacCatalogTest(unittest.TestCase):
             bbox=(0, 40, 20, 60),
         )
         self.assertEqual(2, len(dataset_records))
-        prefix = "/eodata/SMOS/L2SM/MIR_SMUDP2/2023/05/01/SM_OPER_MIR_SMUDP2"
+
+        def make_expected_path(unique_part: str) -> str:
+            path_prefix = "EODATA/SMOS/L2SM/MIR_SMUDP2/2023/05/01"
+            name_prefix = "SM_OPER_MIR_SMUDP2"
+            filename = f"{name_prefix}_{unique_part}"
+            return f"{path_prefix}/{filename}/{filename}.nc"
+
         self.assertEqual(
             [
                 (
-                    f"{prefix}_20230501T162850_20230501T172204_700_001_1",
+                    make_expected_path("20230501T162850_20230501T172204_700_001_1"),
                     pd.Timestamp("2023-05-01 16:28:49.927", tz="UTC"),
                     pd.Timestamp("2023-05-01 17:22:04.372", tz="UTC"),
                 ),
                 (
-                    f"{prefix}_20230501T180855_20230501T190209_700_001_1",
+                    make_expected_path("20230501T180855_20230501T190209_700_001_1"),
                     pd.Timestamp("2023-05-01 18:08:54.811", tz="UTC"),
                     pd.Timestamp("2023-05-01 19:02:09.256", tz="UTC"),
                 ),

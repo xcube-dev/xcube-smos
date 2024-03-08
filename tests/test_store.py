@@ -144,11 +144,11 @@ class SmosDataStoreTest(unittest.TestCase):
         store = SmosDataStore()
 
         self.assertEqual(
-            ("dataset:zarr:smos", "mldataset:zarr:smos", "dsiter:zarr:smos"),
+            ("dataset:zarr:smos", "mldataset:zarr:smos", "smosdsiter:zarr:smos"),
             store.get_data_opener_ids(),
         )
         self.assertEqual(
-            ("dataset:zarr:smos", "mldataset:zarr:smos", "dsiter:zarr:smos"),
+            ("dataset:zarr:smos", "mldataset:zarr:smos", "smosdsiter:zarr:smos"),
             store.get_data_opener_ids(data_id="SMOS-L2C-OS"),
         )
         self.assertEqual(
@@ -158,7 +158,7 @@ class SmosDataStoreTest(unittest.TestCase):
             ("mldataset:zarr:smos",), store.get_data_opener_ids(data_type="mldataset")
         )
         self.assertEqual(
-            ("dsiter:zarr:smos",), store.get_data_opener_ids(data_type="dsiter")
+            ("smosdsiter:zarr:smos",), store.get_data_opener_ids(data_type="smosdsiter")
         )
 
         with pytest.raises(ValueError, match="Unknown dataset identifier 'SMOS-L3-OS'"):
@@ -248,7 +248,9 @@ class SmosDataStoreTest(unittest.TestCase):
         kwargs = dict(time_range=("2022-05-05", "2022-05-07"))
         if res_level is not None:
             kwargs.update(res_level=res_level)
-        ds_iter = store.open_data("SMOS-L2C-SM", opener_id="dsiter:zarr:smos", **kwargs)
+        ds_iter = store.open_data(
+            "SMOS-L2C-SM", opener_id="smosdsiter:zarr:smos", **kwargs
+        )
         self.assertIsInstance(ds_iter, DatasetIterator)
         self.assertEqual(5, len(ds_iter))
         dataset = next(ds_iter)
@@ -367,7 +369,7 @@ class SmosDataStoreTest(unittest.TestCase):
         expected_bbox = (5.87, 47.27, 15.03, 55.06)
         ds_iter = store.open_data(
             "SMOS-L2C-SM",
-            opener_id="dsiter:zarr:smos",
+            opener_id="smosdsiter:zarr:smos",
             time_range=("2022-05-05", "2022-05-07"),
             bbox=expected_bbox,
         )

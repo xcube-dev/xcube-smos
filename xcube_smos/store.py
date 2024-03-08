@@ -54,13 +54,13 @@ from .utils import normalize_time_range
 
 
 DATASET_ITERATOR_TYPE = DataType(
-    DatasetIterator, ["dsiter", "xcube_smos.dsiter.DatasetIterator"]
+    DatasetIterator, ["smosdsiter", "xcube_smos.dsiter.DatasetIterator"]
 )
 DataType.register_data_type(DATASET_ITERATOR_TYPE)
 
 DATASET_OPENER_ID = "dataset:zarr:smos"
 ML_DATASET_OPENER_ID = "mldataset:zarr:smos"
-DATASET_ITERATOR_OPENER_ID = "dsiter:zarr:smos"
+DATASET_ITERATOR_OPENER_ID = "smosdsiter:zarr:smos"
 
 DEFAULT_OPENER_ID = DATASET_OPENER_ID
 
@@ -214,7 +214,7 @@ class SmosDataStore(NotSerializable, DataStore):
         bbox = open_params.get("bbox")
 
         dataset_records = self.catalog.find_datasets(
-            product_type, normalize_time_range(time_range)
+            product_type, normalize_time_range(time_range), bbox=bbox
         )
         if not dataset_records:
             raise ValueError(
