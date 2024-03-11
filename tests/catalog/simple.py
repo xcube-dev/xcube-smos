@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2023 by the xcube development team and contributors
+# Copyright (c) 2023-2024 by the xcube development team and contributors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -25,15 +25,18 @@ import re
 import warnings
 from typing import Tuple, Optional, List
 
+import pandas as pd
 import xarray as xr
 
 from xcube_smos.catalog.base import AbstractSmosCatalog
 from xcube_smos.catalog.direct import filter_dataset
-from xcube_smos.catalog.types import AcceptRecord
+from xcube_smos.catalog.types import DatasetFilter
 from xcube_smos.catalog.types import DatasetRecord
 from xcube_smos.catalog.types import DatasetOpener
 from xcube_smos.catalog.producttype import ProductType
 from xcube_smos.catalog.producttype import ProductTypeLike
+from xcube_smos.catalog.producttype import TYPE_ID_SM
+from xcube_smos.constants import COMPACT_DATETIME_FORMAT
 from xcube_smos.constants import OS_VAR_NAMES
 from xcube_smos.constants import SM_VAR_NAMES
 
@@ -42,7 +45,7 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
     """A simple SMOS L2 dataset catalog for testing only.
 
     :param smos_l2_sm_paths: SMOS L2 SM file paths
-    :param smos_l2_os_paths: SMOS L2 SM file paths
+    :param smos_l2_os_paths: SMOS L2 OS file paths
     """
 
     def __init__(self, smos_l2_sm_paths: List[str], smos_l2_os_paths: List[str]):
@@ -62,11 +65,12 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
     def find_datasets(
         self,
         product_type: ProductTypeLike,
-        time_range: Tuple[Optional[str], Optional[str]],
-        accept_record: Optional[AcceptRecord] = None,
+        time_range: Tuple[pd.Timestamp, pd.Timestamp],
+        accept_record: Optional[DatasetFilter] = None,
+        **query_parameters,
     ) -> List[DatasetRecord]:
         product_type = ProductType.normalize(product_type)
-        if product_type.type_id == "SM":
+        if product_type.type_id == TYPE_ID_SM:
             paths = self.smos_l2_sm_paths
         else:
             paths = self.smos_l2_os_paths
@@ -83,7 +87,11 @@ class SmosSimpleCatalog(AbstractSmosCatalog):
                 continue
             start = m.group("sd") + m.group("st")
             end = m.group("ed") + m.group("et")
-            record = path, start, end
+            record = (
+                path,
+                pd.to_datetime(start, format=COMPACT_DATETIME_FORMAT, utc=True),
+                pd.to_datetime(end, format=COMPACT_DATETIME_FORMAT, utc=True),
+            )
             if accept_record is None or accept_record(record):
                 result.append(record)
 

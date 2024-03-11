@@ -22,18 +22,18 @@ class SmosSchemaTest(unittest.TestCase):
         self.assertEqual(["time_range"], schema.required)
         self.assertIn("time_range", schema.properties)
         self.assertIn("res_level", schema.properties)
+        self.assertIn("bbox", schema.properties)
         self.assertNotIn("l2_product_cache_size", schema.properties)
-        # TODO: support variable_names and bbox
+        # TODO: support variable_names
         # self.assertIn("variable_names", DATASET_OPEN_PARAMS_SCHEMA.properties)
-        # self.assertIn("bbox", DATASET_OPEN_PARAMS_SCHEMA.properties)
 
     def test_ml_dataset_open_params_schema(self):
         schema = ML_DATASET_OPEN_PARAMS_SCHEMA
         self.assertIsInstance(schema, JsonObjectSchema)
         self.assertEqual(["time_range"], schema.required)
         self.assertIn("time_range", schema.properties)
+        self.assertIn("bbox", schema.properties)
         self.assertIn("l2_product_cache_size", schema.properties)
         self.assertNotIn("res_level", schema.properties)
-        # TODO: support variable_names and bbox
+        # TODO: support variable_names
         # self.assertIn("variable_names", DATASET_OPEN_PARAMS_SCHEMA.properties)
-        # self.assertIn("bbox", DATASET_OPEN_PARAMS_SCHEMA.properties)

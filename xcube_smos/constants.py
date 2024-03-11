@@ -62,6 +62,9 @@ DATASET_ATTRIBUTES = {
     OS_DATA_ID: {"title": "SMOS Level-2 Ocean Salinity"},
 }
 
+DEFAULT_STAC_SMOS_URL = "https://datahub.creodias.eu/stac/collections/SMOS"
+DEFAULT_STAC_PAGE_LIMIT = 100
+
 DEFAULT_ENDPOINT_URL = "https://s3.cloudferro.com"
 DEFAULT_ARCHIVE_URL = "s3://EODATA"
 
@@ -71,3 +74,5 @@ DEFAULT_STORAGE_OPTIONS = {
     "key": os.environ.get("CREODIAS_S3_KEY"),
     "secret": os.environ.get("CREODIAS_S3_SECRET"),
 }
+
+COMPACT_DATETIME_FORMAT = "%Y%m%d%H%M%S"

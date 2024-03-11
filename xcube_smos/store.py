@@ -22,6 +22,7 @@
 from functools import cached_property
 from typing import Iterator, Any, Tuple, Container, Union, Dict, Optional
 
+import numpy as np
 import xarray as xr
 
 from xcube.core.mldataset import MultiLevelDataset
@@ -35,7 +36,7 @@ from xcube.core.store import MULTI_LEVEL_DATASET_TYPE
 from xcube.core.store import MultiLevelDatasetDescriptor
 from xcube.util.jsonschema import JsonObjectSchema
 from .catalog import AbstractSmosCatalog
-from .catalog import SmosDirectCatalog
+from .catalog import SmosStacCatalog
 from .constants import DATASET_ATTRIBUTES
 from .dsiter import DatasetIterator
 from .dsiter import SmosDatasetIterator
@@ -48,18 +49,18 @@ from .mldataset.l2cube import DATASET_VAR_NAMES
 from .schema import DATASET_OPEN_PARAMS_SCHEMA
 from .schema import ML_DATASET_OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
-from .timeinfo import parse_time_ranges
 from .utils import NotSerializable
+from .utils import normalize_time_range
 
 
 DATASET_ITERATOR_TYPE = DataType(
-    DatasetIterator, ["dsiter", "xcube_smos.dsiter.DatasetIterator"]
+    DatasetIterator, ["smosdsiter", "xcube_smos.dsiter.DatasetIterator"]
 )
 DataType.register_data_type(DATASET_ITERATOR_TYPE)
 
 DATASET_OPENER_ID = "dataset:zarr:smos"
 ML_DATASET_OPENER_ID = "mldataset:zarr:smos"
-DATASET_ITERATOR_OPENER_ID = "dsiter:zarr:smos"
+DATASET_ITERATOR_OPENER_ID = "smosdsiter:zarr:smos"
 
 DEFAULT_OPENER_ID = DATASET_OPENER_ID
 
@@ -67,19 +68,20 @@ DEFAULT_OPENER_ID = DATASET_OPENER_ID
 class SmosDataStore(NotSerializable, DataStore):
     """Data store for SMOS L2C data cubes.
 
-    :param source_path: Path or URL to the SMOS Kerchunk index
-    :param source_protocol: Optional filesystem protocol for accessing
-        *index_path*. Overwrites the protocol parsed from *index_path*,
-        if any.
-    :param source_storage_options: Storage options for accessing *index_path*.
-    :param cache_path: Path to local cache directory.
-        Must be given, if file caching is desired.
-    :param xarray_kwargs: Extra keyword arguments accepted by
-        ``xarray.open_dataset``.
-    :param extra_source_storage_options: Extra keyword arguments that override
-        settings in *source_storage_options*.
-    :param _catalog: Catalog (mock) instance used for testing only.
-        If given, all other arguments are ignored.
+    Args:
+        source_path: Path or URL to the SMOS Kerchunk index
+        source_protocol: Optional filesystem protocol for accessing
+            *index_path*. Overwrites the protocol parsed from *index_path*,
+            if any.
+        source_storage_options: Storage options for accessing *index_path*.
+        cache_path: Path to local cache directory.
+            Must be given, if file caching is desired.
+        xarray_kwargs: Extra keyword arguments accepted by
+            ``xarray.open_dataset``.
+        extra_source_storage_options: Extra keyword arguments that override
+            settings in *source_storage_options*.
+        _catalog: Catalog (mock) instance used for testing only.
+            If given, all other arguments are ignored.
     """
 
     def __init__(
@@ -95,7 +97,7 @@ class SmosDataStore(NotSerializable, DataStore):
         if _catalog is not None:
             self.catalog = _catalog
         else:
-            self.catalog = SmosDirectCatalog(
+            self.catalog = SmosStacCatalog(
                 source_path=source_path,
                 source_protocol=source_protocol,
                 source_storage_options=source_storage_options,
@@ -211,7 +213,9 @@ class SmosDataStore(NotSerializable, DataStore):
         res_level = open_params.get("res_level", 0)
         bbox = open_params.get("bbox")
 
-        dataset_records = self.catalog.find_datasets(product_type, time_range)
+        dataset_records = self.catalog.find_datasets(
+            product_type, normalize_time_range(time_range), bbox=bbox
+        )
         if not dataset_records:
             raise ValueError(
                 f"No SMOS datasets of type {product_type!r}"
@@ -221,7 +225,7 @@ class SmosDataStore(NotSerializable, DataStore):
             map(self.catalog.resolve_path, [path for path, _, _ in dataset_records])
         )
         time_ranges = [(start, stop) for _, start, stop in dataset_records]
-        time_bounds = parse_time_ranges(time_ranges, is_compact=True)
+        time_bounds = np.array(time_ranges, dtype="datetime64[ns]")
 
         if data_type.is_sub_type_of(DATASET_ITERATOR_TYPE):
             return SmosDatasetIterator(

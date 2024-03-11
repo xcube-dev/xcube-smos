@@ -5,11 +5,13 @@ import tempfile
 
 import dask.array
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 from xcube_smos.catalog import SmosDirectCatalog
+from xcube_smos.utils import normalize_time_range
 
-_TEST_ENABLED = False
+_TEST_ENABLED = True
 
 s3_storage_options = None
 if "CREODIAS_S3_KEY" in os.environ and "CREODIAS_S3_SECRET" in os.environ:
@@ -32,10 +34,14 @@ class SmosDirectCatalogTest(unittest.TestCase):
             source_storage_options=s3_storage_options,
         )
 
-        files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-03"))
+        files = catalog.find_datasets(
+            "SM", normalize_time_range(("2021-05-01", "2021-05-03"))
+        )
         self.assert_files_ok(files, "EODATA/SMOS/L2SM/MIR_SMUDP2/", (25, 30))
 
-        files = catalog.find_datasets("OS", ("2021-05-01", "2021-05-03"))
+        files = catalog.find_datasets(
+            "OS", normalize_time_range(("2021-05-01", "2021-05-03"))
+        )
         self.assert_files_ok(files, "EODATA/SMOS/L2OS/MIR_OSUDP2/", (25, 30))
 
     # def test_1_find_datasets_ascending(self):
@@ -85,11 +91,9 @@ class SmosDirectCatalogTest(unittest.TestCase):
             self.assertEqual(3, len(file))
             path, start, end = file
             self.assertIsInstance(path, str)
-            self.assertIsInstance(start, str)
-            self.assertIsInstance(end, str)
+            self.assertIsInstance(start, pd.Timestamp)
+            self.assertIsInstance(end, pd.Timestamp)
             self.assertEqual(expected_prefix, path[: len(expected_prefix)])
-            self.assertEqual(14, len(start))
-            self.assertEqual(14, len(end))
 
     def test_2_dataset_opener_no_cache(self):
         catalog = SmosDirectCatalog(
@@ -100,7 +104,9 @@ class SmosDirectCatalogTest(unittest.TestCase):
             xarray_kwargs=dict(engine="netcdf4"),
         )
 
-        files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
+        files = catalog.find_datasets(
+            "SM", normalize_time_range(("2021-05-01", "2021-05-01"))
+        )
         path, _, _ = files[0]
 
         path = catalog.resolve_path(path)
@@ -123,7 +129,9 @@ class SmosDirectCatalogTest(unittest.TestCase):
             cache_path=cache_dir,
         )
 
-        files = catalog.find_datasets("SM", ("2021-05-01", "2021-05-01"))
+        files = catalog.find_datasets(
+            "SM", normalize_time_range(("2021-05-01", "2021-05-01"))
+        )
         path, _, _ = files[0]
 
         path = catalog.resolve_path(path)

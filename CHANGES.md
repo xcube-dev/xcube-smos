@@ -1,3 +1,9 @@
+## Version 0.3.0
+
+* No longer using a Kerchunk reference file index.
+  Dropped module `smos_box.catalog.index` including `SmosIndexCatalog` 
+  and dropped package `smos_box.nckcindex` entirely.
+
 ## Version 0.2.2
 
 * Fixed problem where package data in `xcube_smos/mldataset/smos-dgg.levels` 
