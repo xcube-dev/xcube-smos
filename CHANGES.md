@@ -1,8 +1,17 @@
 ## Version 0.3.0
 
-* No longer using a Kerchunk reference file index.
-  Dropped module `smos_box.catalog.index` including `SmosIndexCatalog` 
+* Added optional geographical bounding box parameter `bbox`. 
+  Using a STAC API to filter source files accordingly.
+  `bbox` is `None` by default, which means global coverage. (#20)
+* Added optional parameter `res_level` in the range from 0 (default) to 4 
+  to let users choose their desired spatial resolution. 
+  A parameter `spatial_res` is not suitable, 
+  because resolutions are provided at fixed levels using the DGG. (#21)
+* Added module `smos_box.catalog.stac` with new `SmosStacCatalog`
+  that is now the default catalog used by the SMOS data store.
+* Removed module `smos_box.catalog.index` including `SmosIndexCatalog` 
   and dropped package `smos_box.nckcindex` entirely.
+  We are no longer using a Kerchunk reference file index.
 
 ## Version 0.2.2
 
