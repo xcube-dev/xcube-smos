@@ -12,7 +12,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.3">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.13">
     
     
       
@@ -20,7 +20,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.50c56a3b.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.7e359304.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
@@ -323,16 +323,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#index-format" class="md-nav__link">
-    <span class="md-ellipsis">
-      Index Format
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Index Format">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#code-installation" class="md-nav__link">
     <span class="md-ellipsis">
       Code installation
@@ -346,29 +336,6 @@
   <a href="#for-users" class="md-nav__link">
     <span class="md-ellipsis">
       For users
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#for-index-maintainers" class="md-nav__link">
-    <span class="md-ellipsis">
-      For index maintainers
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#aux-data" class="md-nav__link">
-    <span class="md-ellipsis">
-      Aux-data
     </span>
   </a>
   
@@ -395,35 +362,6 @@
 
 
 <h1 id="xcube-smos-internals">xcube-smos Internals</h1>
-<h2 id="index-format">Index Format</h2>
-<p>Consider some <code>&lt;source-path&gt;</code> that points into a NetCDF file archive.
-Then the path <code>&lt;source-path&gt;/&lt;nc-path&gt;/&lt;nc-filename&gt;.nc</code> points to a
-NetCDF file in the archive, where <code>&lt;nc-path&gt;</code> includes any sub-folders 
-between a <code>&lt;source-path&gt;</code> and the <code>&lt;nc-filename&gt;.nc</code>. 
-Typically, <code>&lt;nc-path&gt;</code> is or includes a substructure <code>&lt;year&gt;/&lt;month&gt;/&lt;day&gt;</code>. 
-Note that <code>&lt;nc-path&gt;</code> may also be empty.</p>
-<p>The NetCDF Kerchunk Index at <code>&lt;index-path&gt;</code> takes the following form: </p>
-<div class="highlight"><pre><span></span><code>  &lt;index-path&gt;/
-    nckc-config.json
-    &lt;nc-path&gt;/&lt;nc-filename&gt;.nc.json
-</code></pre></div>
-<p>where <code>&lt;index-path&gt;</code> points to a local directory or Zip archive.
-Zip archive filenames must use the extension <code>.zip</code>.
-The file <code>&lt;index-path&gt;/nckc-index.json</code> contains information 
-about the NetCDF file sources, for example:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;source_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EODATA&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;source_protocol&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;s3&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;source_storage_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;endpoint_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://s3.creodias.com&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;${CREODIAS_S3_KEY}&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;${CREODIAS_S3_SECRET}&quot;</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-<p>where the value of <code>source_path</code> corresponds to <code>&lt;source-path&gt;</code> above.
-Textual values that contain the pattern <code>${NAME}</code> will be interpolated 
-by environment variables.</p>
 <h3 id="code-installation">Code installation</h3>
 <h4 id="for-users">For users</h4>
 <p>xcube-smos end users can install xcube-smos directly from its git repository
@@ -437,34 +375,6 @@ git<span class="w"> </span>clone<span class="w"> </span>https://github.com/dcs4c
 <span class="nb">cd</span><span class="w"> </span>xcube-smos
 pip<span class="w"> </span>install<span class="w"> </span>--verbose<span class="w"> </span>--no-deps<span class="w"> </span>--editable<span class="w"> </span>.
 </code></pre></div>
-<h4 id="for-index-maintainers">For index maintainers</h4>
-<p>For ordinary xcube-smos users, the instructions above are sufficient to
-install the necessary software packages. Index maintainers who also need to
-generate or enhance an existing SMOS Kerchunk index should also install
-some additional packages:</p>
-<div class="highlight"><pre><span></span><code>mamba<span class="w"> </span>activate<span class="w"> </span>xcube
-mamba<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>kerchunk<span class="w"> </span>h5py<span class="w"> </span>h5netcdf
-nckcidx<span class="w"> </span>--help
-</code></pre></div>
-<p>See <a href="./TODO.md#setup-project--product">relevant section</a> on package management
-in <a href="./TODO.md">TODO.md</a>.</p>
-<h3 id="aux-data">Aux-data</h3>
-<p>Aux-data is in the xcube Sharepoint, document folder 
-<a href="https://brockmannconsult.sharepoint.com/:f:/s/xcube/Etp9hOpeXupFt5CWiBnGA1wB3BJ7li1d8F-hDvdMGiKeXA?e=NnxuLx">SMOS_onboarding</a>:</p>
-<p>Unpack the following:</p>
-<ul>
-<li><code>grid-tiles.zip</code> – SMOS discrete global grid (DGG)</li>
-<li><code>nckc-index.zip</code> – SMOS NetCDF kerchunk index, 2020-01 – 2023-05 subset</li>
-</ul>
-<p>The latter must be unpacked into a folder <code>nckc-index</code>.</p>
-<p>Set the following environments to the paths to which the zip files were
-unpacked, in order to allow xcube-smos to find them:</p>
-<ul>
-<li><code>XCUBE_SMOS_DGG_PATH</code></li>
-<li><code>XCUBE_SMOS_INDEX_PATH</code></li>
-</ul>
-<p>See <a href="./TODO.md#provide-aux-data">relevant section</a> on aux-data in
-<a href="./TODO.md">TODO.md</a>.</p>
 
 
 
@@ -541,10 +451,10 @@ unpacked, in order to allow xcube-smos to find them:</p>
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7c377c4.min.js"></script>
+      <script src="../assets/javascripts/bundle.c8d2eff1.min.js"></script>
       
     
   </body>
