@@ -23,7 +23,8 @@ from xcube.core.store import new_data_store
 store = new_data_store("smos", **credentials)
 datacube = store.open_data(
     "SMOS-L2C-SM", 
-    time_range=("2022-01-01", "2022-01-06")
+    time_range=("2022-01-01", "2022-01-06"),
+    bbox=(0, 40, 20, 60)
 )
 ```
 
@@ -49,6 +50,7 @@ resolution by a factor of two.
 
 
 `xcube-smos` does not perform any aggregation in the time dimension. Data is 
-provided as-is, that is, 29 SMOS Level-2 data products are included per day. 
+provided as-is, that is, up to 29 SMOS Level-2 data products are included 
+per day. 
 
 

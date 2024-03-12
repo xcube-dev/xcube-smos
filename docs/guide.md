@@ -71,7 +71,7 @@ different representations of SMOS data addressing different use cases:
 * `"mldataset:zarr:smos"` - represent data as a multi-resolution datacube 
    including all observations in the given time range including 5 spatial 
    resolution levels;
-* `"dsiter:zarr:smos"` - represent data as an iterator providing datasets 
+* `"smosdsiter:zarr:smos"` - represent data as an iterator providing datasets 
    for all the observations in the given time range at a fixed spatial 
    resolution. 
 
