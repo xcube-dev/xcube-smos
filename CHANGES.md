@@ -1,3 +1,7 @@
+## Version 0.3.1 (in development)
+
+* Updated the Jupyter Notebooks in `notebooks` folder.
+
 ## Version 0.3.0
 
 * Added optional geographical bounding box parameter `bbox`. 
