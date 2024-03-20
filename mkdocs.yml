@@ -6,6 +6,7 @@ nav:
   - Overview: index.md
   - Getting Started: start.md
   - User Guide: guide.md
+  - User Guide 2: guide-2.ipynb
   - About: about.md
 
 theme:
@@ -39,3 +40,5 @@ extra:
 plugins:
   - search
   - autorefs
+  - mkdocs-jupyter:
+        include_source: True

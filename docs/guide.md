@@ -37,6 +37,7 @@ JSON Schema object:
 ```python
 from xcube.core.store import get_data_store_params_schema
 
+# to_dict() yields the JSON schema for the data store
 get_data_store_params_schema("smos")
 ```
 
@@ -47,7 +48,9 @@ inspect the allowed parameters for the `store.open_data()` method, which is
 used to access the SMOS data in various forms.
 
 ```python
-open_schema = store.get_open_data_params_schema()
+open_schema = store.get_open_data_params_schema().to_dict()
+
+# to_dict() yields the JSON schema for the data store
 print(open_schema)
 ```
 
