@@ -1,6 +1,7 @@
 ## Version 0.3.1 (in development)
 
-* Updated the Jupyter Notebooks in `notebooks` folder.
+* Updated the Jupyter Notebooks in `notebooks` folder and applied 
+  [black](https://black.readthedocs.io/) default code style.
 
 ## Version 0.3.0
 
