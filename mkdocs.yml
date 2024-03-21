@@ -5,8 +5,7 @@ copyright: Copyright &copy; 2024 Brockmann Consult
 nav:
   - Overview: index.md
   - Getting Started: start.md
-  - User Guide: guide.md
-  - User Guide 2: guide-2.ipynb
+  - User Guide: guide.ipynb
   - About: about.md
 
 theme:
@@ -41,4 +40,4 @@ plugins:
   - search
   - autorefs
   - mkdocs-jupyter:
-        include_source: True
+        include_source: true
