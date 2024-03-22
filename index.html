@@ -14,7 +14,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.13">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.14">
     
     
       
@@ -22,7 +22,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.7e359304.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.10ba22f1.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
@@ -280,9 +280,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#features" class="md-nav__link">
+  <a href="#spatial-coverage-and-resolution" class="md-nav__link">
     <span class="md-ellipsis">
-      Features
+      Spatial coverage and resolution
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#temporal-coverage-and-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Temporal coverage and resolution
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Variables
     </span>
   </a>
   
@@ -392,9 +410,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#features" class="md-nav__link">
+  <a href="#spatial-coverage-and-resolution" class="md-nav__link">
     <span class="md-ellipsis">
-      Features
+      Spatial coverage and resolution
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#temporal-coverage-and-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Temporal coverage and resolution
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Variables
     </span>
   </a>
   
@@ -442,9 +478,11 @@ data archive <code>s3://EODATA/SMOS</code> hosted on <a href="https://creodias.e
 <a href="https://docs.xarray.dev/en/stable/generated/xarray.Dataset.html">xarray.Dataset</a>
 for SMOS <strong>Soil Moisture</strong> has been obtained.<br />
 To access SMOS <strong>Ocean Salinity</strong> data use the identifier <code>"SMOS-L2C-OS"</code>. </p>
-<h2 id="features">Features</h2>
-<p>The SMOS data is provided using a geographic projection. 
-Users can choose from five spatial resolutions by specifying a resolution 
+<h2 id="spatial-coverage-and-resolution">Spatial coverage and resolution</h2>
+<p>The SMOS data is provided globally or for a custom area of interest
+using a geographic projection (<code>EPSG:4326</code> aka WGS84, 
+World Geodetic System 1984). </p>
+<p>You can choose from five spatial resolutions by specifying a resolution 
 level ranging from zero to four. Zero refers to a resolution of 
 360/8192 ~ 0.044 degrees ~ 4.88 km. Higher levels subsequently increase the 
 resolution by a factor of two.</p>
@@ -455,9 +493,135 @@ resolution by a factor of two.</p>
 is lost during spatial projection. It therefore uses a nearest-neighbor 
 resampling at higher resolution involving pixel duplication. </p>
 </div>
-<p><code>xcube-smos</code> does not perform any aggregation in the time dimension. Data is 
-provided as-is, that is, up to 29 SMOS Level-2 data products are included 
-per day. </p>
+<h2 id="temporal-coverage-and-resolution">Temporal coverage and resolution</h2>
+<p>The SMOS satellite completes one orbit approximately every 100.1 minutes.
+Therefore, up to 29 (number of orbits times two) level-2 data products are 
+provided per day and included in the datasets as individual time steps datasets.
+<code>xcube-smos</code> does not perform any aggregation in the time dimension. </p>
+<h2 id="variables">Variables</h2>
+<p>The output of the data store are a SMOS Level-2C raster datacubes comprising 
+a number of geophysical data variables with the dimensions <code>time</code>, <code>lat</code>, 
+and <code>lon</code>. The variables depend on the selected SMOS product type, either
+Soil Moisture or Ocean Salinity.</p>
+<p>Soil Moisture datacubes of type <code>SMOS-L2C-SM</code> contain the following variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Units</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Soil_Moisture</td>
+<td>float32</td>
+<td>m3 m-3</td>
+</tr>
+<tr>
+<td>Soil_Moisture_DQX</td>
+<td>float32</td>
+<td>m3 m-3</td>
+</tr>
+<tr>
+<td>Chi_2</td>
+<td>uint8</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Chi_2_P</td>
+<td>uint8</td>
+<td>-</td>
+</tr>
+<tr>
+<td>N_RFI_Y</td>
+<td>uint16</td>
+<td>-</td>
+</tr>
+<tr>
+<td>N_RFI_X</td>
+<td>uint16</td>
+<td>-</td>
+</tr>
+<tr>
+<td>RFI_Prob</td>
+<td>uint8</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p>Ocean Salinity datacubes of type <code>SMOS-L2C-OC</code> contain the following variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Units</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SSS_anom</td>
+<td>float32</td>
+<td>psu</td>
+</tr>
+<tr>
+<td>SSS_corr</td>
+<td>float32</td>
+<td>psu</td>
+</tr>
+<tr>
+<td>Sigma_SSS_anom</td>
+<td>float32</td>
+<td>psu</td>
+</tr>
+<tr>
+<td>Sigma_SSS_corr</td>
+<td>float32</td>
+<td>psu</td>
+</tr>
+<tr>
+<td>Dg_quality_SSS_anom</td>
+<td>uint16</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dg_quality_SSS_corr</td>
+<td>uint16</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dg_chi2_corr</td>
+<td>uint16</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dg_RFI_X</td>
+<td>uint16</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dg_RFI_Y</td>
+<td>uint16</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Coast_distance</td>
+<td>uint8</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Mean_acq_time</td>
+<td>float32</td>
+<td>dd</td>
+</tr>
+<tr>
+<td>X_swath</td>
+<td>float32</td>
+<td>m</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -537,7 +701,7 @@ per day. </p>
     <script id="__config" type="application/json">{"base": ".", "features": [], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="assets/javascripts/bundle.c8d2eff1.min.js"></script>
+      <script src="assets/javascripts/bundle.bd41221c.min.js"></script>
       
     
   </body>
