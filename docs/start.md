@@ -51,4 +51,4 @@ dataset = store.open_data(data_id="SMOS-L2C-SM",
 
 There are a couple of parameters that can be passed to the `new_data_store()`
 function and the `open_data()` method. You can read more about it in the 
-[user guide](guide.md).
+[user guide](guide.ipynb).

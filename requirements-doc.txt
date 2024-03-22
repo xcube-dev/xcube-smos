@@ -1,3 +1,4 @@
 mkdocs
+mkdocs-autorefs
 mkdocs-material
 mkdocs-jupyter
