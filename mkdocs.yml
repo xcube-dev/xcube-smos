@@ -32,9 +32,9 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/dcs4copy/xcube-smos
+      link: https://github.com/xcube-dev/xcube-smos
     - icon: fontawesome/brands/python
-      link: https://github.com/dcs4cop/xcube-smos/releases
+      link: https://github.com/xcube-dev/xcube-smos/releases
 
 plugins:
   - search
