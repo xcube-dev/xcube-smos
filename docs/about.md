@@ -3,13 +3,13 @@
 ## Changelog
 
 You can find the complete `xcube-smos` changelog 
-[here](https://github.com/dcs4cop/xcube-smos/blob/main/CHANGES.md). 
+[here](https://github.com/xcube-dev/xcube-smos/blob/main/CHANGES.md). 
 
 ## Reporting
 
 If you have suggestions, ideas, feature requests, or if you have identified
 a malfunction or error, then please 
-[post an issue](https://github.com/dcs4cop/xcube-smos/issues). 
+[post an issue](https://github.com/xcube-dev/xcube-smos/issues). 
 
 ## Development
 
@@ -22,7 +22,7 @@ into a xcube environment created with
 ```shell
 mamba create -n xcube -c conda-forge xcube
 mamba activate xcube
-git clone https://github.com/dcs4cop/xcube-smos.git
+git clone https://github.com/xcube-dev/xcube-smos.git
 cd xcube-smos
 pip install --verbose --no-deps --editable .
 ```
@@ -60,7 +60,7 @@ mkdocs gh-deploy
 ## License
 
 `xcube-smos` is open source made available under the terms and conditions of the 
-[MIT License](https://github.com/dcs4cop/xcube-smos/blob/main/LICENSE).
+[MIT License](https://github.com/xcube-dev/xcube-smos/blob/main/LICENSE).
 
 Copyright © 2024 Brockmann Consult Development
 

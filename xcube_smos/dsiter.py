@@ -31,7 +31,7 @@ from xcube_smos.mldataset.l2cube import get_dataset_spatial_subset
 
 
 # TODO: Replace by new xcube "dsiter" type.
-#   See https://github.com/dcs4cop/xcube/issues/919
+#   See https://github.com/xcube-dev/xcube/issues/919
 class DatasetIterator(Iterator, Sized, ABC):
     """Interface representing a dataset interator."""
 

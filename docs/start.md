@@ -25,7 +25,7 @@ Or install it from its GitHub sources into a Python environment with
 [xcube and its dependencies installed](https://xcube.readthedocs.io/en/latest/installation.html).
 
 ```shell
-git clone https://github.com/dcs4cop/xcube-smos.git
+git clone https://github.com/xcube-dev/xcube-smos.git
 cd xcube-smos
 pip install -ve .
 ```

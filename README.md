@@ -2,11 +2,11 @@
 
 _User-defined datacubes from SMOS Level-2 data_
 
-[![CI](https://github.com/dcs4cop/xcube-smos/actions/workflows/tests.yaml/badge.svg)](https://github.com/dcs4cop/xcube-smos/actions/workflows/tests.yaml)
-[![codecov](https://codecov.io/gh/dcs4cop/xcube-smos/graph/badge.svg?token=ZJ0J4QT1UM)](https://codecov.io/gh/dcs4cop/xcube-smos)
+[![CI](https://github.com/xcube-dev/xcube-smos/actions/workflows/tests.yaml/badge.svg)](https://github.com/xcube-dev/xcube-smos/actions/workflows/tests.yaml)
+[![codecov](https://codecov.io/gh/xcube-dev/xcube-smos/graph/badge.svg?token=ZJ0J4QT1UM)](https://codecov.io/gh/xcube-dev/xcube-smos)
 [![conda](https://anaconda.org/conda-forge/xcube-smos/badges/version.svg)](https://anaconda.org/conda-forge/xcube-smos)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![License](https://img.shields.io/github/license/dcs4cop/xcube-smos)](https://github.com/dcs4cop/xcube-smos)
+[![License](https://img.shields.io/github/license/xcube-dev/xcube-smos)](https://github.com/xcube-dev/xcube-smos)
 
 <!--- Align following section with docs/index.md -->
 
@@ -40,4 +40,4 @@ To access SMOS **Ocean Salinity** data use the identifier `"SMOS-L2C-OS"`.
 
 
 More about `xcube-smos` can be found in its 
-[documentation](https://dcs4cop.github.io/xcube-smos/).
+[documentation](https://xcube-dev.github.io/xcube-smos/).

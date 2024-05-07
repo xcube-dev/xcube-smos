@@ -13,7 +13,7 @@ into an xcube environment created with
 ```bash
 mamba create -n xcube -c conda-forge xcube
 mamba activate xcube
-git clone https://github.com/dcs4cop/xcube-smos.git
+git clone https://github.com/xcube-dev/xcube-smos.git
 cd xcube-smos
 pip install --verbose --no-deps --editable .
 ```
