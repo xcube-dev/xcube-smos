@@ -2,6 +2,8 @@
 
 * Updated the Jupyter Notebooks in `notebooks` folder and applied 
   [black](https://black.readthedocs.io/) default code style.
+* After rename of GH organisation of `dcs4cop` into `xcube-dev`, updated 
+  all references in `README.md` and docs.
 
 ## Version 0.3.0
 
