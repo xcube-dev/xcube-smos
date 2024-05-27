@@ -65,6 +65,12 @@ DATASET_ITERATOR_OPENER_ID = "smosdsiter:zarr:smos"
 DEFAULT_OPENER_ID = DATASET_OPENER_ID
 
 
+class EmptyDatasetError(ValueError):
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 class SmosDataStore(NotSerializable, DataStore):
     """Data store for SMOS L2C data cubes.
 
@@ -217,9 +223,10 @@ class SmosDataStore(NotSerializable, DataStore):
             product_type, normalize_time_range(time_range), bbox=bbox
         )
         if not dataset_records:
-            raise ValueError(
+            raise EmptyDatasetError(
                 f"No SMOS datasets of type {product_type!r}"
                 f" found for time range {time_range!r}"
+                + (f" and bbox {bbox}" if bbox else "")
             )
         dataset_paths = list(
             map(self.catalog.resolve_path, [path for path, _, _ in dataset_records])

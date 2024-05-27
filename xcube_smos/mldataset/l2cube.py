@@ -286,13 +286,13 @@ class SmosL2Product:
             <= l2_min_seqnum
             <= SmosDiscreteGlobalGrid.MAX_SEQNUM
         ):
-            raise ValueError()
+            raise ValueError("internal error: min. seqnum out of valid range")
         if not (
             SmosDiscreteGlobalGrid.MIN_SEQNUM
             <= l2_max_seqnum
             <= SmosDiscreteGlobalGrid.MAX_SEQNUM
         ):
-            raise ValueError()
+            raise ValueError("internal error: max. seqnum out of valid range")
 
         l2_missing_index = len(grid_point_id)
         l2_seqnum_to_index = seqnum_to_index(
