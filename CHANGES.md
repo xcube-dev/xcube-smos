@@ -1,5 +1,7 @@
 ## Version 0.3.1 (in development)
-
+* Updated endpoint URL from https://s3.cloudferro.com to 
+  https://eodata.cloudferro.com. Necessary due to changes by cloudprovider where the 
+  source data is stored.
 * Updated the Jupyter Notebooks in `notebooks` folder and applied 
   [black](https://black.readthedocs.io/) default code style.
 * After rename of GH organisation of `dcs4cop` into `xcube-dev`, updated 
