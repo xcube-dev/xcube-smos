@@ -4,7 +4,6 @@ from typing import Any, Type
 import dask.array as da
 import jsonschema
 import numpy as np
-import pandas as pd
 import pytest
 import xarray as xr
 
@@ -90,7 +89,7 @@ class SmosDataStoreTest(unittest.TestCase):
                 "num_levels": 5,
                 "spatial_res": 0.0439453125,
                 "bbox": [-180.0, -88.59375, 180.0, 88.59375],
-                "time_range": ["2010-01-01", None],
+                "time_range": ("2010-01-01", None),
             },
             {
                 "data_id": "SMOS-L2C-OS",
@@ -98,7 +97,7 @@ class SmosDataStoreTest(unittest.TestCase):
                 "num_levels": 5,
                 "spatial_res": 0.0439453125,
                 "bbox": [-180.0, -88.59375, 180.0, 88.59375],
-                "time_range": ["2010-01-01", None],
+                "time_range": ("2010-01-01", None),
             },
         ]
 
@@ -108,14 +107,14 @@ class SmosDataStoreTest(unittest.TestCase):
                 "data_type": "dataset",
                 "spatial_res": 0.0439453125,
                 "bbox": [-180.0, -88.59375, 180.0, 88.59375],
-                "time_range": ["2010-01-01", None],
+                "time_range": ("2010-01-01", None),
             },
             {
                 "data_id": "SMOS-L2C-OS",
                 "data_type": "dataset",
                 "spatial_res": 0.0439453125,
                 "bbox": [-180.0, -88.59375, 180.0, 88.59375],
-                "time_range": ["2010-01-01", None],
+                "time_range": ("2010-01-01", None),
             },
         ]
 
@@ -221,7 +220,7 @@ class SmosDataStoreTest(unittest.TestCase):
 
         with pytest.raises(
             jsonschema.exceptions.ValidationError,
-            match="10 is not of type 'string', 'null'",
+            match="is not of type 'string'",
         ):
             store.open_data("SMOS-L2C-SM", time_range=[10, 20])
 

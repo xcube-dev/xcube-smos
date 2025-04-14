@@ -79,7 +79,7 @@ class SmosSimpleCatalogTest(unittest.TestCase):
         ds = open_dataset(path)
 
         self.assertIsInstance(ds, xr.Dataset)
-        self.assertEquals(
+        self.assertEqual(
             SM_VAR_NAMES.difference({"X_swath", "Mean_acq_time"}).union(
                 {"Grid_Point_ID"}
             ),
