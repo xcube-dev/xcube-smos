@@ -1,4 +1,4 @@
-## Version 0.3.1 (in development)
+## Version 0.3.1
 
 * Updated endpoint URL from https://s3.cloudferro.com to 
   https://eodata.cloudferro.com. Necessary due to changes by cloudprovider where the 
