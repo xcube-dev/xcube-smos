@@ -1,4 +1,5 @@
 ## Version 0.3.1 (in development)
+
 * Updated endpoint URL from https://s3.cloudferro.com to 
   https://eodata.cloudferro.com. Necessary due to changes by cloudprovider where the 
   source data is stored.
@@ -6,6 +7,7 @@
   [black](https://black.readthedocs.io/) default code style.
 * After rename of GH organisation of `dcs4cop` into `xcube-dev`, updated 
   all references in `README.md` and docs.
+* Pinned `zarr` package to `2.x`.
 * Removed Anaconda `defaults` channel from `requirements.yml`.
 
 ## Version 0.3.0
