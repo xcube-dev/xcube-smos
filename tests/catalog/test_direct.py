@@ -16,7 +16,7 @@ _TEST_ENABLED = True
 s3_storage_options = None
 if "CREODIAS_S3_KEY" in os.environ and "CREODIAS_S3_SECRET" in os.environ:
     s3_storage_options = dict(
-        endpoint_url="https://s3.cloudferro.com",
+        endpoint_url="https://eodata.cloudferro.com",
         anon=False,
         key=os.environ["CREODIAS_S3_KEY"],
         secret=os.environ["CREODIAS_S3_SECRET"],

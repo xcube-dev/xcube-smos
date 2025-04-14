@@ -65,7 +65,7 @@ DATASET_ATTRIBUTES = {
 DEFAULT_STAC_SMOS_URL = "https://datahub.creodias.eu/stac/collections/SMOS"
 DEFAULT_STAC_PAGE_LIMIT = 100
 
-DEFAULT_ENDPOINT_URL = "https://s3.cloudferro.com"
+DEFAULT_ENDPOINT_URL = "https://eodata.cloudferro.com"
 DEFAULT_ARCHIVE_URL = "s3://EODATA"
 
 DEFAULT_STORAGE_OPTIONS = {

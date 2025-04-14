@@ -51,7 +51,7 @@ STORE_PARAMS_SCHEMA = JsonObjectSchema(
             description="See fsspec documentation for specific filesystems.",
             examples=[
                 dict(
-                    endpoint_url="https://s3.cloudferro.com",
+                    endpoint_url="https://eodata.cloudferro.com",
                     anon=False,
                     key="******",
                     secret="******",
