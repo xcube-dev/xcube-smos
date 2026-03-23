@@ -1,3 +1,10 @@
+## Version 0.3.2
+
+- Migrated to the new EOData repository bucket name `eodata` 
+  (see [CREODIAS announcement](https://creodias.eu/announcements/infoupcoming-changes-to-earth-observation-data-eodata-repository-bucket-names/)).
+- Fixed a bug in fetching features from the [SMOS STAC collection](https://datahub.creodias.eu/stac/collections/SMOS/items) 
+  where the next page link was not correctly resolved.
+
 ## Version 0.3.1
 
 * Updated endpoint URL from https://s3.cloudferro.com to 

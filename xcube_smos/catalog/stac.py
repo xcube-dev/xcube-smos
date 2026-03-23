@@ -162,7 +162,10 @@ def fetch_features(
                 break
         if not next_url:
             break
-        smos_items_url = next_url
+        smos_items_url = next_url.replace(
+            "https://catalogue-svc.prod-catalogue:8250",
+            "https://datahub.creodias.eu",
+        )
         params = {}
 
     return filtered_features
