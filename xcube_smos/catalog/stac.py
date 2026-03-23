@@ -38,7 +38,9 @@ from ..constants import DEFAULT_STAC_SMOS_URL
 FeatureFilter = Callable[[Dict[str, Any]], bool]
 
 LOG = logging.getLogger("xcube-smos")
-
+_INTERNAL_SERVER_HOST = (
+    "https://catalogue-svc.prod-catalogue:8250/stac/collections/SMOS"
+)
 
 class SmosStacCatalog(SmosDirectCatalog):
     """A SMOS L2 dataset catalog that directly accesses the source filesystem
@@ -162,7 +164,10 @@ def fetch_features(
                 break
         if not next_url:
             break
-        smos_items_url = next_url
+        smos_items_url = next_url.replace(
+            _INTERNAL_SERVER_HOST,
+            stac_smos_url,
+        )
         params = {}
 
     return filtered_features
