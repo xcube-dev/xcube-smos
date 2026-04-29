@@ -1,4 +1,4 @@
-## Version 0.3.3 (under development)
+## Version 0.3.3
 
 - Fixed an issue with `dataset_paths` related to the updated EOData repository 
   bucket name (`eodata`). Previously, paths were modified to replace `eodata` with
