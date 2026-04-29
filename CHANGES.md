@@ -1,3 +1,10 @@
+## Version 0.3.3 (under development)
+
+- Fixed an issue with `dataset_paths` related to the updated EOData repository 
+  bucket name (`eodata`). Previously, paths were modified to replace `eodata` with
+  `EODATA`. This workaround is no longer required, as the bucket name is now 
+  consistently `eodata`.
+
 ## Version 0.3.2
 
 - Migrated to the new EOData repository bucket name `eodata` 

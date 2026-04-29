@@ -62,7 +62,7 @@ class SmosStacCatalogTest(unittest.TestCase):
         self.assertEqual(2, len(dataset_records))
 
         def make_expected_path(unique_part: str) -> str:
-            path_prefix = "EODATA/SMOS/L2SM/MIR_SMUDP2/2023/05/01"
+            path_prefix = "/eodata/SMOS/L2SM/MIR_SMUDP2/2023/05/01"
             name_prefix = "SM_OPER_MIR_SMUDP2"
             filename = f"{name_prefix}_{unique_part}"
             return f"{path_prefix}/{filename}/{filename}.nc"

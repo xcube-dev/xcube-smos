@@ -194,8 +194,6 @@ def to_iso_format(ts: pd.Timestamp) -> str:
 
 
 def normalize_dataset_path(dataset_path: str) -> str:
-    path_components = [
-        "EODATA" if c == "eodata" else c for c in dataset_path.split("/") if c
-    ]
+    path_components = dataset_path.split("/")
     path_components.append(path_components[-1] + ".nc")
     return "/".join(path_components)
