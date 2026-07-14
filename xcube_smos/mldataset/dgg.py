@@ -29,11 +29,10 @@ import numpy as np
 import xarray as xr
 
 from xcube.core.mldataset import LazyMultiLevelDataset
-from xcube.core.zarrstore import GenericArray
-from xcube.core.zarrstore import GenericZarrStore
 from xcube.util.assertions import assert_given
 from xcube.util.assertions import assert_true
 from xcube_smos.utils import NotSerializable
+from xcube_smos.zarrstore import GenericZarrStore, GenericArray
 
 
 class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):

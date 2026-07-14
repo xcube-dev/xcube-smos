@@ -13,7 +13,7 @@ dependencies:
   - pandas
   - requests
   - xarray
-  - xcube >=1.2
+  - xcube >=1.2,<1.14
   - zarr >=2,<3
   # Development
   - pytest
