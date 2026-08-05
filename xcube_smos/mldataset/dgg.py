@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2023 by the xcube development team and contributors
+# Copyright (c) 2023-2026 by the xcube development team and contributors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -29,11 +29,10 @@ import numpy as np
 import xarray as xr
 
 from xcube.core.mldataset import LazyMultiLevelDataset
-from xcube.core.zarrstore import GenericArray
-from xcube.core.zarrstore import GenericZarrStore
 from xcube.util.assertions import assert_given
 from xcube.util.assertions import assert_true
 from xcube_smos.utils import NotSerializable
+from xcube_smos.zarrstore import GenericZarrStore, GenericArray
 
 
 class SmosDiscreteGlobalGrid(NotSerializable, LazyMultiLevelDataset):

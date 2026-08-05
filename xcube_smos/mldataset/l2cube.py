@@ -9,18 +9,17 @@ import xarray as xr
 from xcube.core.gridmapping import GridMapping
 from xcube.core.mldataset import LazyMultiLevelDataset
 from xcube.core.mldataset import MultiLevelDataset
-from xcube.core.zarrstore import GenericArray
-from xcube.core.zarrstore import GenericZarrStore
 
 from .dgg import SmosDiscreteGlobalGrid
 from .newdgg import MAX_HEIGHT
 from .newdgg import MAX_WIDTH
 from .newdgg import MIN_PIXEL_SIZE
 from .newdgg import new_dgg
-from ..constants import OS_VAR_NAMES
-from ..constants import SM_VAR_NAMES
-from ..utils import LruCache
-from ..utils import NotSerializable
+from xcube_smos.constants import OS_VAR_NAMES
+from xcube_smos.constants import SM_VAR_NAMES
+from xcube_smos.utils import LruCache
+from xcube_smos.utils import NotSerializable
+from xcube_smos.zarrstore import GenericZarrStore, GenericArray
 
 LOG = logging.getLogger("xcube-smos")
 

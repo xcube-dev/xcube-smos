@@ -1,15 +1,24 @@
+## Version 0.3.4 (in development)
+
+* Remove the dependency on `xcube.core.zarrstore` by implementing the corresponding 
+  `GenericZarrStore` and `GenericArray` classes in this package under 
+  `xcube_smos/zarrstore`.
+* Restrict the supported `xcube` version to `<1.14` to maintain compatibility with 
+  Zarr v2 until the migration to Zarr v3 is completed.
+
+
 ## Version 0.3.3
 
-- Fixed an issue with `dataset_paths` related to the updated EOData repository 
+*Fixed an issue with `dataset_paths` related to the updated EOData repository 
   bucket name (`eodata`). Previously, paths were modified to replace `eodata` with
   `EODATA`. This workaround is no longer required, as the bucket name is now 
   consistently `eodata`.
 
 ## Version 0.3.2
 
-- Migrated to the new EOData repository bucket name `eodata` 
+* Migrated to the new EOData repository bucket name `eodata` 
   (see [CREODIAS announcement](https://creodias.eu/announcements/infoupcoming-changes-to-earth-observation-data-eodata-repository-bucket-names/)).
-- Fixed a bug in fetching features from the [SMOS STAC collection](https://datahub.creodias.eu/stac/collections/SMOS/items) 
+* Fixed a bug in fetching features from the [SMOS STAC collection](https://datahub.creodias.eu/stac/collections/SMOS/items) 
   where the next page link was not correctly resolved.
 
 ## Version 0.3.1

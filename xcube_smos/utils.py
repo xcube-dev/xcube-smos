@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2023 by the xcube development team and contributors
+# Copyright (c) 2023-2026 by the xcube development team and contributors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -163,7 +163,7 @@ ALMOST_ONE_DAY = pd.Timedelta("1D") - pd.Timedelta("1us")
 
 
 def normalize_time_range(
-    time_range: Tuple[Optional[TimestampLike], Optional[TimestampLike]]
+    time_range: Tuple[Optional[TimestampLike], Optional[TimestampLike]],
 ) -> Tuple[pd.Timestamp, pd.Timestamp]:
     """Normalize timestamp-like object pair into a pair of timestamps.
 
