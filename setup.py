@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # The MIT License (MIT)
-# Copyright (c) 2022 by the xcube team and contributors
+# Copyright (c) 2023-2026 by the xcube team and contributors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -29,23 +29,25 @@ packages = find_packages(exclude=["tests", "tests.*", "testdata"])
 
 # Same effect as "from cate import version", but avoids importing cate:
 version = None
-with open('xcube_smos/version.py') as f:
+with open("xcube_smos/version.py") as f:
     exec(f.read())
 
 setup(
     name="xcube_smos",
     version=version,
-    description=('xcube_smos is an xcube plugin that allows'
-                 ' opening Earth Explorer SMOS L2 NetCDF files'
-                 ' as spatio-temporal 3-D xarray datasets.'),
-    license='MIT',
-    author='xcube Development Team',
+    description=(
+        "xcube_smos is an xcube plugin that allows"
+        " opening Earth Explorer SMOS L2 NetCDF files"
+        " as spatio-temporal 3-D xarray datasets."
+    ),
+    license="MIT",
+    author="xcube Development Team",
     packages=packages,
     package_data={
-        'xcube_smos.mldataset': [
-            'smos-dgg.levels/.*',
-            'smos-dgg.levels/**/.*',
-            'smos-dgg.levels/**'
+        "xcube_smos.mldataset": [
+            "smos-dgg.levels/.*",
+            "smos-dgg.levels/**/.*",
+            "smos-dgg.levels/**",
         ]
     },
     include_package_data=True,

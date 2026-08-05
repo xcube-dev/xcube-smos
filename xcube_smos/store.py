@@ -1,5 +1,5 @@
 # The MIT License (MIT)
-# Copyright (c) 2023 by the xcube development team and contributors
+# Copyright (c) 2023-2026 by the xcube development team and contributors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -51,7 +51,6 @@ from .schema import ML_DATASET_OPEN_PARAMS_SCHEMA
 from .schema import STORE_PARAMS_SCHEMA
 from .utils import NotSerializable
 from .utils import normalize_time_range
-
 
 DATASET_ITERATOR_TYPE = DataType(
     DatasetIterator, ["smosdsiter", "xcube_smos.dsiter.DatasetIterator"]

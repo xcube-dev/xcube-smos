@@ -4,7 +4,7 @@
   `GenericZarrStore` and `GenericArray` classes in this package under 
   `xcube_smos/zarrstore`.
 * Restrict the supported `xcube` version to `<1.14` to maintain compatibility with 
-  STAC v2 until the migration to Zarr v3 is completed.
+  Zarr v2 until the migration to Zarr v3 is completed.
 
 
 ## Version 0.3.3
